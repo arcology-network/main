@@ -1,0 +1,18 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19007"
+    },
+    "actors": {
+        "tpp_rpc": {},
+        "tx_receiver": {},
+        "tx_unsigner": {
+            "chain_id": "__global__"
+        }
+    },
+    "interfaces": [
+        {
+            "name": "tpp",
+            "service": "tpp_rpc"
+        }
+    ]
+}

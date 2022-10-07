@@ -1,0 +1,10 @@
+{
+    "settings": {},
+    "actors": {
+        "statesync.client": {},
+        "statesync.server": {},
+        "p2p.client": {
+            "cluster_name": "__global__"
+        }
+    }
+}

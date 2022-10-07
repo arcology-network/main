@@ -1,0 +1,36 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19004",
+        "envs": {
+            "generate_apc_handle": true,
+            "generate_url_update": false,
+            "init_db": false,
+            "cached":false
+        }
+    },
+    "actors": {
+        "-general_url-stateful_euresult_aggr_selector": {
+            "general_url": {
+                "generate_apc_handle": "__env__",
+                "generate_url_update": "__env__",
+                "init_db": "__env__",
+                "cached":"__env__"
+            },
+            "stateful_euresult_aggr_selector": {
+                "output": "selectedexecuted"
+            }
+        },
+        "exec_rpc": {},
+        "snapshot_maker": {},
+        "executor": {
+            "gatherexeclog": false
+        },
+        "stateless_euresult_aggr_selector": {}
+    },
+    "interfaces": [
+        {
+            "name": "executor-1",
+            "service": "exec_rpc"
+        }
+    ]
+}

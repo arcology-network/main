@@ -1,0 +1,14 @@
+server:
+  id: "node1"
+  host: "127.0.0.1"
+  port: 9191
+zk:
+  servers:
+    - "localhost:2181"
+  croot: "/p2p/peer/config"
+  sroot: "/p2p/conn/status"
+
+peers:
+  - id: "node2"
+    host: "127.0.0.1"
+    port: 9192

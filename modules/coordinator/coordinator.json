@@ -1,0 +1,8 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19005"
+    },
+    "actors": {
+        "coordinator.decision_maker": {}
+    }
+}

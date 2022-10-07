@@ -1,0 +1,59 @@
+package tpp
+
+import (
+	"context"
+
+	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
+	"github.com/HPISTechnologies/common-lib/common"
+	"github.com/HPISTechnologies/common-lib/types"
+	"github.com/HPISTechnologies/component-lib/actor"
+	"github.com/HPISTechnologies/component-lib/log"
+	tppTypes "github.com/HPISTechnologies/main/modules/tpp/types"
+)
+
+type RpcReceiver struct {
+	actor.WorkerThread
+}
+
+//return a Subscriber struct
+func NewRpcReceiver(concurrency int, groupid string) actor.IWorkerEx {
+	in := RpcReceiver{}
+	in.Set(concurrency, groupid)
+	return &in
+}
+
+func (rr *RpcReceiver) Inputs() ([]string, bool) {
+	return []string{}, false
+}
+
+func (rr *RpcReceiver) Outputs() map[string]int {
+	return map[string]int{
+		actor.MsgCheckingTxs: 100,
+	}
+}
+
+func (rr *RpcReceiver) OnStart() {
+}
+
+func (rr *RpcReceiver) OnMessageArrived(msgs []*actor.Message) error {
+	return nil
+}
+
+func (rr *RpcReceiver) ReceivedTransactionFromRpc(ctx context.Context, args *types.RawTransactionArgs, reply *types.RawTransactionReply) error {
+	txLen := 1
+	checks := make([]*tppTypes.CheckingTx, txLen)
+
+	logid := rr.AddLog(log.LogLevel_Debug, "start parallelSend Txs")
+	interLog := rr.GetLogger(logid)
+	common.ParallelWorker(txLen, rr.Concurrency, tppTypes.CheckingTxHashWorker, [][]byte{args.Txs}, &checks, interLog)
+
+	pack := tppTypes.CheckingTxsPack{
+		Txs:        checks,
+		TxHashChan: make(chan ethCommon.Hash, 1),
+	}
+	rr.MsgBroker.Send(actor.MsgCheckingTxs, &pack)
+
+	reply.TxHash = <-pack.TxHashChan
+
+	return nil
+}

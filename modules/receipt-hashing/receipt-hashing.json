@@ -1,0 +1,9 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19006"
+    },
+    "actors": {
+        "stateful_receipt_hash_aggr_selector": {},
+        "receipt-hashing.calculator": {}
+    }
+}

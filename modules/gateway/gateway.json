@@ -1,0 +1,19 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19002"
+    },
+    "actors": {
+        "local_tx_receiver": {},
+        "tx_dup_checker": {
+            "wait_seconds": 60,
+            "max_txs_num": 1000
+        },
+        "tpp_rpc_client": {}
+    },
+    "interfaces": [
+        {
+            "name": "gateway",
+            "service": "gateway_rpc"
+        }
+    ]
+}

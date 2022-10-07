@@ -1,0 +1,55 @@
+{
+    "kafka1": {
+        "inclusive-txs": ["inclusive"],
+        "msgexch": [
+            "blockCompleted", 
+            "parentinfo", 
+            "gc", 
+            "accthash", 
+            "appHash",
+            "reapCommand",
+            "rcpthash",
+            "gasused",
+            "execTime",
+            "blockstart",
+            "external.blockstart",
+            "external.reapcommand",
+            "external.blockcompleted",
+            "external.apphash",
+            "consensus.maxpeerheight",
+            "consensus.up",
+            "storage.up",
+            "cached",
+            "statesync.start",
+            "statesync.done"
+        ],
+        "receipts": ["receipts"],
+        "exec-rcpt-hash": ["receiptHashList"],
+        "reaping-list": [
+            "reapinglist",
+            "external.reapinglist"
+        ],
+        "selected-msgs": ["messagersReaped"],
+        "selected-txs": ["selectedtx"],
+        "meta-block": ["metablock"],
+        "local-block": ["pendingblock"],
+        "spawned-relations": ["spawnedRelations"],
+        "block-txs": [
+            "txBlocks",
+            "external.txblocks"
+        ],
+        "p2p.received": ["p2p.received"],
+        "p2p.sent": ["p2p.sent"]
+    },
+    "kafka2": {
+        "euresults": ["euResults"],
+        "checked-txs": ["checkedTxs"],
+        "chkd-message": ["messager"],
+        "local-txs": ["txLocals"],
+        "remote-txs": ["txRemotes"],
+        "executing-logs": ["executingLogs"]
+    },
+    "kafka3": {
+        "access-records": ["txAccessRecords"]
+    }
+}

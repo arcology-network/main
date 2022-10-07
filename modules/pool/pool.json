@@ -1,0 +1,10 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19012"
+    },
+    "actors": {
+        "pool_aggr_selector": {
+            "max_reap_size": 50000
+        }
+    }
+}

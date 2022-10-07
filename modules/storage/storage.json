@@ -1,0 +1,123 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19009",
+        "envs": {
+            "generate_apc_handle": false,
+            "generate_url_update": true,
+            "init_db": true,
+            "cached":true
+        }
+    },
+    "actors": {
+        "-general_url-stateful_euresult_aggr_selector": {
+            "general_url": {
+                "generate_apc_handle": "__env__",
+                "generate_url_update": "__env__",
+                "init_db": "__env__",
+                "cached":"__env__"
+            },
+            "stateful_euresult_aggr_selector": {
+                "output": "executed"
+            }
+        },
+        "-storage.root_calculator-stateful_euresult_aggr_selector": {
+            "stateful_euresult_aggr_selector": {
+                "output": "listfulfilled"
+            }
+        },
+        "storage.initializer": {
+            "account_file": "../config/af",
+            "storage_url_path": "urlfiles",
+            "storage_url_shards": 128,
+            "storage_url_depts": 2
+            
+        },
+        "storage.metrics": {},
+        "stateful_receipt_aggr_selector": {},
+        "storage": {
+            "remote_caches": "__global__",
+            "log_cache_size": 1000,
+            "block_cache_size": 10,
+            "tx_cache_size": 10,
+            "cache_svc_port": "6061",
+            "chain_id": "__global__"
+        },
+        "storage_debug": {},
+        "storage.statesyncstore": {
+            "slice_db_root": "./slices/",
+            "sync_point_root": "./sync_point/",
+            "sync_point_interval": 65536
+        }
+    },
+    "msg_ops": [
+        {
+            "type": "rename",
+            "params": ["inclusive", "conflictInclusive"]
+        }
+    ],
+    "interfaces": [
+        {
+            "name": "tmblockstore",
+            "service": "storage.tmblockstore",
+            "params":{
+                "storage_tmblock_name": "tmblockstore",
+                "storage_tmblock_dir": "./"
+            }
+        },
+        {
+            "name": "urlstore",
+            "service": "storage.urlstore"
+        },
+        {
+            "name": "receiptstore",
+            "service": "storage.receiptstore",
+            "params":{
+                "storage_receipt_path": "receiptfiles",
+                "cache_receipt_size": 100,
+                "cache_exec_concurrency": 8
+            }
+        },
+        {
+            "name": "blockstore",
+            "service": "storage.blockstore",
+            "params":{
+                "storage_block_path": "blockfiles",
+                "cache_block_size": 100
+            }
+        },
+        {
+            "name": "statestore",
+            "service": "storage.statestore",
+            "params":{
+                "storage_state_path": "statefile"
+            }
+        },
+        {
+            "name": "debugstore",
+            "service": "storage.debugstore",
+            "params":{
+                "cache_statistcalinfo_size": 50,
+                "cache_execlog_size": 50,
+                "cache_exec_concurrency": 8
+            }
+        },
+        {
+            "name": "indexerstore",
+            "service": "storage.indexerstore",
+            "params":{
+                "storage_index_path": "indexfiles",
+                "cache_index_size": 100,
+                "storage_index_shards": 128,
+                "storage_index_depts": 2
+            }
+        },
+        {
+            "name": "statesyncstore",
+            "service": "storage.statesyncstore"
+        },
+        {
+            "name": "storage",
+            "service": "storage"
+        }
+    ]
+}

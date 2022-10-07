@@ -1,0 +1,52 @@
+{
+    "chain_id": 1,
+    "kafka": {
+        "kafka1": "127.0.0.1:9092",
+        "kafka2": "127.0.0.1:9092",
+        "kafka3": "127.0.0.1:9092"
+    },
+    "rpc": {
+        "executor-1": "192.168.1.104:8973",
+        "arbitrator": "192.168.1.105:8972",
+        "tpp": "192.168.1.106:8971",
+        "scheduler": "192.168.1.107:8976",
+        "consensus": "192.168.1.108:8977",
+        "gateway": "192.168.1.110:8975",
+        "storage": "192.168.1.109:8978",
+        "tmblockstore": "192.168.1.109:8979",
+        "urlstore": "192.168.1.109:8980",
+        "txstore": "192.168.1.109:8981",
+        "receiptstore": "192.168.1.109:8982",
+        "blockstore": "192.168.1.109:8983",
+        "statestore": "192.168.1.109:8984",
+        "indexerstore":"127.0.0.1:8985",
+        "debugstore":"127.0.0.1:8986",
+        "statesyncstore": "127.0.0.1:8987",
+        "p2p": "192.168.1.110:8985"
+    },
+    "zookeeper": "127.0.0.1:2181",
+    "concurrency": {
+        "default": 4,
+        "exec": 8
+    },
+    "cluster_name": "node1",
+    "cluster_id": 1,
+    "log_config_file": "./log.toml",
+    "coinbase": "0x1a4c154c778e8f234d6dff415b6359c423f2f428",
+    "persistent_peers": "",
+    "p2p.peers": [
+        {
+            "id": "node2",
+            "host": "127.0.0.1",
+            "port": 9192
+        }
+    ],
+    "p2p.gateway": {
+        "host": "127.0.0.1",
+        "port": 9191
+    },
+    "p2p.conn": {
+        "host": "127.0.0.1",
+        "port": 9292
+    }
+}

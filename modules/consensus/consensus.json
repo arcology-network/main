@@ -1,0 +1,23 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19013"
+    },
+    "actors": {
+        "consensus": {
+            "max_tx_num": 1000,
+            "rate": 1,
+            "starter": 0,
+            "storage_svc_name": "storage",
+            "zookeeper": "__global__",
+            "persistent_peers": "__global__",
+            "prometheus_listen_addr": ":19001",
+            "debug": false
+        }
+    },
+    "interfaces": [
+        {
+            "name": "consensus",
+            "service": "consensus"
+        }
+    ]
+}

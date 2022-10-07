@@ -1,0 +1,17 @@
+server:
+  nid: "node"
+  sid: "server"
+  host: "localhost"
+  port: 9292
+  croot: "/p2p/peer/config"
+  sroot: "/p2p/conn/status"
+zk:
+  servers:
+    - "localhost:2181"
+  croot: "/p2p/peer/config"
+  sroot: "/p2p/conn/status"
+kafka:
+  servers:
+    - "localhost:9092"
+  tin: "p2p-in"
+  tout: "p2p-out"

@@ -1,0 +1,10 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19003"
+    },
+    "actors": {
+        "calc_tx_hash": {},
+        "make_block": {},
+        "core.initializer": {}
+    }
+}

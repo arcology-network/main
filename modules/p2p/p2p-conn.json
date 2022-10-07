@@ -1,0 +1,16 @@
+{
+    "settings": {},
+    "actors": {
+        "p2p.conn": {
+            "zookeeper": "__global__",
+            "p2p.conn": "__global__",
+            "cluster_name": "__global__"
+        }
+    },
+    "interfaces": [
+        {
+            "name": "p2p",
+            "service": "p2p.conn"
+        }
+    ]
+}

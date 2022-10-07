@@ -1,0 +1,18 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19008"
+    },
+    "actors": {
+        "scheduler": {
+            "batch_size": 500,
+            "parallelism": 4,
+            "conflict_file": "conflictlist"
+        }
+    },
+    "interfaces": [
+        {
+            "name": "scheduler",
+            "service": "scheduler"
+        }
+    ]
+}
