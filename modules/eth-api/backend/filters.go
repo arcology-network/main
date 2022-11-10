@@ -5,13 +5,13 @@ import (
 	"sync"
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 
-	"github.com/HPISTechnologies/component-lib/ethrpc"
-	eth "github.com/HPISTechnologies/evm"
-	ethcmn "github.com/HPISTechnologies/evm/common"
-	ethtyp "github.com/HPISTechnologies/evm/core/types"
+	"github.com/arcology-network/component-lib/ethrpc"
+	eth "github.com/arcology-network/evm"
+	ethcmn "github.com/arcology-network/evm/common"
+	ethtyp "github.com/arcology-network/evm/core/types"
 )
 
 const (

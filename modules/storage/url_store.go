@@ -8,14 +8,14 @@ import (
 	"math/big"
 	"strconv"
 
-	"github.com/HPISTechnologies/common-lib/cachedstorage"
-	"github.com/HPISTechnologies/common-lib/common"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/component-lib/storage"
-	urlcmn "github.com/HPISTechnologies/concurrenturl/v2/common"
-	urltyp "github.com/HPISTechnologies/concurrenturl/v2/type"
-	strtyp "github.com/HPISTechnologies/main/modules/storage/types"
+	"github.com/arcology-network/common-lib/cachedstorage"
+	"github.com/arcology-network/common-lib/common"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/storage"
+	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
+	urltyp "github.com/arcology-network/concurrenturl/v2/type"
+	strtyp "github.com/arcology-network/main/modules/storage/types"
 )
 
 // type UrlSaveRequest struct {
@@ -151,6 +151,7 @@ func (us *UrlStore) ApplyData(ctx context.Context, request *cmntyp.SyncDataReque
 	}
 
 	var parent *cmntyp.ParentInfo
+	var schdState *SchdState
 	for i := 0; i < numSlice; i++ {
 		var response cmntyp.SyncDataResponse
 		err := intf.Router.Call("statesyncstore", "ReadSlice", &cmntyp.SyncDataRequest{
@@ -162,6 +163,10 @@ func (us *UrlStore) ApplyData(ctx context.Context, request *cmntyp.SyncDataReque
 			return err
 		}
 		parent = response.Parent
+
+		if response.SchdStates != nil {
+			schdState = response.SchdStates.(*SchdState)
+		}
 
 		// TODO: data validation.
 		// slices = append(slices, ethcmn.BytesToHash(response.Hash))
@@ -200,7 +205,11 @@ func (us *UrlStore) ApplyData(ctx context.Context, request *cmntyp.SyncDataReque
 		var p cmntyp.ParentInfo
 		intf.Router.Call("statestore", "GetParentInfo", &na, &p)
 		parent = &p
+	} else {
+		var na int
+		intf.Router.Call("schdstore", "DirectWrite", schdState, &na)
 	}
+
 	// Update state
 	intf.Router.Call("statestore", "Save", &State{
 		Height:     request.To,

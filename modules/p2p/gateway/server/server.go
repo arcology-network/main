@@ -6,27 +6,35 @@ import (
 	"fmt"
 	"net"
 	"sync"
+	"time"
 
-	cconfig "github.com/HPISTechnologies/main/modules/p2p/conn/config"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/connection"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
-	gconfig "github.com/HPISTechnologies/main/modules/p2p/gateway/config"
-	"github.com/HPISTechnologies/main/modules/p2p/gateway/lb"
+	cconfig "github.com/arcology-network/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/connection"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
+	gconfig "github.com/arcology-network/main/modules/p2p/gateway/config"
+	"github.com/arcology-network/main/modules/p2p/gateway/lb"
 	"github.com/go-zookeeper/zk"
 )
 
 type Server struct {
-	cfg    *gconfig.Config
-	zkConn *zk.Conn
-	slaves map[string]*status.SvcStatus
-	slock  sync.RWMutex
+	cfg       *gconfig.Config
+	zkServers []string
+	zkConn    *zk.Conn
+	slaves    map[string]*status.SvcStatus
+	slock     sync.RWMutex
 }
 
-func NewServer(cfg *gconfig.Config, zkConn *zk.Conn) *Server {
+func NewServer(cfg *gconfig.Config, zkServers []string) *Server {
+	zkConn, _, err := zk.Connect(zkServers, 30*time.Second)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Server{
-		cfg:    cfg,
-		zkConn: zkConn,
+		cfg:       cfg,
+		zkServers: zkServers,
+		zkConn:    zkConn,
 	}
 }
 
@@ -139,7 +147,7 @@ func (s *Server) handleClient(conn net.Conn) {
 		return
 	}
 
-	fmt.Printf(fmt.Sprintf("handshake with %s success\n", handshake.ID))
+	fmt.Printf("handshake with %s success\n", handshake.ID)
 	m, err = protocol.ReadMessage(r)
 	if err != nil {
 		fmt.Printf("read routing message error: %v\n", err)
@@ -163,7 +171,7 @@ func (s *Server) handleClient(conn net.Conn) {
 		return
 	}
 
-	fmt.Printf(fmt.Sprintf("routing success, peer: %v, self: %v\n", routing, routingAck))
+	fmt.Printf("routing success, peer: %v, self: %v\n", routing, routingAck)
 }
 
 func (s *Server) validatePeer(m *protocol.MsgHandshake) (*protocol.MsgHandshake, error) {
@@ -175,7 +183,7 @@ func (s *Server) validatePeer(m *protocol.MsgHandshake) (*protocol.MsgHandshake,
 		}
 	}
 
-	return nil, errors.New(fmt.Sprintf("invalid peer %s", m.ID))
+	return nil, fmt.Errorf("invalid peer %s", m.ID)
 }
 
 func (s *Server) routing(handshake *protocol.MsgHandshake, routing *protocol.MsgRouting) (*protocol.MsgRouting, error) {
@@ -214,7 +222,15 @@ func (s *Server) addPeerConfig(peerCfg *cconfig.PeerConfig) error {
 	path := s.cfg.ZooKeeper.PeerConfigRoot + "/" + peerCfg.ID
 	_, err = s.zkConn.Create(path, []byte(json), 0, zk.WorldACL(zk.PermAll))
 	if err != nil {
-		return err
+		s.zkConn, _, err = zk.Connect(s.zkServers, 30*time.Second)
+		if err != nil {
+			return err
+		}
+
+		_, err = s.zkConn.Create(path, []byte(json), 0, zk.WorldACL(zk.PermAll))
+		if err != nil {
+			return err
+		}
 	}
 
 	return nil

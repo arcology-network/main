@@ -3,7 +3,7 @@ package status
 import (
 	"testing"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
 )
 
 func TestToJson(t *testing.T) {

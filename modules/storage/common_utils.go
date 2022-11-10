@@ -1,12 +1,12 @@
 package storage
 
 import (
-	ethcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	cmncmn "github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/mempool"
-	cmnmkl "github.com/HPISTechnologies/common-lib/merkle"
-	"github.com/HPISTechnologies/common-lib/mhasher"
-	urltyp "github.com/HPISTechnologies/concurrenturl/v2/type"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	cmncmn "github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/mempool"
+	cmnmkl "github.com/arcology-network/common-lib/merkle"
+	"github.com/arcology-network/common-lib/mhasher"
+	urltyp "github.com/arcology-network/concurrenturl/v2/type"
 )
 
 func calcRootHash(merkle *urltyp.AccountMerkle, lastRoot ethcmn.Hash, paths []string, encodedValues [][]byte) ethcmn.Hash {

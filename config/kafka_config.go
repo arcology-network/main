@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/kafka"
-	"github.com/HPISTechnologies/component-lib/streamer"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/kafka"
+	"github.com/arcology-network/component-lib/streamer"
 )
 
 type KafkaConfig map[string]map[string][]string

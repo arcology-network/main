@@ -1,3 +1,5 @@
+//go:build !CI
+
 package boot
 
 import (
@@ -6,16 +8,16 @@ import (
 	"testing"
 	"time"
 
-	ethcommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	cmntypes "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/component-lib/mock/kafka"
-	"github.com/HPISTechnologies/component-lib/mock/rpc"
-	urlcommon "github.com/HPISTechnologies/concurrenturl/v2/common"
-	urltypes "github.com/HPISTechnologies/concurrenturl/v2/type"
-	"github.com/HPISTechnologies/concurrenturl/v2/type/commutative"
-	"github.com/HPISTechnologies/main/config"
+	ethcommon "github.com/arcology-network/3rd-party/eth/common"
+	cmntypes "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/mock/kafka"
+	"github.com/arcology-network/component-lib/mock/rpc"
+	urlcommon "github.com/arcology-network/concurrenturl/v2/common"
+	urltypes "github.com/arcology-network/concurrenturl/v2/type"
+	"github.com/arcology-network/concurrenturl/v2/type/commutative"
+	"github.com/arcology-network/main/config"
 )
 
 func TestBootstrapCase1(t *testing.T) {
@@ -224,7 +226,7 @@ func runTestCase(t *testing.T, txGroups [][]*cmntypes.TxElement, records ...*acc
 
 	globalConfig := config.LoadGlobalConfig("../config/global.json")
 	kafkaConfig := config.LoadKafkaConfig("../config/kafka.json")
-	appConfig := config.LoadAppConfig("../config/arbitrator.json")
+	appConfig := config.LoadAppConfig("../modules/arbitrator/arbitrator.json")
 	brk, _, _ := initApp(globalConfig, kafkaConfig, appConfig)
 
 	broker := &actor.MessageWrapper{
@@ -237,7 +239,7 @@ func runTestCase(t *testing.T, txGroups [][]*cmntypes.TxElement, records ...*acc
 	for _, record := range records {
 		univalues := urltypes.Univalues{}
 		for _, a := range record.accesses {
-			univalues = append(univalues, urltypes.CreateUnivalueForTest(a.vType, record.id, a.path, a.reads, a.writes, a.value, a.preexists, a.composite))
+			univalues = append(univalues, urltypes.CreateUnivalueForTest(urlcommon.VARIATE_TRANSITIONS, a.vType, record.id, a.path, a.reads, a.writes, a.value, a.preexists, a.composite))
 		}
 		txAccessRecords = append(txAccessRecords, &cmntypes.TxAccessRecords{
 			Hash:     string(record.hash.Bytes()),

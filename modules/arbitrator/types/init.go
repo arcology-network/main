@@ -1,8 +1,8 @@
 package types
 
 import (
-	"github.com/HPISTechnologies/common-lib/mempool"
-	urltype "github.com/HPISTechnologies/concurrenturl/v2/type"
+	"github.com/arcology-network/common-lib/mempool"
+	urltype "github.com/arcology-network/concurrenturl/v2/type"
 )
 
 var ProcessedEuResultPool *mempool.Mempool

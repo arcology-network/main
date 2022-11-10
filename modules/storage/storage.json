@@ -27,7 +27,7 @@
         },
         "storage.initializer": {
             "account_file": "../config/af",
-            "storage_url_path": "urlfiles",
+            "storage_url_path": "./url/",
             "storage_url_shards": 128,
             "storage_url_depts": 2
             
@@ -40,14 +40,22 @@
             "block_cache_size": 10,
             "tx_cache_size": 10,
             "cache_svc_port": "6061",
-            "chain_id": "__global__"
+            "chain_id": "__global__",
+            "prometheus_host":"http://50.99.150.71:3030",
+            "prometheus_fetch_frequency":10,
+            "prometheus_fetch_ahead":300,
+            "prometheus_fetch_step":"3"
         },
         "storage_debug": {},
         "storage.statesyncstore": {
             "slice_db_root": "./slices/",
             "sync_point_root": "./sync_point/",
             "sync_point_interval": 65536
-        }
+        },
+        "storage.schdstore": {
+            "root": "./schdstore/"
+        },
+        "storage.cacheblockstore": {}
     },
     "msg_ops": [
         {
@@ -62,6 +70,13 @@
             "params":{
                 "storage_tmblock_name": "tmblockstore",
                 "storage_tmblock_dir": "./"
+            }
+        },
+        {
+            "name": "tmstatestore",
+            "service": "storage.tmstatestore",
+            "params": {
+                "tm_state_store_dir": "./"
             }
         },
         {
@@ -118,6 +133,17 @@
         {
             "name": "storage",
             "service": "storage"
+        },
+        {
+            "name": "transactionalstore",
+            "service": "storage.transactionalstore",
+            "params": {
+                "root": "./transactional/"
+            }
+        },
+        {
+            "name": "schdstore",
+            "service": "storage.schdstore"
         }
     ]
 }

@@ -11,11 +11,11 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/HPISTechnologies/component-lib/ethrpc"
-	eth "github.com/HPISTechnologies/evm"
-	ethcmn "github.com/HPISTechnologies/evm/common"
-	ethflt "github.com/HPISTechnologies/evm/eth/filters"
-	internal "github.com/HPISTechnologies/main/modules/eth-api/backend"
+	"github.com/arcology-network/component-lib/ethrpc"
+	eth "github.com/arcology-network/evm"
+	ethcmn "github.com/arcology-network/evm/common"
+	ethflt "github.com/arcology-network/evm/eth/filters"
+	internal "github.com/arcology-network/main/modules/eth-api/backend"
 )
 
 func ToTransactionResponse(tx *ethrpc.RPCTransaction) map[string]string {

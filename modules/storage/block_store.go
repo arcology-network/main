@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	mstypes "github.com/HPISTechnologies/main/modules/storage/types"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	mstypes "github.com/arcology-network/main/modules/storage/types"
 )
 
 type BlockStore struct {
@@ -25,6 +25,11 @@ func (bs *BlockStore) Config(params map[string]interface{}) {
 
 func (bs *BlockStore) Save(ctx context.Context, block *cmntyp.MonacoBlock, _ *int) error {
 	bs.db.Save(block.Height, block)
+	return nil
+}
+
+func (bs *BlockStore) SavePendingBlock(ctx context.Context, block *cmntyp.MonacoBlock, _ *int) error {
+	bs.db.CacheOnly(block.Height, block)
 	return nil
 }
 

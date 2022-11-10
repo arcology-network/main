@@ -1,7 +1,7 @@
 package boot
 
 import (
-	evmcommon "github.com/HPISTechnologies/evm/common"
+	evmcommon "github.com/arcology-network/evm/common"
 )
 
 var (

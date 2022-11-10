@@ -3,7 +3,7 @@
         "prometheus_listen_addr": ":19008"
     },
     "actors": {
-        "scheduler": {
+        "scheduler.v2": {
             "batch_size": 500,
             "parallelism": 4,
             "conflict_file": "conflictlist"
@@ -12,7 +12,7 @@
     "interfaces": [
         {
             "name": "scheduler",
-            "service": "scheduler"
+            "service": "scheduler.v2"
         }
     ]
 }

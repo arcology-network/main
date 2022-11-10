@@ -3,11 +3,11 @@ package receipthashing
 import (
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/mhasher"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/log"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/mhasher"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/log"
 	"go.uber.org/zap"
 )
 
@@ -19,7 +19,7 @@ type CalculateRoothash struct {
 	actor.WorkerThread
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewCalculateRoothash(concurrency int, groupid string) actor.IWorkerEx {
 	cr := CalculateRoothash{}
 	cr.Set(concurrency, groupid)
@@ -63,16 +63,17 @@ func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 			}
 		}
 	}
-	cr.AddLog(log.LogLevel_Info, "CalculateRoothash start calculate")
+	cr.CheckPoint("start calculate rcpthash")
 	hash, gas := cr.gatherReceipts(inclusiveList, selectedReceipts)
 	cr.MsgBroker.Send(actor.MsgRcptHash, &hash)
 	cr.MsgBroker.Send(actor.MsgGasUsed, gas)
+	cr.CheckPoint("rcpthash calculate completed")
 	return nil
 }
 
 func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, receipts *map[ethCommon.Hash]*types.ReceiptHash) (ethCommon.Hash, uint64) {
 	begintime := time.Now()
-	datas := make([][]byte, len(inclusiveList.HashList))
+	datas := make([][]byte, 0, len(inclusiveList.HashList))
 	var gasused uint64 = 0
 	nilroot := ethCommon.Hash{}
 	if inclusiveList == nil || receipts == nil {
@@ -83,7 +84,7 @@ func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, 
 
 			if rcpt, ok := (*receipts)[*hash]; ok {
 				if rcpt != nil {
-					datas[i] = rcpt.Receipthash.Bytes()
+					datas = append(datas, rcpt.Receipthash.Bytes())
 					gasused += rcpt.GasUsed
 				}
 			}

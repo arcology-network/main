@@ -1,10 +1,11 @@
 package types
 
 import (
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	cmntyp "github.com/arcology-network/common-lib/types"
 )
 
 type TxsPack struct {
-	Txs        [][]byte
+	Txs        *cmntyp.IncomingTxs
 	TxHashChan chan ethCommon.Hash
 }

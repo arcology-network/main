@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/component-lib/streamer"
-	"github.com/HPISTechnologies/main/modules/p2p"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/streamer"
+	"github.com/arcology-network/main/modules/p2p"
 )
 
 type p2pMock struct{}

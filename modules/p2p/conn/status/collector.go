@@ -1,9 +1,11 @@
 package status
 
 import (
+	"errors"
 	"fmt"
+	"time"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
 	"github.com/go-zookeeper/zk"
 )
 
@@ -22,16 +24,23 @@ type Collector struct {
 	path      string
 	svcStatus *SvcStatus
 	eventChan chan Event
+	zkServers []string
 	zkConn    *zk.Conn
 }
 
-func NewCollector(svcConfig *config.Config, zkConn *zk.Conn) *Collector {
+func NewCollector(svcConfig *config.Config, zkServers []string) *Collector {
+	zkConn, _, err := zk.Connect(zkServers, 30*time.Second)
+	if err != nil {
+		panic(err)
+	}
+
 	return &Collector{
 		svcStatus: &SvcStatus{
 			SvcConfig: svcConfig,
 			Peers:     make(map[string]*Peer),
 		},
 		eventChan: make(chan Event, 100),
+		zkServers: zkServers,
 		zkConn:    zkConn,
 	}
 }
@@ -82,6 +91,15 @@ func (c *Collector) UpdateZKStatus() {
 	} else {
 		fmt.Printf("[Collector.UpdateZKStatus] update path: %v\n", c.path)
 		_, s, err := c.zkConn.Get(c.path)
+		if errors.Is(err, zk.ErrConnectionClosed) {
+			c.zkConn, _, err = zk.Connect(c.zkServers, 30*time.Second)
+			if err != nil {
+				panic(err)
+			}
+
+			_, s, err = c.zkConn.Get(c.path)
+		}
+
 		if err != nil {
 			fmt.Printf("[Collector.UpdateZKStatus] failed to get path: %s\n", c.path)
 			c.createPath(status)

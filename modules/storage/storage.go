@@ -9,19 +9,19 @@ import (
 	"sync"
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethRlp "github.com/HPISTechnologies/3rd-party/eth/rlp"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/ethrpc"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/component-lib/log"
-	evm "github.com/HPISTechnologies/evm"
-	evmCommon "github.com/HPISTechnologies/evm/common"
-	evmTypes "github.com/HPISTechnologies/evm/core/types"
-	mstypes "github.com/HPISTechnologies/main/modules/storage/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/ethrpc"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/log"
+	evm "github.com/arcology-network/evm"
+	evmCommon "github.com/arcology-network/evm/common"
+	evmTypes "github.com/arcology-network/evm/core/types"
+	mstypes "github.com/arcology-network/main/modules/storage/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/cors"
@@ -45,9 +45,11 @@ type Storage struct {
 	cacheSvcPort string
 	lastHeight   uint64
 	chainID      *big.Int
+
+	params map[string]interface{}
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewStorage(concurrency int, groupid string) actor.IWorkerEx {
 	initOnce.Do(func() {
 		storageSingleton = &Storage{}
@@ -82,13 +84,15 @@ func (s *Storage) Config(params map[string]interface{}) {
 	)
 	s.cacheSvcPort = params["cache_svc_port"].(string)
 	s.chainID = params["chain_id"].(*big.Int)
+
+	s.params = params
 }
 
 func (s *Storage) OnStart() {
 	var na int
 	intf.Router.Call("statestore", "GetHeight", &na, &s.lastHeight)
 	c := cors.AllowAll()
-	go http.ListenAndServe(":"+s.cacheSvcPort, c.Handler(NewHandler(s.scanCache)))
+	go http.ListenAndServe(":"+s.cacheSvcPort, c.Handler(NewHandler(s.scanCache, s.params)))
 }
 
 func (*Storage) Stop() {}
@@ -155,8 +159,15 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 			t0 := time.Now()
 			intf.Router.Call("blockstore", "Save", block, &na)
 			s.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>> block save", zap.Duration("time", time.Since(t0)))
-			s.scanCache.BlockReceived(block)
 		}
+
+		mapReceipts := make(map[ethCommon.Hash]*ethTypes.Receipt, len(receipts))
+		for _, receipt := range receipts {
+			mapReceipts[receipt.TxHash] = receipt
+		}
+
+		blockHash := block.Hash()
+		s.scanCache.BlockReceived(block, blockHash, mapReceipts)
 
 		t0 := time.Now()
 		relations := map[ethCommon.Hash]ethCommon.Hash{}
@@ -172,7 +183,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 				}
 			}
 		}
-		blockHash := block.Hash()
+
 		failed := 0
 		keys := make([]string, len(receipts))
 		worker := func(start, end int, idx int, args ...interface{}) {
@@ -256,7 +267,10 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		queryHeight := request.Data.(uint64)
 		var block *types.MonacoBlock
 		intf.Router.Call("blockstore", "GetByHeight", &queryHeight, &block)
-		response.Data = &block
+		if block == nil {
+			return fmt.Errorf("block not found for height %d", queryHeight)
+		}
+		response.Data = block
 	case types.QueryType_Block:
 		blockRequest := request.Data.(*types.RequestBlock)
 		if blockRequest == nil {
@@ -400,13 +414,13 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 	case types.QueryType_BlockNumber:
 		response.Data = rs.lastHeight
 	case types.QueryType_TransactionCount:
-		request := request.Data.(*types.RequestParameters)
+		request := request.Data.(types.RequestParameters)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
 		var nonce uint64
 		intf.Router.Call("urlstore", "GetNonce", &address, &nonce)
 		response.Data = nonce
 	case types.QueryType_Code:
-		request := request.Data.(*types.RequestParameters)
+		request := request.Data.(types.RequestParameters)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
 		var code []byte
 		intf.Router.Call("urlstore", "GetCode", &address, &code)
@@ -415,10 +429,13 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		request := request.Data.(*types.RequestParameters)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
 		var balance *big.Int
-		intf.Router.Call("urlstore", "GetBalance", &address, &balance)
+		err := intf.Router.Call("urlstore", "GetBalance", &address, &balance)
+		if err != nil {
+			return err
+		}
 		response.Data = balance
 	case types.QueryType_Storage:
-		request := request.Data.(*types.RequestStorage)
+		request := request.Data.(types.RequestStorage)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
 		var value []byte
 		intf.Router.Call("urlstore", "GetEthStorage", &UrlEthStorageGetRequest{
@@ -442,12 +459,6 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			return errors.New("receipt not found")
 		}
 
-		// var receipt *ethTypes.Receipt
-		// intf.Router.Call("receiptstore", "GetByHash", &hash, &receipt)
-		// if receipt == nil {
-		// 	response.Data = nil
-		// 	return errors.New("receipt not found")
-		// }
 		receiptRet := evmTypes.Receipt{
 			Type:              receipt.Type,
 			PostState:         receipt.PostState,

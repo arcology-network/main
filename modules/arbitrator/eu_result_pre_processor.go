@@ -1,10 +1,10 @@
 package arbitrator
 
 import (
-	"github.com/HPISTechnologies/common-lib/common"
-	ctypes "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/main/modules/arbitrator/types"
+	"github.com/arcology-network/common-lib/common"
+	ctypes "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/main/modules/arbitrator/types"
 )
 
 type EuResultPreProcessor struct {

@@ -1,15 +1,16 @@
 package tpp
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"sync"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/log"
-	tpptypes "github.com/HPISTechnologies/main/modules/tpp/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/log"
+	tpptypes "github.com/arcology-network/main/modules/tpp/types"
 	"go.uber.org/zap"
 )
 
@@ -18,7 +19,7 @@ type TxUnsigner struct {
 	chainID *big.Int
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewTxUnsigner(concurrency int, groupid string) actor.IWorkerEx {
 	unsigner := TxUnsigner{}
 	unsigner.Set(concurrency, groupid)
@@ -62,7 +63,10 @@ func (c *TxUnsigner) OnMessageArrived(msgs []*actor.Message) error {
 			for i := range messages {
 				txHashes[i] = messages[i].TxHash
 			}
-			c.MsgBroker.Send(actor.MsgMessager, messages)
+			c.MsgBroker.Send(actor.MsgMessager, &types.IncomingMsgs{
+				Msgs: messages,
+				Src:  checkingTxsPack.Src,
+			})
 			if checkingTxsPack.TxHashChan != nil {
 				checkingTxsPack.TxHashChan <- txHashes[0]
 			}
@@ -84,7 +88,10 @@ func (c *TxUnsigner) unSignTxs(ctxs []*tpptypes.CheckingTx) []*types.StandardMes
 		wg.Add(1)
 		go func(begin int, end int, id int) {
 			for i := begin; i < end; i++ {
-				ctxs[i].UnSign(c.chainID)
+				err := ctxs[i].UnSign(c.chainID)
+				if err != nil {
+					fmt.Printf("========================UnSign err:%v\n", err)
+				}
 				messages[i] = &ctxs[i].Message
 			}
 			wg.Done()

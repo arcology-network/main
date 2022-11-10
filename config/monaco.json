@@ -27,11 +27,10 @@
         },
         "storage.initializer": {
             "account_file": "/home/weizp/work/af",
-            "storage_url_path": "urlfiles",
+            "storage_url_path": "/home/weizp/monacos/urlfiles",
             "storage_url_shards": 128,
             "storage_url_depts": 2
         },
-        "storage.metrics": {},
         "stateful_receipt_aggr_selector": {},
         "storage": {
             "remote_caches": "__global__",
@@ -39,13 +38,23 @@
             "block_cache_size": 10,
             "tx_cache_size": 10,
             "cache_svc_port": "6061",
-            "chain_id": "__global__"
+            "chain_id": "__global__",
+            "prometheus_host":"http://50.99.150.71:3030",
+            "prometheus_fetch_frequency":10,
+            "prometheus_fetch_ahead":300,
+            "prometheus_fetch_step":"3"
         },
         "storage_debug": {},
+        "storage.statesyncstore": {
+            "slice_db_root": "/home/weizp/monacos/slices/",
+            "sync_point_root": "/home/weizp/monacos/sync_point/",
+            "sync_point_interval": 65536
+        },
+        "storage.metrics": {},
         "exec_rpc": {},
         "snapshot_maker": {},
         "executor": {
-            "gatherexeclog": false
+            "gatherexeclog": true
         },
         "stateless_euresult_aggr_selector": {},
         "access_record_pre_processor": {},
@@ -56,15 +65,27 @@
         "tx_unsigner": {
             "chain_id": "__global__"
         },
+        "-nonce_url-stateful_euresult_aggr_selector4pool": {
+            "nonce_url": {
+                "generate_apc_handle": true,
+                "generate_url_update": false,
+                "init_db": false,
+                "cached": false
+            },
+            "stateful_euresult_aggr_selector4pool": {
+                "output": "commitNonceUrl"
+            }
+        },
         "pool_aggr_selector": {
-            "max_reap_size": 10
+            "max_reap_size": 10,
+            "obsolete_time": 100,
+            "close_check": true
         },
         "local_tx_receiver": {},
         "tx_dup_checker": {
             "wait_seconds": 60,
             "max_txs_num": 1000
         },
-        "tpp_rpc_client": {},
         "stateful_receipt_hash_aggr_selector": {},
         "receipt-hashing.calculator": {},
         "eth_api": {
@@ -95,7 +116,31 @@
             "prometheus_listen_addr": ":19001",
             "debug": false
         },
-        "coordinator.decision_maker": {}
+        "coordinator.decision_maker": {},
+        
+        "txsync.reap_timeout_watcher": {},
+        "txsync.server": {},
+        
+        "statesync.client": {},
+        "statesync.server": {},
+        "p2p.client": {
+            "cluster_name": "__global__"
+        },
+        "p2p.conn": {
+            "zookeeper": "__global__",
+            "p2p.conn": "__global__",
+            "cluster_name": "__global__"
+        },
+        "p2p.gateway": {
+            "zookeeper": "__global__",
+            "p2p.gateway": "__global__",
+            "p2p.peers": "__global__",
+            "cluster_name": "__global__"
+        },
+        "storage.schdstore": {
+            "root": "/home/weizp/monacos/schdstore/"
+        },
+        "storage.cacheblockstore": {}
     },
     "msg_ops": [
         {
@@ -137,7 +182,7 @@
             "service": "storage.tmblockstore",
             "params":{
                 "storage_tmblock_name": "tmblockstore",
-                "storage_tmblock_dir": "./"
+                "storage_tmblock_dir": "/home/weizp/monacos"
             }
         },
         {
@@ -148,7 +193,7 @@
             "name": "receiptstore",
             "service": "storage.receiptstore",
             "params":{
-                "storage_receipt_path": "receiptfiles",
+                "storage_receipt_path": "/home/weizp/monacos/receiptfiles",
                 "cache_receipt_size": 100,
                 "cache_exec_concurrency": 8
             }
@@ -157,7 +202,7 @@
             "name": "blockstore",
             "service": "storage.blockstore",
             "params":{
-                "storage_block_path": "blockfiles",
+                "storage_block_path": "/home/weizp/monacos/blockfiles",
                 "cache_block_size": 100
             }
         },
@@ -165,7 +210,7 @@
             "name": "statestore",
             "service": "storage.statestore",
             "params":{
-                "storage_state_path": "statefile"
+                "storage_state_path": "/home/weizp/monacos/statefile"
             }
         },
         {
@@ -181,11 +226,37 @@
             "name": "indexerstore",
             "service": "storage.indexerstore",
             "params":{
-                "storage_index_path": "indexfiles",
+                "storage_index_path": "/home/weizp/monacos/indexfiles",
                 "cache_index_size": 100,
                 "storage_index_shards": 128,
                 "storage_index_depts": 2
             }
+        },
+        {
+            "name": "p2p",
+            "service": "p2p.conn"
+        },
+        {
+            "name": "statesyncstore",
+            "service": "storage.statesyncstore"
+        },
+        {
+            "name": "tmstatestore",
+            "service": "storage.tmstatestore",
+            "params": {
+                "tm_state_store_dir": "/home/weizp/monacos/"
+            }
+        },
+        {
+            "name": "transactionalstore",
+            "service": "storage.transactionalstore",
+            "params": {
+                "root": "/home/weizp/monacos/transactional/"
+            }
+        },
+        {
+            "name": "schdstore",
+            "service": "storage.schdstore"
         }
     ]
 }

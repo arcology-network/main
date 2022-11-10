@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 
-	ethtyp "github.com/HPISTechnologies/3rd-party/eth/types"
-	mstypes "github.com/HPISTechnologies/main/modules/storage/types"
+	ethtyp "github.com/arcology-network/3rd-party/eth/types"
+	mstypes "github.com/arcology-network/main/modules/storage/types"
 )
 
 type SaveReceiptsRequest struct {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/main/modules/storage"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/main/modules/storage"
 )
 
 type storageMockV2 struct {

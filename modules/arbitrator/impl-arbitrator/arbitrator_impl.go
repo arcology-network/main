@@ -5,8 +5,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/HPISTechnologies/main/modules/arbitrator/types"
-	"github.com/HPISTechnologies/urlarbitrator-engine/go-wrapper"
+	"github.com/arcology-network/main/modules/arbitrator/types"
+	"github.com/arcology-network/urlarbitrator-engine/go-wrapper"
 )
 
 type ArbitratorImpl struct {

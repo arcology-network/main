@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/HPISTechnologies/component-lib/actor"
-	_ "github.com/HPISTechnologies/component-lib/aggregator/v3"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	_ "github.com/HPISTechnologies/component-lib/storage"
-	"github.com/HPISTechnologies/component-lib/streamer"
-	_ "github.com/HPISTechnologies/main/modules"
+	"github.com/arcology-network/component-lib/actor"
+	_ "github.com/arcology-network/component-lib/aggregator/v3"
+	intf "github.com/arcology-network/component-lib/interface"
+	_ "github.com/arcology-network/component-lib/storage"
+	"github.com/arcology-network/component-lib/streamer"
+	_ "github.com/arcology-network/main/modules"
 )
 
 type Settings struct {

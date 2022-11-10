@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 
-	ethcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	mstypes "github.com/HPISTechnologies/main/modules/storage/types"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/types"
+	mstypes "github.com/arcology-network/main/modules/storage/types"
 )
 
 type LogSaveRequest struct {

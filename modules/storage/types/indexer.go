@@ -3,9 +3,9 @@ package types
 import (
 	"fmt"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/cachedstorage"
-	"github.com/HPISTechnologies/common-lib/codec"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/cachedstorage"
+	"github.com/arcology-network/common-lib/codec"
 )
 
 type Position struct {

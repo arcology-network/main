@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/component-lib/log"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/log"
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
@@ -51,6 +51,7 @@ func (rca *RpcClientArbitrate) Do(arbitrateList [][][]*types.TxElement, inlog *a
 		if len(list) == 0 {
 			continue
 		}
+
 		request := actor.Message{
 			Msgid: common.GenerateUUID(),
 			Name:  actor.MsgArbitrateList,
@@ -62,14 +63,14 @@ func (rca *RpcClientArbitrate) Do(arbitrateList [][][]*types.TxElement, inlog *a
 		}
 		response := types.ArbitratorResponse{}
 
-		inlog.Log(log.LogLevel_Debug, "start arbitrate >>>>>>>>>>>>>>>>>>>", zap.Int("group idx", i), zap.Int("txs", len(list)), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
+		inlog.CheckPoint("start arbitrate >>>>>>>>>>>>>>>>>>>", zap.Int("group idx", i), zap.Int("txs", len(list)), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
 		arbBegin = time.Now()
 		err := intf.Router.Call("arbitrator", "Arbitrate", &request, &response)
 		if err != nil {
 			inlog.Log(log.LogLevel_Error, "arbitrate err", zap.String("err", fmt.Sprintf("%v", err.Error())))
 			return nil, nil, nil
 		} else {
-			inlog.Log(log.LogLevel_Debug, "return arbitrate <<<<<<<<<<<<<<<<<<<<", zap.Int("group idx", i), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
+			inlog.CheckPoint("return arbitrate <<<<<<<<<<<<<<<<<<<<", zap.Int("group idx", i), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
 			ArbTime.Observe(time.Since(arbBegin).Seconds())
 			ArbTimeGauge.Set(time.Since(arbBegin).Seconds())
 			if response.ConflictedList != nil {

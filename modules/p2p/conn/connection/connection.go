@@ -7,8 +7,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
 )
 
 type Connection struct {

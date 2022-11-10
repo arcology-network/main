@@ -3,14 +3,12 @@ package p2p
 import (
 	"encoding/json"
 	"fmt"
-	"time"
 
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
-	"github.com/HPISTechnologies/main/modules/p2p/gateway/config"
-	"github.com/HPISTechnologies/main/modules/p2p/gateway/server"
-	"github.com/HPISTechnologies/main/modules/p2p/gateway/slave"
-	"github.com/go-zookeeper/zk"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
+	"github.com/arcology-network/main/modules/p2p/gateway/config"
+	"github.com/arcology-network/main/modules/p2p/gateway/server"
+	"github.com/arcology-network/main/modules/p2p/gateway/slave"
 )
 
 type P2pGateway struct {
@@ -49,16 +47,10 @@ func (gateway *P2pGateway) Config(params map[string]interface{}) {
 }
 
 func (gateway *P2pGateway) OnStart() {
-	zkConn, _, err := zk.Connect(gateway.cfg.ZooKeeper.Servers, 3*time.Second)
-	if err != nil {
-		panic(err)
-	}
-	// defer zkConn.Close()
-
-	server := server.NewServer(gateway.cfg, zkConn)
+	server := server.NewServer(gateway.cfg, gateway.cfg.ZooKeeper.Servers)
 	go server.Serve()
 
-	svcMonitor := slave.NewMonitor(zkConn, gateway.cfg.ZooKeeper.ConnStatusRoot, func(services map[string]*status.SvcStatus) {
+	svcMonitor := slave.NewMonitor(gateway.cfg.ZooKeeper.Servers, gateway.cfg.ZooKeeper.ConnStatusRoot, func(services map[string]*status.SvcStatus) {
 		fmt.Printf("service status updated\n")
 		for id, status := range services {
 			fmt.Printf("\tid: %s, config: %v, peers: %v\n", id, status.SvcConfig, status.Peers)

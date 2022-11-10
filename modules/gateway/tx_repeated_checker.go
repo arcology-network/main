@@ -1,11 +1,13 @@
 package gateway
 
 import (
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/log"
-	"github.com/HPISTechnologies/component-lib/storage"
-	gatewayTypes "github.com/HPISTechnologies/main/modules/gateway/types"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/log"
+	"github.com/arcology-network/component-lib/storage"
+	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
 )
 
 type TxRepeatedChecker struct {
@@ -15,7 +17,7 @@ type TxRepeatedChecker struct {
 	maxSize   int
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewTxRepeatedChecker(concurrency int, groupid string) actor.IWorkerEx {
 	receiver := TxRepeatedChecker{}
 	receiver.Set(concurrency, groupid)
@@ -26,15 +28,13 @@ func (r *TxRepeatedChecker) Inputs() ([]string, bool) {
 	return []string{
 		actor.MsgTxLocalsUnChecked,
 		actor.MsgTxBlocks,
-		//actor.MsgTxRemotes,
 	}, false
 }
 
 func (r *TxRepeatedChecker) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgCheckedTxs:  100,
-		actor.MsgTxLocals:    100,
-		actor.MsgTxLocalsRpc: 100,
+		actor.MsgCheckedTxs: 100,
+		actor.MsgTxLocals:   100,
 	}
 }
 
@@ -53,14 +53,9 @@ func (r *TxRepeatedChecker) OnMessageArrived(msgs []*actor.Message) error {
 		case actor.MsgTxLocalsUnChecked:
 			data := v.Data.(*gatewayTypes.TxsPack)
 			r.checkRepeated(data, types.TxFrom_Local)
-		case actor.MsgTxRemotes:
-			pack := &gatewayTypes.TxsPack{
-				Txs: v.Data.([][]byte),
-			}
-			r.checkRepeated(pack, types.TxFrom_Remote)
 		case actor.MsgTxBlocks:
 			pack := &gatewayTypes.TxsPack{
-				Txs: v.Data.([][]byte),
+				Txs: v.Data.(*types.IncomingTxs),
 			}
 			r.checkRepeated(pack, types.TxFrom_Block)
 		}
@@ -69,13 +64,15 @@ func (r *TxRepeatedChecker) OnMessageArrived(msgs []*actor.Message) error {
 }
 
 func (r *TxRepeatedChecker) checkRepeated(txspack *gatewayTypes.TxsPack, from byte) {
-	txs := txspack.Txs
+	txs := txspack.Txs.Txs
 	txLen := len(txs)
 	checkedTxs := make([][]byte, 0, txLen)
 	logid := r.AddLog(log.LogLevel_Debug, "checkRepeated")
 	interLog := r.GetLogger(logid)
+	bypassRepeatCheck := txspack.Txs.Src.BypassRepeatCheck()
 	for i := range txs {
-		if !r.checklist.ExistTx(txs[i], from, interLog) {
+		isExist := r.checklist.ExistTx(txs[i], from, interLog)
+		if !isExist || bypassRepeatCheck {
 			tx := txs[i]
 			sendingTx := make([]byte, len(tx)+1)
 			bz := 0
@@ -85,6 +82,7 @@ func (r *TxRepeatedChecker) checkRepeated(txspack *gatewayTypes.TxsPack, from by
 			checkedTxs = append(checkedTxs, sendingTx)
 		}
 	}
+
 	//to other node with consensus
 	if from == types.TxFrom_Local {
 		r.MsgBroker.Send(actor.MsgTxLocals, txs)
@@ -92,24 +90,38 @@ func (r *TxRepeatedChecker) checkRepeated(txspack *gatewayTypes.TxsPack, from by
 
 	//to tpp with rpc
 	if txspack.TxHashChan != nil {
-		r.MsgBroker.Send(actor.MsgTxLocalsRpc, &gatewayTypes.TxsPack{
-			Txs:        checkedTxs,
-			TxHashChan: txspack.TxHashChan,
-		})
+		go func() {
+			if len(checkedTxs) > 0 {
+				response := types.RawTransactionReply{}
+				intf.Router.Call("tpp", "ReceivedTransactionFromRpc", &types.RawTransactionArgs{
+					Tx:  checkedTxs[0],
+					Src: txspack.Txs.Src,
+				}, &response)
+				txspack.TxHashChan <- response.TxHash.(ethcmn.Hash)
+			} else {
+				txspack.TxHashChan <- ethcmn.Hash{}
+			}
+		}()
 		return
 	}
 	//to tpp with kafka
 	sendingTxs := make([][]byte, 0, r.maxSize)
 	for i := range checkedTxs {
 		if len(sendingTxs) >= r.maxSize {
-			r.MsgBroker.Send(actor.MsgCheckedTxs, sendingTxs)
+			r.MsgBroker.Send(actor.MsgCheckedTxs, &types.IncomingTxs{
+				Txs: sendingTxs,
+				Src: txspack.Txs.Src,
+			})
 			sendingTxs = make([][]byte, 0, r.maxSize)
 		} else {
 			sendingTxs = append(sendingTxs, checkedTxs[i])
 		}
 	}
 	if len(sendingTxs) > 0 {
-		r.MsgBroker.Send(actor.MsgCheckedTxs, sendingTxs)
+		r.MsgBroker.Send(actor.MsgCheckedTxs, &types.IncomingTxs{
+			Txs: sendingTxs,
+			Src: txspack.Txs.Src,
+		})
 	}
 
 }

@@ -1,9 +1,9 @@
 package consensus
 
 import (
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/consensus-engine/state"
-	contyp "github.com/HPISTechnologies/consensus-engine/types"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/consensus-engine/state"
+	contyp "github.com/arcology-network/consensus-engine/types"
 )
 
 type SaveBlockRequest struct {

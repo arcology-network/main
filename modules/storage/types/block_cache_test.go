@@ -1,24 +1,24 @@
 package types
 
 import (
+	"math"
 	"math/big"
 	"os"
 	"reflect"
 	"testing"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethRlp "github.com/HPISTechnologies/3rd-party/eth/rlp"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/evm/params"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
 )
 
 func newBlock(height uint64, idx int) (*types.MonacoBlock, []ethCommon.Hash) {
 	header := &ethTypes.Header{
 		ParentHash:  ethCommon.BytesToHash([]byte{byte(1 + idx), byte(2 + idx), byte(3 + idx), byte(4 + idx), 5, 6, 7, 8, 9, 10}),
 		Number:      big.NewInt(common.Uint64ToInt64(height)),
-		GasLimit:    uint64(params.GasLimit),
+		GasLimit:    uint64(math.MaxUint64),
 		Time:        big.NewInt(int64(idx)),
 		Difficulty:  big.NewInt(1),
 		Coinbase:    ethCommon.BytesToAddress([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}),

@@ -4,33 +4,13 @@ import (
 	"sort"
 	"sync"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/types"
 )
 
 type GasCache struct {
-	dictionaryHash map[ethCommon.Hash]uint64
+	DictionaryHash map[ethCommon.Hash]uint64
 	lock           sync.RWMutex
-}
-
-func NewGasCache() *GasCache {
-	return &GasCache{
-		dictionaryHash: map[ethCommon.Hash]uint64{},
-		lock:           sync.RWMutex{},
-	}
-}
-func (gc *GasCache) Add(hash ethCommon.Hash, gas uint64) {
-	gc.lock.Lock()
-	defer gc.lock.Unlock()
-
-	gc.dictionaryHash[hash] = gas
-}
-
-func (gc *GasCache) Clear(hash ethCommon.Hash, gas uint64) {
-	gc.lock.Lock()
-	defer gc.lock.Unlock()
-
-	gc.dictionaryHash = map[ethCommon.Hash]uint64{}
 }
 
 func (gc *GasCache) CostCalculateSort(txElements *[][][]*types.TxElement) {
@@ -46,7 +26,7 @@ func (gc *GasCache) CostCalculateSort(txElements *[][][]*types.TxElement) {
 		for i, secondDemension := range firstDemension {
 			costs[i].idx = i
 			for _, element := range secondDemension {
-				if gasused, ok := gc.dictionaryHash[*element.TxHash]; ok {
+				if gasused, ok := gc.DictionaryHash[*element.TxHash]; ok {
 					costs[i].cost = costs[i].cost + gasused
 				}
 

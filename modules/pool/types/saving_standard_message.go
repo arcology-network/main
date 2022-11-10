@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/HPISTechnologies/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
 )
 
 type SavingStandardMessage struct {

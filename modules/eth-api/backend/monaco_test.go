@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"testing"
 
-	thdcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	thdtyp "github.com/HPISTechnologies/3rd-party/eth/types"
+	thdcmn "github.com/arcology-network/3rd-party/eth/common"
+	thdtyp "github.com/arcology-network/3rd-party/eth/types"
 )
 
 func TestMsgHash(t *testing.T) {

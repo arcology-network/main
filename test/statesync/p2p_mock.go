@@ -1,8 +1,8 @@
 package statesync
 
 import (
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/main/modules/p2p"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/main/modules/p2p"
 )
 
 type switchMock struct {

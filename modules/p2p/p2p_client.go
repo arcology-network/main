@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/peer"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/main/modules/p2p/conn/peer"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
 )
 
 type P2pMessage struct {

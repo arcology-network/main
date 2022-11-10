@@ -4,18 +4,18 @@ import (
 	"errors"
 	"sync"
 
-	"github.com/HPISTechnologies/common-lib/common"
-	ccctrn "github.com/HPISTechnologies/common-lib/concurrentcontainer"
+	"github.com/arcology-network/common-lib/common"
+	ccctrnmap "github.com/arcology-network/common-lib/concurrentcontainer/map"
 )
 
 type MemoryDB struct {
 	mutex sync.RWMutex
-	db    *ccctrn.ConcurrentMap
+	db    *ccctrnmap.ConcurrentMap
 }
 
 func NewMemoryDB() *MemoryDB {
 	return &MemoryDB{
-		db: ccctrn.NewConcurrentMap(),
+		db: ccctrnmap.NewConcurrentMap(),
 	}
 }
 

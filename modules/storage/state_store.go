@@ -2,12 +2,11 @@ package storage
 
 import (
 	"context"
-	"fmt"
 
-	ethcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/codec"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	mstypes "github.com/HPISTechnologies/main/modules/storage/types"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/codec"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	mstypes "github.com/arcology-network/main/modules/storage/types"
 )
 
 type State struct {
@@ -53,7 +52,6 @@ func (ss *StateStore) Config(params map[string]interface{}) {
 }
 
 func (ss *StateStore) Save(ctx context.Context, request *State, _ *int) error {
-	fmt.Printf("[StateStore.Save] state = %v\n", request)
 	ss.state = request
 	ss.db.Write(statefilename, ss.state.Encode())
 	return nil
@@ -65,6 +63,7 @@ func (ss *StateStore) GetHeight(ctx context.Context, _ *int, height *uint64) err
 		if err != nil {
 			return err
 		}
+		ss.state = &State{}
 		ss.state = ss.state.Decode(data)
 	}
 	*height = ss.state.Height

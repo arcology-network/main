@@ -1,3 +1,4 @@
+//go:build NOCI
 // +build NOCI
 
 package config

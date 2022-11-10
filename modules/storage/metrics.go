@@ -3,7 +3,7 @@ package storage
 import (
 	"time"
 
-	"github.com/HPISTechnologies/component-lib/actor"
+	"github.com/arcology-network/component-lib/actor"
 	"github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 )

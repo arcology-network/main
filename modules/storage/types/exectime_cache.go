@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/HPISTechnologies/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
 )
 
 type ExectimeCaches struct {

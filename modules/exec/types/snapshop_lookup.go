@@ -3,9 +3,9 @@ package types
 import (
 	"sort"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/common"
-	urlcommon "github.com/HPISTechnologies/concurrenturl/v2/common"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/common"
+	urlcommon "github.com/arcology-network/concurrenturl/v2/common"
 )
 
 type SnapShotLookupItem struct {
@@ -15,17 +15,17 @@ type SnapShotLookupItem struct {
 
 type Lookups []SnapShotLookupItem
 
-//Len()
+// Len()
 func (l Lookups) Len() int {
 	return len(l)
 }
 
-//Less():
+// Less():
 func (l Lookups) Less(i, j int) bool {
 	return l[i].Size > l[j].Size
 }
 
-//Swap()
+// Swap()
 func (l Lookups) Swap(i, j int) {
 	l[i], l[j] = l[j], l[i]
 }
@@ -65,8 +65,11 @@ func (ss *SnapShotLookup) AddItem(precedingHash ethCommon.Hash, size int, snapsh
 
 func (ss *SnapShotLookup) Query(precedings []*ethCommon.Hash) (*urlcommon.DatastoreInterface, []*ethCommon.Hash) {
 	var sn *urlcommon.DatastoreInterface
-
+	precedingSize := len(precedings)
 	for _, item := range ss.Lookup {
+		if item.Size > precedingSize {
+			continue
+		}
 		if item.PrecedingHash == common.CalculateHash(precedings[:item.Size]) {
 			return ss.Snapshots[item.PrecedingHash], precedings[item.Size:]
 		}

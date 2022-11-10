@@ -10,12 +10,13 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	mainCfg "github.com/HPISTechnologies/component-lib/config"
-	"github.com/HPISTechnologies/component-lib/ethrpc"
-	ethtyp "github.com/HPISTechnologies/evm/core/types"
-	"github.com/HPISTechnologies/evm/params"
-	internal "github.com/HPISTechnologies/main/modules/eth-api/backend"
-	wal "github.com/HPISTechnologies/main/modules/eth-api/wallet"
+	mainCfg "github.com/arcology-network/component-lib/config"
+	"github.com/arcology-network/component-lib/ethrpc"
+	ethereum "github.com/arcology-network/evm"
+	ethtyp "github.com/arcology-network/evm/core/types"
+	"github.com/arcology-network/evm/params"
+	internal "github.com/arcology-network/main/modules/eth-api/backend"
+	wal "github.com/arcology-network/main/modules/eth-api/wallet"
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
 	"github.com/rs/cors"
 )
@@ -72,9 +73,6 @@ func getBlockByNumber(ctx context.Context, params []interface{}) (interface{}, e
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	// for i := range block.Transactions {
-	// 	fmt.Printf("====hash:%x\n", block.Transactions[i])
-	// }
 	return parseBlock(block), nil
 }
 
@@ -201,12 +199,14 @@ func accounts(ctx context.Context) (interface{}, error) {
 }
 
 func estimateGas(ctx context.Context, params []interface{}) (interface{}, error) {
-	msg, err := ToCallMsg(params[0], true)
-	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid call msg given %v", params[0])
-	}
+	// msg, err := ToCallMsg(params[0], true)
+	// if err != nil {
+	// 	fmt.Printf("*************invalid call msg given %v\n", params[0])
+	// 	return nil, jsonrpc.InvalidParams("invalid call msg given %v", params[0])
+	// }
 
-	gas, err := backend.EstimateGas(msg)
+	//gas, err := backend.EstimateGas(msg)
+	gas, err := backend.EstimateGas(ethereum.CallMsg{})
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
@@ -402,7 +402,7 @@ func getUncleCountByBlockNumber(ctx context.Context, params []interface{}) (inte
 	return NumberToHex(txsNum), nil
 }
 
-func submitWork(ctx context.Context, params []interface{}) (interface{}, error) {
+func submitWork(ctx context.Context) (interface{}, error) {
 
 	// ok, err := backend.SubmitWork()
 	// if err != nil {
@@ -410,7 +410,7 @@ func submitWork(ctx context.Context, params []interface{}) (interface{}, error) 
 	// }
 	return fmt.Sprintf("%v", true), nil
 }
-func submitHashrate(ctx context.Context, params []interface{}) (interface{}, error) {
+func submitHashrate(ctx context.Context) (interface{}, error) {
 
 	// ok, err := backend.SubmitHashrate()
 	// if err != nil {
@@ -418,7 +418,7 @@ func submitHashrate(ctx context.Context, params []interface{}) (interface{}, err
 	// }
 	return fmt.Sprintf("%v", true), nil
 }
-func hashrate(ctx context.Context, params []interface{}) (interface{}, error) {
+func hashrate(ctx context.Context) (interface{}, error) {
 
 	// hashrate, err := backend.Hashrate()
 	// if err != nil {
@@ -426,7 +426,7 @@ func hashrate(ctx context.Context, params []interface{}) (interface{}, error) {
 	// }
 	return NumberToHex(options.Hashrate), nil
 }
-func getWork(ctx context.Context, params []interface{}) (interface{}, error) {
+func getWork(ctx context.Context) (interface{}, error) {
 
 	// works, err := backend.GetWork()
 	// if err != nil {
@@ -434,7 +434,7 @@ func getWork(ctx context.Context, params []interface{}) (interface{}, error) {
 	// }
 	return []string{}, nil
 }
-func protocolVersion(ctx context.Context, params []interface{}) (interface{}, error) {
+func protocolVersion(ctx context.Context) (interface{}, error) {
 
 	// version, err := backend.ProtocolVersion()
 	// if err != nil {
@@ -442,7 +442,7 @@ func protocolVersion(ctx context.Context, params []interface{}) (interface{}, er
 	// }
 	return fmt.Sprintf("%v", options.ProtocolVersion), nil
 }
-func coinbase(ctx context.Context, params []interface{}) (interface{}, error) {
+func coinbase(ctx context.Context) (interface{}, error) {
 	return options.Coinbase, nil
 }
 
@@ -473,17 +473,17 @@ func signTransaction(ctx context.Context, params []interface{}) (interface{}, er
 	}
 	return fmt.Sprintf("%x", rawTx), nil
 }
-func feeHistory(ctx context.Context, params []interface{}) (interface{}, error) {
+func feeHistory(ctx context.Context) (interface{}, error) {
 	return ethrpc.FeeHistoryResult{}, nil
 }
-func syncing(ctx context.Context, params []interface{}) (interface{}, error) {
+func syncing(ctx context.Context) (interface{}, error) {
 	ok, err := backend.Syncing()
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
 	return fmt.Sprintf("%v", ok), nil
 }
-func mining(ctx context.Context, params []interface{}) (interface{}, error) {
+func mining(ctx context.Context) (interface{}, error) {
 	ok, err := backend.Proposer()
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
@@ -568,8 +568,7 @@ func startJsonRpc() {
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
 		return func(ctx context.Context, params interface{}) (interface{}, error) {
 			//method := jsonrpc.MethodFromContext(ctx)
-			//fmt.Printf("method: %v \t params:%v \n", method, params)
-			//fmt.Println("logger: ", params)
+			//fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
 			return next(ctx, params)
 		}
 	})

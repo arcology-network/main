@@ -5,11 +5,11 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/HPISTechnologies/component-lib/ethrpc"
-	eth "github.com/HPISTechnologies/evm"
-	ethcmn "github.com/HPISTechnologies/evm/common"
-	ethtyp "github.com/HPISTechnologies/evm/core/types"
-	ethrlp "github.com/HPISTechnologies/evm/rlp"
+	"github.com/arcology-network/component-lib/ethrpc"
+	eth "github.com/arcology-network/evm"
+	ethcmn "github.com/arcology-network/evm/common"
+	ethtyp "github.com/arcology-network/evm/core/types"
+	ethrlp "github.com/arcology-network/evm/rlp"
 )
 
 type EthereumAPIMock struct {

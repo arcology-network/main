@@ -1,10 +1,10 @@
 package consensus
 
 import (
-	abci "github.com/HPISTechnologies/consensus-engine/abci/types"
+	abci "github.com/arcology-network/consensus-engine/abci/types"
 )
 
-//	txpool node
+// txpool node
 type FakeApp struct {
 }
 

@@ -7,8 +7,7 @@
         "tx_dup_checker": {
             "wait_seconds": 60,
             "max_txs_num": 1000
-        },
-        "tpp_rpc_client": {}
+        }
     },
     "interfaces": [
         {

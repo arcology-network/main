@@ -8,13 +8,14 @@ import (
 	"fmt"
 	"sync"
 
-	ethcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/cachedstorage"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/component-lib/storage"
-	urlcmn "github.com/HPISTechnologies/concurrenturl/v2/common"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/cachedstorage"
+	"github.com/arcology-network/common-lib/transactional"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/storage"
+	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
 )
 
 var (
@@ -31,8 +32,10 @@ type KvDB interface {
 
 const (
 	s3StateUninit = iota
-	s3StateWaitingUpdates
-	s3StateWaitingParentInfo
+	s3StateSchdState
+	s3StateUrlUpdate
+	s3StateAcctHash
+	s3StateParentInfo
 )
 
 type StateSyncStore struct {
@@ -48,6 +51,7 @@ type StateSyncStore struct {
 	// Bufferred data
 	urlUpdate *storage.UrlUpdate
 	hash      *ethcmn.Hash
+	schdState *SchdState
 }
 
 func NewStateSyncStore(concurrency int, groupId string) actor.IWorkerEx {
@@ -73,7 +77,9 @@ func (store *StateSyncStore) TestOnlyGetSyncPointDB() *cachedstorage.ParaBadgerD
 func (store *StateSyncStore) Inputs() ([]string, bool) {
 	return []string{
 		actor.MsgParentInfo,
-		actor.CombinedName(actor.MsgUrlUpdate, actor.MsgAcctHash),
+		actor.MsgSchdState,
+		actor.MsgUrlUpdate,
+		actor.MsgAcctHash,
 	}, false
 }
 
@@ -82,8 +88,8 @@ func (store *StateSyncStore) Outputs() map[string]int {
 }
 
 func (store *StateSyncStore) Config(params map[string]interface{}) {
-	store.sliceDB = NewSimpleFileDB(params["slice_db_root"].(string))
-	store.spDB = cachedstorage.NewParaBadgerDB(params["sync_point_root"].(string))
+	store.sliceDB = transactional.NewSimpleFileDB(params["slice_db_root"].(string))
+	store.spDB = cachedstorage.NewParaBadgerDB(params["sync_point_root"].(string), urlcmn.Eth10AccountShard)
 	store.spInterval = uint64(params["sync_point_interval"].(float64))
 }
 
@@ -91,41 +97,16 @@ func (store *StateSyncStore) OnStart() {}
 
 func (store *StateSyncStore) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
-	switch msg.Name {
-	case actor.MsgParentInfo:
-		// Ignore the first ParentInfo, it is for the genesis block.
-		if store.state == s3StateUninit {
-			fmt.Printf("[StateSyncStore.OnMessageArrived] Ignore the first ParentInfo\n")
-			store.state = s3StateWaitingUpdates
-		} else {
-			parent := msg.Data.(*cmntyp.ParentInfo)
-			var na int
-			store.WriteSlice(context.Background(), &cmntyp.SyncDataResponse{
-				SyncDataRequest: cmntyp.SyncDataRequest{
-					From:  msg.Height - 1,
-					To:    msg.Height,
-					Slice: 0,
-				},
-				Hash:   store.hash.Bytes(),
-				Data:   store.encode(store.urlUpdate),
-				Parent: parent,
-			}, &na)
-
-			status := *store.getSyncStatus()
-			status.Height = msg.Height
-			store.setSyncStatus(&status)
-
-			if msg.Height%store.spInterval == 0 && msg.Height != 0 {
-				// Apply blocks from current sync point to new sync point.
-				store.makeSyncPoint(status.SyncPoint, msg.Height)
-			}
-			store.state = s3StateWaitingUpdates
-		}
-	case actor.CombinedName(actor.MsgUrlUpdate, actor.MsgAcctHash):
-		combined := msg.Data.(*actor.CombinerElements)
-		store.urlUpdate = combined.Get(actor.MsgUrlUpdate).Data.(*storage.UrlUpdate)
-		store.hash = combined.Get(actor.MsgAcctHash).Data.(*ethcmn.Hash)
-		store.state = s3StateWaitingParentInfo
+	switch store.state {
+	case s3StateUninit:
+		fmt.Printf("[StateSyncStore.OnMessageArrived] Ignore the first ParentInfo\n")
+		store.state = s3StateSchdState
+	case s3StateSchdState:
+		store.schdState = msg.Data.(*SchdState)
+		store.state = s3StateUrlUpdate
+	case s3StateUrlUpdate:
+		store.urlUpdate = msg.Data.(*storage.UrlUpdate)
+		store.state = s3StateAcctHash
 		// Debug
 		keySize := 0
 		for _, k := range store.urlUpdate.Keys {
@@ -140,15 +121,44 @@ func (store *StateSyncStore) OnMessageArrived(msgs []*actor.Message) error {
 			len(store.urlUpdate.Keys),
 			len(store.urlUpdate.EncodedValues),
 			keySize, valueSize)
+	case s3StateAcctHash:
+		store.hash = msg.Data.(*ethcmn.Hash)
+		store.state = s3StateParentInfo
+	case s3StateParentInfo:
+		parent := msg.Data.(*cmntyp.ParentInfo)
+		var na int
+		store.WriteSlice(context.Background(), &cmntyp.SyncDataResponse{
+			SyncDataRequest: cmntyp.SyncDataRequest{
+				From:  msg.Height - 1,
+				To:    msg.Height,
+				Slice: 0,
+			},
+			Hash:       store.hash.Bytes(),
+			Data:       store.encode(store.urlUpdate),
+			Parent:     parent,
+			SchdStates: store.schdState,
+		}, &na)
+
+		status := *store.getSyncStatus()
+		status.Height = msg.Height
+		store.setSyncStatus(&status)
+
+		if msg.Height%store.spInterval == 0 && msg.Height != 0 {
+			// Apply blocks from current sync point to new sync point.
+			store.makeSyncPoint(status.SyncPoint, msg.Height)
+		}
+		store.state = s3StateSchdState
 	}
 	return nil
 }
 
 func (store *StateSyncStore) GetStateDefinitions() map[int][]string {
 	return map[int][]string{
-		s3StateUninit:            {actor.MsgParentInfo},
-		s3StateWaitingUpdates:    {actor.CombinedName(actor.MsgUrlUpdate, actor.MsgAcctHash)},
-		s3StateWaitingParentInfo: {actor.MsgParentInfo},
+		s3StateUninit:     {actor.MsgParentInfo},
+		s3StateSchdState:  {actor.MsgSchdState},
+		s3StateUrlUpdate:  {actor.MsgUrlUpdate},
+		s3StateAcctHash:   {actor.MsgAcctHash},
+		s3StateParentInfo: {actor.MsgParentInfo},
 	}
 }
 
@@ -230,12 +240,24 @@ func (store *StateSyncStore) InitSyncPoint(ctx context.Context, to *uint64, sp *
 	var na int
 	var parent cmntyp.ParentInfo
 	intf.Router.Call("statestore", "GetParentInfo", &na, parent)
+
+	var states []SchdState
+	intf.Router.Call("schdstore", "Load", &na, &states)
+	end := 0
+	for i, state := range states {
+		if state.Height > *to {
+			end = i
+			break
+		}
+	}
+
 	// TODO: Set slice hashes.
 	if err := store.setSyncPoint(&cmntyp.SyncPoint{
-		From:   0,
-		To:     *to,
-		Slices: make([]ethcmn.Hash, cmntyp.SlicePerSyncPoint),
-		Parent: &parent,
+		From:       0,
+		To:         *to,
+		Slices:     make([]ethcmn.Hash, cmntyp.SlicePerSyncPoint),
+		Parent:     &parent,
+		SchdStates: states[:end],
 	}); err != nil {
 		return err
 	}
@@ -352,12 +374,24 @@ func (store *StateSyncStore) makeSyncPoint(from, to uint64) {
 		}
 	}
 
+	var states []SchdState
+	var na int
+	intf.Router.Call("schdstore", "Load", &na, &states)
+	end := 0
+	for i, state := range states {
+		if state.Height > to {
+			end = i
+			break
+		}
+	}
+
 	// TODO: Set slice hashes.
 	store.setSyncPoint(&cmntyp.SyncPoint{
-		From:   0,
-		To:     to,
-		Slices: make([]ethcmn.Hash, cmntyp.SlicePerSyncPoint),
-		Parent: parent,
+		From:       0,
+		To:         to,
+		Slices:     make([]ethcmn.Hash, cmntyp.SlicePerSyncPoint),
+		Parent:     parent,
+		SchdStates: states[:end],
 	})
 
 	// Enable sync point.

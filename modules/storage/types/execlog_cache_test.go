@@ -1,3 +1,5 @@
+//go:build !CI
+
 package types
 
 import (
@@ -5,8 +7,8 @@ import (
 	"reflect"
 	"testing"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/types"
 )
 
 func newExeclog(idx int) (*types.ExecutingLogs, ethCommon.Hash) {
@@ -36,7 +38,7 @@ func TestExeclog(t *testing.T) {
 	cache.Save(1, bat1)
 
 	queryResult := cache.Query(string(hashes1[1].Bytes()))
-	if !reflect.DeepEqual(*queryResult, *logs1[1]) {
+	if !reflect.DeepEqual(*queryResult, bat1[1]) {
 		t.Error("cache save get Error")
 		return
 	}
@@ -57,13 +59,13 @@ func TestExeclog(t *testing.T) {
 	cache.Save(1, bat2)
 
 	queryResult = cache.Query(string(hashes1[2].Bytes()))
-	if !reflect.DeepEqual(*queryResult, *logs1[2]) {
+	if !reflect.DeepEqual(*queryResult, bat1[2]) {
 		t.Error("cache save get Error")
 		return
 	}
 
 	queryResult = cache.Query(string(hashes2[2].Bytes()))
-	if !reflect.DeepEqual(*queryResult, *logs2[2]) {
+	if !reflect.DeepEqual(*queryResult, bat2[2]) {
 		t.Error("cache save get Error")
 		return
 	}
@@ -104,14 +106,15 @@ func TestExeclog(t *testing.T) {
 	}
 
 	queryResult = cache.Query(string(hashes3[2].Bytes()))
-	if !reflect.DeepEqual(*queryResult, *logs3[2]) {
+	if !reflect.DeepEqual(*queryResult, bat3[2]) {
 		t.Error("cache save get Error")
 		return
 	}
 
 	queryResult = cache.Query(string(hashes4[2].Bytes()))
-	if !reflect.DeepEqual(*queryResult, *logs4[2]) {
+	if !reflect.DeepEqual(*queryResult, bat4[2]) {
 		t.Error("cache save get Error")
 		return
 	}
+
 }

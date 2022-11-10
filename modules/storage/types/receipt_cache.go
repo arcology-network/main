@@ -3,9 +3,9 @@ package types
 import (
 	"time"
 
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	"github.com/HPISTechnologies/common-lib/codec"
-	"github.com/HPISTechnologies/common-lib/common"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	"github.com/arcology-network/common-lib/codec"
+	"github.com/arcology-network/common-lib/common"
 )
 
 type ReceiptCaches struct {

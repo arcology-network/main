@@ -2,24 +2,35 @@ package tpp
 
 import (
 	"context"
+	"sync"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/log"
-	tppTypes "github.com/HPISTechnologies/main/modules/tpp/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/log"
+	tppTypes "github.com/arcology-network/main/modules/tpp/types"
+)
+
+var (
+	rpcInstance actor.IWorkerEx
+	initRpcOnce sync.Once
 )
 
 type RpcReceiver struct {
 	actor.WorkerThread
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewRpcReceiver(concurrency int, groupid string) actor.IWorkerEx {
-	in := RpcReceiver{}
-	in.Set(concurrency, groupid)
-	return &in
+	initRpcOnce.Do(func() {
+
+		in := RpcReceiver{}
+		in.Set(concurrency, groupid)
+
+		rpcInstance = &in
+	})
+	return rpcInstance
 }
 
 func (rr *RpcReceiver) Inputs() ([]string, bool) {
@@ -43,12 +54,16 @@ func (rr *RpcReceiver) ReceivedTransactionFromRpc(ctx context.Context, args *typ
 	txLen := 1
 	checks := make([]*tppTypes.CheckingTx, txLen)
 
+	if rr.LatestMessage == nil {
+		rr.LatestMessage = actor.NewMessage()
+	}
 	logid := rr.AddLog(log.LogLevel_Debug, "start parallelSend Txs")
 	interLog := rr.GetLogger(logid)
-	common.ParallelWorker(txLen, rr.Concurrency, tppTypes.CheckingTxHashWorker, [][]byte{args.Txs}, &checks, interLog)
+	common.ParallelWorker(txLen, rr.Concurrency, tppTypes.CheckingTxHashWorker, [][]byte{args.Tx}, &checks, interLog)
 
 	pack := tppTypes.CheckingTxsPack{
 		Txs:        checks,
+		Src:        args.Src,
 		TxHashChan: make(chan ethCommon.Hash, 1),
 	}
 	rr.MsgBroker.Send(actor.MsgCheckingTxs, &pack)

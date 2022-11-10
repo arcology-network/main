@@ -10,20 +10,20 @@ import (
 	"sync"
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	tmCommon "github.com/HPISTechnologies/3rd-party/tm/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/component-lib/log"
-	"github.com/HPISTechnologies/consensus-engine/cmd/tendermint/commands"
-	"github.com/HPISTechnologies/consensus-engine/config"
-	tmlog "github.com/HPISTechnologies/consensus-engine/libs/log"
-	"github.com/HPISTechnologies/consensus-engine/monaco"
-	"github.com/HPISTechnologies/consensus-engine/node"
-	"github.com/HPISTechnologies/consensus-engine/p2p"
-	"github.com/HPISTechnologies/consensus-engine/privval"
-	"github.com/HPISTechnologies/consensus-engine/proxy"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	tmCommon "github.com/arcology-network/3rd-party/tm/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/log"
+	"github.com/arcology-network/consensus-engine/cmd/tendermint/commands"
+	"github.com/arcology-network/consensus-engine/config"
+	tmlog "github.com/arcology-network/consensus-engine/libs/log"
+	"github.com/arcology-network/consensus-engine/monaco"
+	"github.com/arcology-network/consensus-engine/node"
+	"github.com/arcology-network/consensus-engine/p2p"
+	"github.com/arcology-network/consensus-engine/privval"
+	"github.com/arcology-network/consensus-engine/proxy"
 	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/libs/cli"
 	"go.uber.org/zap"
@@ -50,7 +50,7 @@ var (
 	initOnce           sync.Once
 )
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewConsensus(concurrency int, groupid string) actor.IWorkerEx {
 	initOnce.Do(func() {
 		c := Consensus{}
@@ -83,6 +83,7 @@ func (c *Consensus) Outputs() map[string]int {
 		actor.MsgExtBlockStart:          1,
 		actor.MsgConsensusMaxPeerHeight: 1,
 		actor.MsgConsensusUp:            1,
+		actor.MsgBlockEnd:               1,
 	}
 }
 
@@ -180,12 +181,15 @@ func (c *Consensus) Reap(maxBytes int64, maxGas int64) (txs [][]byte, hashes [][
 	c.AddLog(log.LogLevel_Debug, "return Reap", zap.Int("hashes", len(hashes)))
 	return
 }
-func (c *Consensus) AddToMempool(txs [][]byte) {
+func (c *Consensus) AddToMempool(txs [][]byte, src string) {
 	c.AddLog(log.LogLevel_Info, "AddToMempool", zap.Int("txs", len(txs)))
 	groups := c.parseGroups(txs)
 	for i := range groups {
 		if len(groups[i]) > 0 {
-			c.MsgBroker.Send(actor.MsgExtTxBlocks, groups[i])
+			c.MsgBroker.Send(actor.MsgExtTxBlocks, &types.IncomingTxs{
+				Txs: groups[i],
+				Src: types.NewTxSource(types.TxSourceConsensus, src),
+			})
 		}
 	}
 }
@@ -230,6 +234,10 @@ func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.T
 	latestMsg.Height = uint64(height)
 	c.ChangeEnvironment(&latestMsg)
 
+	var na int
+	txID := fmt.Sprintf("%d", height)
+	intf.Router.Call("transactionalstore", "BeginTransaction", &txID, &na)
+
 	reapHashlist := make([]*ethCommon.Hash, len(hashes))
 	for i, h := range hashes {
 		hash := ethCommon.BytesToHash(h)
@@ -240,6 +248,7 @@ func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.T
 		List:      reapHashlist,
 		Timestamp: big.NewInt(0),
 	}, uint64(height))
+	c.CheckPoint("send reapinglist")
 
 	coinbaseAddress := ethCommon.BytesToAddress(coinbase)
 	multiResult := big.NewInt(0).Mul(big.NewInt(timestamp.Unix()), big.NewInt(c.rate))
@@ -249,6 +258,7 @@ func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.T
 		Coinbase:  coinbaseAddress,
 		Height:    uint64(height),
 	}, uint64(height))
+	c.CheckPoint("block start")
 
 	c.AddLog(log.LogLevel_Debug, "[ApplyTxsSync] Before got block.")
 	if !c.GotBlock {
@@ -257,7 +267,9 @@ func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.T
 	c.AddLog(log.LogLevel_Debug, "[ApplyTxsSync] After got block.")
 	c.GotBlock = false
 	msg := <-c.pendingMsgs[actor.MsgAppHash]
+	intf.Router.Call("transactionalstore", "EndTransaction", &na, &na)
 	c.AddLog(log.LogLevel_Debug, "[ApplyTxsSync] After got apphash.")
+	c.MsgBroker.Send(actor.MsgBlockEnd, "", uint64(height))
 	c.MsgBroker.Send(actor.MsgExtReapCommand, "", uint64(height))
 	return msg.Data.([]byte)
 }
@@ -277,11 +289,15 @@ func (c *Consensus) GetTxsOnBlock(height uint64) ([][]byte, error) {
 		return nil, err
 	}
 
-	return (*response.Data.(**types.MonacoBlock)).Txs, nil
+	return (*response.Data.(*types.MonacoBlock)).Txs, nil
 }
 
 func (c *Consensus) CreateBlockStore() monaco.BlockStore {
 	return newBlockStore("tmblockstore")
+}
+
+func (c *Consensus) CreateStateStore() interface{} {
+	return newStateStore("tmstatestore")
 }
 
 func (c *Consensus) UpdateMaxPeerHeight(height uint64) {
@@ -327,7 +343,7 @@ func (c *Consensus) startConsensus(backend monaco.BackendProxy, config *config.C
 	}
 
 	n, err := node.NewNodeEx(config,
-		privval.LoadOrGenFilePV(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
+		privval.LoadOrGenFilePVEx(config.PrivValidatorKeyFile(), config.PrivValidatorStateFile()),
 		nodeKey,
 		proxy.NewLocalClientCreator(&FakeApp{}),
 		node.DefaultGenesisDocProviderFunc(config),

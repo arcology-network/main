@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/component-lib/mock/kafka"
-	"github.com/HPISTechnologies/component-lib/mock/rpc"
-	"github.com/HPISTechnologies/component-lib/streamer"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/mock/kafka"
+	"github.com/arcology-network/component-lib/mock/rpc"
+	"github.com/arcology-network/component-lib/streamer"
 	"github.com/spf13/viper"
 )
 
@@ -57,10 +57,10 @@ func TestLoadSchedulingSvcConfig(t *testing.T) {
 	loadConfig(t, "./global.json", "./kafka.json", "../modules/scheduler/scheduler.json")
 }
 
-func TestLoadConsensusSvcConfig(t *testing.T) {
-	viper.Set("home", "./tmroot")
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/consensus/consensus.json")
-}
+// func TestLoadConsensusSvcConfig(t *testing.T) {
+// 	viper.Set("home", "./tmroot")
+// 	loadConfig(t, "./global.json", "./kafka.json", "../modules/consensus/consensus.json")
+// }
 
 func TestGatewaySvcConfig(t *testing.T) {
 	loadConfig(t, "./global.json", "./kafka.json", "../modules/gateway/gateway.json")
@@ -70,10 +70,10 @@ func TestEthApiSvcConfig(t *testing.T) {
 	loadConfig(t, "./global.json", "./kafka.json", "../modules/eth-api/eth-api.json")
 }
 
-func TestLoadNewStorageSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/storage/storage.json")
-	// writeArch("../modules/storage/storage.json", "storage.dot")
-}
+// func TestLoadNewStorageSvcConfig(t *testing.T) {
+// 	loadConfig(t, "./global.json", "./kafka.json", "../modules/storage/storage.json")
+// 	// writeArch("../modules/storage/storage.json", "storage.dot")
+// }
 
 func TestLoadNewReceiptHashingSvcConfig(t *testing.T) {
 	loadConfig(t, "./global.json", "./kafka.json", "../modules/receipt-hashing/receipt-hashing.json")
@@ -137,16 +137,13 @@ func TestGenerateArch(t *testing.T) {
 
 	services := make(map[string]map[string]actor.IWorkerEx)
 	services["exec"] = writeArch("../modules/exec/exec.json", "exec.dot")
-	// services["eshing"] = writeArch("eshing.json", "eshing.dot")
 	services["core"] = writeArch("../modules/core/core.json", "core.dot")
 	services["gateway"] = writeArch("../modules/gateway/gateway.json", "gateway.dot")
 	services["consensus"] = writeArch("../modules/consensus/consensus.json", "consensus.dot")
 	services["eth-api"] = writeArch("../modules/eth-api/eth-api.json", "eth-api.dot")
-	// services["generic-hashing"] = writeArch("generic-hashing.json", "generic-hashing.dot")
 	services["receipt-hashing"] = writeArch("../modules/receipt-hashing/receipt-hashing.json", "receipt-hashing.dot")
 	services["pool"] = writeArch("../modules/pool/pool.json", "pool.dot")
 	services["scheduler"] = writeArch("../modules/scheduler/scheduler.json", "scheduler.dot")
-	// services["storage"] = writeArch("storage.json", "storage.dot")
 	services["storage"] = writeArch("../modules/storage/storage.json", "storage.dot")
 	services["tpp"] = writeArch("../modules/tpp/tpp.json", "tpp.dot")
 	services["arbitrator"] = writeArch("../modules/arbitrator/arbitrator.json", "arbitrator.dot")
@@ -154,6 +151,8 @@ func TestGenerateArch(t *testing.T) {
 	services["p2p-conn"] = writeArch("../modules/p2p/p2p-conn.json", "p2p-conn.dot")
 	services["p2p-gateway"] = writeArch("../modules/p2p/p2p-gateway.json", "p2p-gateway.dot")
 	services["state-sync"] = writeArch("../modules/state-sync/state-sync.json", "state-sync.dot")
+	services["eth-api"] = writeArch("../modules/eth-api/eth-api.json", "eth-api.dot")
+	services["tx-sync"] = writeArch("../modules/tx-sync/tx-sync.json", "tx-sync.dot")
 
 	highlights := map[string]string{
 		"inclusive":               "green",

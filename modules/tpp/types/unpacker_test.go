@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethRlp "github.com/HPISTechnologies/3rd-party/eth/rlp"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 )
 
 func TestRlp(t *testing.T) {
