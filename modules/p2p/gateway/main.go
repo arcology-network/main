@@ -3,13 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
-	"github.com/HPISTechnologies/main/modules/p2p/gateway/config"
-	"github.com/HPISTechnologies/main/modules/p2p/gateway/server"
-	"github.com/HPISTechnologies/main/modules/p2p/gateway/slave"
-	"github.com/go-zookeeper/zk"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
+	"github.com/arcology-network/main/modules/p2p/gateway/config"
+	"github.com/arcology-network/main/modules/p2p/gateway/server"
+	"github.com/arcology-network/main/modules/p2p/gateway/slave"
 )
 
 func main() {
@@ -23,16 +21,10 @@ func main() {
 		panic(err)
 	}
 
-	zkConn, _, err := zk.Connect(cfg.ZooKeeper.Servers, 3*time.Second)
-	if err != nil {
-		panic(err)
-	}
-	defer zkConn.Close()
-
-	server := server.NewServer(cfg, zkConn)
+	server := server.NewServer(cfg, cfg.ZooKeeper.Servers)
 	go server.Serve()
 
-	svcMonitor := slave.NewMonitor(zkConn, cfg.ZooKeeper.ConnStatusRoot, func(services map[string]*status.SvcStatus) {
+	svcMonitor := slave.NewMonitor(cfg.ZooKeeper.Servers, cfg.ZooKeeper.ConnStatusRoot, func(services map[string]*status.SvcStatus) {
 		fmt.Printf("service status updated\n")
 		for id, status := range services {
 			fmt.Printf("\tid: %s, config: %v, peers: %v\n", id, status.SvcConfig, status.Peers)

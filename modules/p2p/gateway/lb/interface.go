@@ -1,7 +1,7 @@
 package lb
 
 import (
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
 )
 
 type LoadBalanceStrategy interface {

@@ -5,12 +5,12 @@ import (
 	"reflect"
 	"testing"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	"github.com/HPISTechnologies/component-lib/ethrpc"
-	evm "github.com/HPISTechnologies/evm"
-	evmCommon "github.com/HPISTechnologies/evm/common"
-	evmTypes "github.com/HPISTechnologies/evm/core/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	"github.com/arcology-network/component-lib/ethrpc"
+	evm "github.com/arcology-network/evm"
+	evmCommon "github.com/arcology-network/evm/common"
+	evmTypes "github.com/arcology-network/evm/core/types"
 )
 
 func TestFilter(t *testing.T) {

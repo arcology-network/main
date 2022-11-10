@@ -9,13 +9,19 @@ import (
 )
 
 type PeerConfigWatcher struct {
-	zkConn   *zk.Conn
-	root     string
-	onUpdate func([]*PeerConfig)
-	eventCh  <-chan zk.Event
+	zkServers []string
+	zkConn    *zk.Conn
+	root      string
+	onUpdate  func([]*PeerConfig)
+	eventCh   <-chan zk.Event
 }
 
-func NewPeerConfigWatcher(zkConn *zk.Conn, root string, onUpdate func([]*PeerConfig)) (*PeerConfigWatcher, error) {
+func NewPeerConfigWatcher(zkServers []string, root string, onUpdate func([]*PeerConfig)) (*PeerConfigWatcher, error) {
+	zkConn, _, err := zk.Connect(zkServers, 30*time.Second)
+	if err != nil {
+		panic(err)
+	}
+
 	exists, _, err := zkConn.Exists(root)
 	if err != nil {
 		return nil, err
@@ -34,10 +40,11 @@ func NewPeerConfigWatcher(zkConn *zk.Conn, root string, onUpdate func([]*PeerCon
 	}
 
 	return &PeerConfigWatcher{
-		zkConn:   zkConn,
-		root:     root,
-		onUpdate: onUpdate,
-		eventCh:  eventCh,
+		zkServers: zkServers,
+		zkConn:    zkConn,
+		root:      root,
+		onUpdate:  onUpdate,
+		eventCh:   eventCh,
 	}, nil
 }
 
@@ -49,7 +56,16 @@ func (watcher *PeerConfigWatcher) Serve() {
 		var err error
 		_, _, watcher.eventCh, err = watcher.zkConn.ChildrenW(watcher.root)
 		if err != nil {
-			panic(err)
+			watcher.zkConn, _, err = zk.Connect(watcher.zkServers, 30*time.Second)
+			if err != nil {
+				panic(err)
+			}
+
+			_, _, watcher.eventCh, err = watcher.zkConn.ChildrenW(watcher.root)
+			if err != nil {
+				panic(err)
+			}
+			continue
 		}
 
 		if e.Type != zk.EventNodeChildrenChanged {

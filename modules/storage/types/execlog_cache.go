@@ -1,8 +1,8 @@
 package types
 
 import (
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
 )
 
 type ExeclogCaches struct {
@@ -12,7 +12,8 @@ type ExeclogCaches struct {
 
 func NewExeclogCaches(cache int, concurrency int) *ExeclogCaches {
 	return &ExeclogCaches{
-		caches: NewDataCache(cache),
+		caches:      NewDataCache(cache),
+		concurrency: concurrency,
 	}
 }
 

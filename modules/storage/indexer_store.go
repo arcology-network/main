@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 
-	"github.com/HPISTechnologies/common-lib/cachedstorage"
-	mstypes "github.com/HPISTechnologies/main/modules/storage/types"
+	"github.com/arcology-network/common-lib/cachedstorage"
+	mstypes "github.com/arcology-network/main/modules/storage/types"
 )
 
 type SaveIndexRequest struct {

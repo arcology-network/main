@@ -3,8 +3,8 @@ package peer
 import (
 	"bufio"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/connection"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/main/modules/p2p/conn/connection"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
 )
 
 type PeerReader struct {

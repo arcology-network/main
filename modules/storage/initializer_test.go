@@ -1,3 +1,5 @@
+//go:build !CI
+
 package storage
 
 import (
@@ -9,14 +11,15 @@ import (
 	"strings"
 	"testing"
 
-	ethcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	cmntyp "github.com/arcology-network/common-lib/types"
 )
 
 func TestLoadFile(t *testing.T) {
-	filename := "/home/weizp/work/af"
+	filename := "../../config/af"
 	loadGenesisAccounts(filename)
 }
+
 func loadGenesisAccounts(filename string) map[ethcmn.Address]*cmntyp.Account {
 	file, err := os.OpenFile(filename, os.O_RDWR, 0666)
 	if err != nil {

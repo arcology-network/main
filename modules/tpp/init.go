@@ -1,8 +1,8 @@
 package tpp
 
 import (
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
 )
 
 func init() {

@@ -7,9 +7,9 @@ import (
 	"reflect"
 	"testing"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	cachedstorage "github.com/HPISTechnologies/common-lib/cachedstorage"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	cachedstorage "github.com/arcology-network/common-lib/cachedstorage"
 )
 
 func newReceipt(height uint64, idx, idxInBlock int) *ethTypes.Receipt {

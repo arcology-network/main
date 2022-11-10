@@ -3,10 +3,10 @@ package types
 import (
 	"math/big"
 
-	"github.com/HPISTechnologies/common-lib/mempool"
-	ctypes "github.com/HPISTechnologies/common-lib/types"
-	urltype "github.com/HPISTechnologies/concurrenturl/v2/type"
-	"github.com/HPISTechnologies/concurrenturl/v2/type/commutative"
+	"github.com/arcology-network/common-lib/mempool"
+	ctypes "github.com/arcology-network/common-lib/types"
+	urltype "github.com/arcology-network/concurrenturl/v2/type"
+	"github.com/arcology-network/concurrenturl/v2/type/commutative"
 )
 
 type BalanceTransition struct {

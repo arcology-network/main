@@ -21,7 +21,6 @@
             }
         },
         "exec_rpc": {},
-        "snapshot_maker": {},
         "executor": {
             "gatherexeclog": false
         },

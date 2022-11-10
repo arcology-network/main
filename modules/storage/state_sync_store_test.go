@@ -1,3 +1,5 @@
+//go:build !CI
+
 package storage
 
 import (
@@ -5,8 +7,8 @@ import (
 	"fmt"
 	"testing"
 
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
 )
 
 func TestSliceKey(t *testing.T) {
@@ -44,8 +46,8 @@ func TestSetGetSyncStatus(t *testing.T) {
 func TestSetGetSyncPoint(t *testing.T) {
 	worker := NewStateSyncStore(1, "statesyncstore")
 	worker.(actor.Configurable).Config(map[string]interface{}{
-		"slice_db_root":       "./slices/",
-		"sync_point_root":     "./sync_point/",
+		"slice_db_root":       "./slices1/",
+		"sync_point_root":     "./sync_point1/",
 		"sync_point_interval": float64(65536),
 	})
 	store := worker.(*StateSyncStore)

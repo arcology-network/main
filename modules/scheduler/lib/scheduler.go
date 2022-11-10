@@ -9,9 +9,9 @@ import (
 	"sync"
 	"unsafe"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
 )
 
 var (

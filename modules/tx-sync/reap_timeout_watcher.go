@@ -4,8 +4,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/main/modules/p2p"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/log"
+	"github.com/arcology-network/main/modules/p2p"
 )
 
 type ReapTimeoutWatcher struct {
@@ -37,7 +39,9 @@ func (rtw *ReapTimeoutWatcher) Inputs() ([]string, bool) {
 }
 
 func (rtw *ReapTimeoutWatcher) Outputs() map[string]int {
-	return map[string]int{}
+	return map[string]int{
+		actor.MsgTxBlocks: 1,
+	}
 }
 
 func (rtw *ReapTimeoutWatcher) Config(params map[string]interface{}) {
@@ -51,8 +55,8 @@ func (rtw *ReapTimeoutWatcher) OnStart() {
 			select {
 			case <-rtw.reapEndCh:
 				continue
-			case <-time.After(time.Second * 3):
-				fmt.Printf("[ReapTimeoutWatcher.OnStart] reaping timeout for height %d\n", height)
+			case <-time.After(time.Second * 30):
+				rtw.AddLog(log.LogLevel_Info, fmt.Sprintf("[ReapTimeoutWatcher.OnStart] reaping timeout for height %d\n", height))
 				rtw.p2pClient.Broadcast(&actor.Message{
 					Name: actor.MsgSyncTxRequest,
 					Data: height,
@@ -67,10 +71,10 @@ func (rtw *ReapTimeoutWatcher) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	switch msg.Name {
 	case actor.MsgReapinglist:
-		fmt.Printf("[ReapTimeoutWatcher.OnMessageArrived] reaping started for height %d\n", msg.Height)
+		rtw.AddLog(log.LogLevel_Info, fmt.Sprintf("[ReapTimeoutWatcher.OnMessageArrived] reaping started for height %d\n", msg.Height))
 		rtw.reapStartCh <- msg.Height
 	case actor.MsgSelectedTx:
-		fmt.Printf("[ReapTimeoutWatcher.OnMessageArrived] reaping end for height %d\n", msg.Height)
+		rtw.AddLog(log.LogLevel_Info, fmt.Sprintf("[ReapTimeoutWatcher.OnMessageArrived] reaping end for height %d\n", msg.Height))
 		rtw.reapEndCh <- msg.Height
 	case actor.MsgP2pResponse:
 		p2pMessage := msg.Data.(*p2p.P2pMessage)
@@ -78,7 +82,7 @@ func (rtw *ReapTimeoutWatcher) OnMessageArrived(msgs []*actor.Message) error {
 		switch msg.Name {
 		case actor.MsgSyncTxResponse:
 			txs := msg.Data.([][]byte)
-			fmt.Printf("[ReapTimeoutWatcher.OnMessageArrived] received %d transactions.\n", len(txs))
+			rtw.AddLog(log.LogLevel_Info, fmt.Sprintf("[ReapTimeoutWatcher.OnMessageArrived] received %d transactions.\n", len(txs)))
 			for i := 0; i < len(txs); i += rtw.batchSize {
 				var batch [][]byte
 				if i+rtw.batchSize < len(txs) {
@@ -86,7 +90,10 @@ func (rtw *ReapTimeoutWatcher) OnMessageArrived(msgs []*actor.Message) error {
 				} else {
 					batch = txs[i:]
 				}
-				rtw.MsgBroker.Send(actor.MsgTxBlocks, batch)
+				rtw.MsgBroker.Send(actor.MsgTxBlocks, &cmntyp.IncomingTxs{
+					Txs: batch,
+					Src: cmntyp.NewTxSource(cmntyp.TxSourceMonacoP2p, p2pMessage.Sender),
+				})
 			}
 		}
 	}

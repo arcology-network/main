@@ -6,10 +6,11 @@ import (
 	"net"
 	"time"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/peer"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/peer"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
+	"github.com/go-zookeeper/zk"
 )
 
 type Server struct {
@@ -18,6 +19,7 @@ type Server struct {
 	sw            *peer.Switch
 	onMsgReceived func(string, *protocol.Message)
 	whitelist     []*config.PeerConfig
+	zkConn        *zk.Conn
 }
 
 func NewServer(cfg *config.Config, col *status.Collector, onMsgReceived func(string, *protocol.Message)) *Server {
@@ -27,10 +29,27 @@ func NewServer(cfg *config.Config, col *status.Collector, onMsgReceived func(str
 		onMsgReceived: onMsgReceived,
 	}
 
+	var err error
+	server.zkConn, _, err = zk.Connect(cfg.ZooKeeper.Servers, 30*time.Second)
+	if err != nil {
+		panic(err)
+	}
+
 	server.sw = peer.NewSwitch(
 		cfg.Server.SID,
 		onMsgReceived,
-		func(string) {},
+		func(id string) {
+			fmt.Printf("[Server.OnPeerClosed] peer %s closed\n", id)
+			path := cfg.ZooKeeper.PeerConfigRoot + "/" + id
+			_, s, err := server.zkConn.Get(path)
+			if err != nil {
+				panic(err)
+			}
+			err = server.zkConn.Delete(path, s.Version)
+			if err != nil {
+				panic(err)
+			}
+		},
 		col)
 
 	return server

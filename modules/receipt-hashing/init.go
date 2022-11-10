@@ -1,7 +1,7 @@
 package receipthashing
 
 import (
-	"github.com/HPISTechnologies/component-lib/actor"
+	"github.com/arcology-network/component-lib/actor"
 )
 
 func init() {

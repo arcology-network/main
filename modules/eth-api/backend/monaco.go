@@ -1,22 +1,21 @@
 package backend
 
 import (
-	"math"
 	"math/big"
 	"time"
 
-	thdcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	thdtyp "github.com/HPISTechnologies/3rd-party/eth/types"
-	cmncmn "github.com/HPISTechnologies/common-lib/common"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/ethrpc"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	eth "github.com/HPISTechnologies/evm"
-	ethcmn "github.com/HPISTechnologies/evm/common"
-	ethtyp "github.com/HPISTechnologies/evm/core/types"
-	ethcrp "github.com/HPISTechnologies/evm/crypto"
-	"github.com/HPISTechnologies/evm/rlp"
+	thdcmn "github.com/arcology-network/3rd-party/eth/common"
+	thdtyp "github.com/arcology-network/3rd-party/eth/types"
+	cmncmn "github.com/arcology-network/common-lib/common"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/ethrpc"
+	intf "github.com/arcology-network/component-lib/interface"
+	eth "github.com/arcology-network/evm"
+	ethcmn "github.com/arcology-network/evm/common"
+	ethtyp "github.com/arcology-network/evm/core/types"
+	ethcrp "github.com/arcology-network/evm/crypto"
+	"github.com/arcology-network/evm/rlp"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -173,7 +172,7 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 	)
 	hash, _ := msgHash(&message)
 	err := intf.Router.Call("executor-1", "ExecTxs", &actor.Message{
-		Height: uint64(math.MaxUint64),
+		Height: 0,
 		Name:   actor.MsgTxsToExecute,
 		Msgid:  cmncmn.GenerateUUID(),
 		Data: &cmntyp.ExecutorRequest{
@@ -190,8 +189,8 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 					Txids:      []uint32{0},
 				},
 			},
-			Precedings:    nil,
-			PrecedingHash: thdcmn.Hash{},
+			Precedings:    [][]*thdcmn.Hash{nil},
+			PrecedingHash: []thdcmn.Hash{{}},
 			Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
 			Parallelism:   1,
 			Debug:         true,
@@ -206,7 +205,7 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 func (m *Monaco) SendRawTransaction(rawTx []byte) (ethcmn.Hash, error) {
 	var response cmntyp.RawTransactionReply
 	err := intf.Router.Call("gateway", "SendRawTransaction", &cmntyp.RawTransactionArgs{
-		Txs: rawTx,
+		Tx: rawTx,
 	}, &response)
 	if err != nil {
 		return ethcmn.Hash{}, err
@@ -340,9 +339,9 @@ func (m *Monaco) ProtocolVersion() (int, error) {
 	return 10000 + 2, nil
 }
 
-// func (m *Monaco) Coinbase() (string, error) {
-// 	return 10000 + 2, nil
-// }
+//	func (m *Monaco) Coinbase() (string, error) {
+//		return 10000 + 2, nil
+//	}
 func (m *Monaco) Syncing() (bool, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("consensus", "Query", &cmntyp.QueryRequest{

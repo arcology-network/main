@@ -3,10 +3,10 @@ package scheduler
 import (
 	"math/big"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	schedulingTypes "github.com/HPISTechnologies/main/modules/scheduler/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	schedulingTypes "github.com/arcology-network/main/modules/scheduler/types"
 )
 
 type Arbitrator interface {

@@ -1,3 +1,5 @@
+//go:build !CI
+
 package statesync
 
 import (
@@ -9,13 +11,13 @@ import (
 	"testing"
 	"time"
 
-	ethcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	cmnst "github.com/HPISTechnologies/component-lib/storage"
-	"github.com/HPISTechnologies/component-lib/streamer"
-	statesync "github.com/HPISTechnologies/main/modules/state-sync"
-	"github.com/HPISTechnologies/main/modules/storage"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	cmnst "github.com/arcology-network/component-lib/storage"
+	"github.com/arcology-network/component-lib/streamer"
+	statesync "github.com/arcology-network/main/modules/state-sync"
+	"github.com/arcology-network/main/modules/storage"
 )
 
 var (

@@ -7,14 +7,14 @@ import (
 	"sync"
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ctypes "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	kafkalib "github.com/HPISTechnologies/component-lib/kafka/lib"
-	"github.com/HPISTechnologies/component-lib/log"
-	"github.com/HPISTechnologies/main/modules/arbitrator/accumulator"
-	arbitrator "github.com/HPISTechnologies/main/modules/arbitrator/impl-arbitrator"
-	"github.com/HPISTechnologies/main/modules/arbitrator/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ctypes "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	kafkalib "github.com/arcology-network/component-lib/kafka/lib"
+	"github.com/arcology-network/component-lib/log"
+	"github.com/arcology-network/main/modules/arbitrator/accumulator"
+	arbitrator "github.com/arcology-network/main/modules/arbitrator/impl-arbitrator"
+	"github.com/arcology-network/main/modules/arbitrator/types"
 	"go.uber.org/zap"
 )
 
@@ -30,7 +30,7 @@ var (
 	initOnce            sync.Once
 )
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewRpcService(lanes int, groupid string) actor.IWorkerEx {
 	initOnce.Do(func() {
 		rs := RpcService{}
@@ -87,7 +87,7 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	}
 
 	rs.msgid = rs.msgid + 1
-	rs.AddLog(log.LogLevel_Debug, "start arbitrate request***********", zap.Int("txs", len(reapinglist.List)))
+	rs.CheckPoint("start arbitrate request***********", zap.Int("txs", len(reapinglist.List)))
 	rs.wbs.AddWaiter(rs.msgid)
 	rs.MsgBroker.Send(actor.MsgArbitrateReapinglist, &reapinglist)
 
@@ -133,10 +133,10 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 
 			}
 		*/
-		logid := rs.AddLog(log.LogLevel_Info, "Before detectConflict")
+		logid := rs.CheckPoint("Before detectConflict")
 		interLog := rs.GetLogger(logid)
 		conflictedList, left, right := detectConflict(rs.arbitrator, params.TxsListGroup, resultSelected, interLog)
-		rs.AddLog(log.LogLevel_Debug, "arbitrate return results***********", zap.Int("txResults", len(conflictedList)))
+		rs.CheckPoint("arbitrate return results***********", zap.Int("txResults", len(conflictedList)))
 
 		response.ConflictedList = conflictedList
 		response.CPairLeft = left
@@ -217,7 +217,7 @@ func detectConflict(arbitrator *arbitrator.ArbitratorImpl, txsListGroup [][]*cty
 		}
 		for _, e := range g {
 			if per, ok := euDict[*e.TxHash]; !ok {
-				panic(fmt.Sprintf("tx hash not found, hash = %v, batch id = %v, tx id = %v\n", *e.TxHash, e.Batchid, e.Txid))
+				panic(fmt.Sprintf("tx hash not found, hash = %x, batch id = %v, tx id = %v\n", e.TxHash.Bytes(), e.Batchid, e.Txid))
 			} else {
 				batches[e.Batchid] = append(batches[e.Batchid], per)
 			}

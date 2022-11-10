@@ -3,9 +3,9 @@ package storage
 import (
 	"context"
 
-	"github.com/HPISTechnologies/consensus-engine/store"
-	contyp "github.com/HPISTechnologies/consensus-engine/types"
-	conwrk "github.com/HPISTechnologies/main/modules/consensus"
+	"github.com/arcology-network/consensus-engine/store"
+	contyp "github.com/arcology-network/consensus-engine/types"
+	conwrk "github.com/arcology-network/main/modules/consensus"
 	tmdb "github.com/tendermint/tm-db"
 )
 
@@ -72,7 +72,7 @@ func (bs *TmBlockStore) LoadBlock(ctx context.Context, height *int64, ret *conty
 }
 
 func (bs *TmBlockStore) SaveBlock(ctx context.Context, request *conwrk.SaveBlockRequest, _ *int) error {
-	bs.impl.SaveBlock(request.Block, request.BlockParts, request.SeenCommit)
+	bs.impl.SaveBlockEx(request.Block, request.BlockParts, request.SeenCommit)
 	return nil
 }
 

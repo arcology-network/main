@@ -3,8 +3,8 @@ package statesync
 import (
 	"fmt"
 
-	ethcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	cmntyp "github.com/arcology-network/common-lib/types"
 )
 
 type storageMock struct {
@@ -30,6 +30,7 @@ func (m *storageMock) GetSyncPoint(height uint64) *cmntyp.SyncPoint {
 		From:   0,
 		To:     m.status.SyncPoint,
 		Slices: make([]ethcmn.Hash, cmntyp.SlicePerSyncPoint),
+		Parent: &cmntyp.ParentInfo{},
 	}
 }
 

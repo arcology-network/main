@@ -3,9 +3,9 @@ package types
 import (
 	"fmt"
 
-	ethRlp "github.com/HPISTechnologies/3rd-party/eth/rlp"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	"github.com/HPISTechnologies/common-lib/types"
+	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	"github.com/arcology-network/common-lib/types"
 )
 
 type BlockCaches struct {
@@ -61,4 +61,9 @@ func (rc *BlockCaches) Save(height uint64, block *types.MonacoBlock) {
 	key := fmt.Sprintf("%v", height)
 	rc.caches.Add(height, []string{key}, []interface{}{block})
 	rc.db.Write(rc.db.GetFilename(height), data)
+}
+
+func (rc *BlockCaches) CacheOnly(height uint64, block *types.MonacoBlock) {
+	key := fmt.Sprintf("%v", height)
+	rc.caches.Add(height, []string{key}, []interface{}{block})
 }

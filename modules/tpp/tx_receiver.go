@@ -1,10 +1,11 @@
 package tpp
 
 import (
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/log"
-	tppTypes "github.com/HPISTechnologies/main/modules/tpp/types"
+	"github.com/arcology-network/common-lib/common"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/log"
+	tppTypes "github.com/arcology-network/main/modules/tpp/types"
 	"go.uber.org/zap"
 )
 
@@ -12,7 +13,7 @@ type TxReceiver struct {
 	actor.WorkerThread
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewTxReceiver(concurrency int, groupid string) actor.IWorkerEx {
 	receiver := TxReceiver{}
 	receiver.Set(concurrency, groupid)
@@ -37,7 +38,7 @@ func (r *TxReceiver) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
 		case actor.MsgCheckedTxs:
-			data := v.Data.([][]byte)
+			data := v.Data.(*cmntyp.IncomingTxs)
 			r.parallelSendTxs(data)
 		}
 	}
@@ -45,7 +46,8 @@ func (r *TxReceiver) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (r *TxReceiver) parallelSendTxs(rawtxs [][]byte) {
+func (r *TxReceiver) parallelSendTxs(txs *cmntyp.IncomingTxs) {
+	rawtxs := txs.Txs
 	txLen := len(rawtxs)
 	checks := make([]*tppTypes.CheckingTx, txLen)
 
@@ -57,6 +59,7 @@ func (r *TxReceiver) parallelSendTxs(rawtxs [][]byte) {
 
 	pack := tppTypes.CheckingTxsPack{
 		Txs: checks,
+		Src: txs.Src,
 	}
 
 	r.MsgBroker.Send(actor.MsgCheckingTxs, &pack)

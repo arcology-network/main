@@ -1,10 +1,29 @@
 {
     "settings": {
-        "prometheus_listen_addr": ":19012"
+        "prometheus_listen_addr": ":19012",
+        "envs": {
+            "generate_apc_handle": true,
+            "generate_url_update": false,
+            "init_db": false,
+            "cached": false
+        }
     },
     "actors": {
+        "-nonce_url-stateful_euresult_aggr_selector4pool": {
+            "nonce_url": {
+                "generate_apc_handle": "__env__",
+                "generate_url_update": "__env__",
+                "init_db": "__env__",
+                "cached": "__env__"
+            },
+            "stateful_euresult_aggr_selector4pool": {
+                "output": "commitNonceUrl"
+            }
+        },
         "pool_aggr_selector": {
-            "max_reap_size": 50000
+            "max_reap_size": 50000,
+            "obsolete_time": 100,
+            "close_check": true
         }
     }
 }

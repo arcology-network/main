@@ -10,18 +10,18 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/HPISTechnologies/consensus-engine/privval"
+	"github.com/arcology-network/consensus-engine/privval"
 
-	//monacoCoinCfg "github.com/HPISTechnologies/Monaco/coin/config"
-	"github.com/HPISTechnologies/consensus-engine/p2p"
+	//monacoCoinCfg "github.com/arcology-network/Monaco/coin/config"
+	"github.com/arcology-network/consensus-engine/p2p"
 
-	"github.com/HPISTechnologies/consensus-engine/cmd/tendermint/commands"
-	cfg "github.com/HPISTechnologies/consensus-engine/config"
-	"github.com/HPISTechnologies/consensus-engine/libs/log"
-	tmos "github.com/HPISTechnologies/consensus-engine/libs/os"
-	tmrand "github.com/HPISTechnologies/consensus-engine/libs/rand"
-	"github.com/HPISTechnologies/consensus-engine/types"
-	tmtime "github.com/HPISTechnologies/consensus-engine/types/time"
+	"github.com/arcology-network/consensus-engine/cmd/tendermint/commands"
+	cfg "github.com/arcology-network/consensus-engine/config"
+	"github.com/arcology-network/consensus-engine/libs/log"
+	tmos "github.com/arcology-network/consensus-engine/libs/os"
+	tmrand "github.com/arcology-network/consensus-engine/libs/rand"
+	"github.com/arcology-network/consensus-engine/types"
+	tmtime "github.com/arcology-network/consensus-engine/types/time"
 )
 
 var (
@@ -82,7 +82,7 @@ func AddToAF(addressfile, af, address string) error {
 	return nil
 }
 
-//if not init ,so init
+// if not init ,so init
 func initCfg() {
 	balance := big.NewInt(0)
 	// this will ensure that config.toml is there if not yet created, and create dir

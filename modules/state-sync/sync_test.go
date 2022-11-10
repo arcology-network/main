@@ -1,3 +1,5 @@
+//go:build !CI
+
 package statesync
 
 import (
@@ -5,9 +7,9 @@ import (
 	"testing"
 	"time"
 
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/streamer"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/streamer"
 )
 
 type syncer struct{}

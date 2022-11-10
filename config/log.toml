@@ -9,4 +9,4 @@ MaxSize   = 100
 MaxBackups= 30
 MaxAge    = 7
 Compress  = false
-Ignored = "rawtx,txLocal,txRemote,txBlock,messager,unknown,checkedtx,checkingtx"
+Ignored = "rawtx,txLocals,txRemote,txBlock,messager,unknown,checkedtx,checkingtx"

@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/mock"
+	"github.com/arcology-network/main/modules/p2p/conn/mock"
 )
 
 func TestToPackages(t *testing.T) {

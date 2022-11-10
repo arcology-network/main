@@ -4,12 +4,12 @@ import (
 	"math/big"
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	internal "github.com/HPISTechnologies/main/modules/eth-api/backend"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	internal "github.com/arcology-network/main/modules/eth-api/backend"
 )
 
 type FilterManager struct {
@@ -17,7 +17,7 @@ type FilterManager struct {
 	filters *internal.Filters
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewFilterManager(concurrency int, groupid string) actor.IWorkerEx {
 	fm := FilterManager{}
 	fm.Set(concurrency, groupid)

@@ -1,8 +1,8 @@
 package statesync
 
 import (
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	intf "github.com/HPISTechnologies/component-lib/interface"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	intf "github.com/arcology-network/component-lib/interface"
 )
 
 type DefaultStorageRpc struct{}

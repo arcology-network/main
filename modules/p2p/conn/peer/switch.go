@@ -5,9 +5,9 @@ import (
 	"net"
 	"sync"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
 )
 
 type Switch struct {
@@ -46,7 +46,7 @@ func (sw *Switch) AddConnection(cfg *config.PeerConfig, conn net.Conn) {
 				Data:       cfg,
 			})
 			fmt.Printf("Peer %s closed\n", cfg.Host)
-			sw.onPeerClosed(cfg.Host)
+			sw.onPeerClosed(cfg.ID)
 		})
 	}
 	sw.peers[cfg.Host].AddConnection(conn)

@@ -2,16 +2,18 @@ package core
 
 import (
 	"fmt"
+	"math"
 	"math/big"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethRlp "github.com/HPISTechnologies/3rd-party/eth/rlp"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/log"
-	"github.com/HPISTechnologies/evm/params"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/transactional"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/log"
 	"go.uber.org/zap"
 )
 
@@ -19,7 +21,7 @@ type MakeBlock struct {
 	actor.WorkerThread
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewMakeBlock(concurrency int, groupid string) actor.IWorkerEx {
 	in := MakeBlock{}
 	in.Set(concurrency, groupid)
@@ -113,10 +115,12 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 		}
 	}
 
+	m.CheckPoint("start makeBlock")
+
 	header := &ethTypes.Header{
 		ParentHash: parentinfo.ParentHash,
 		Number:     big.NewInt(common.Uint64ToInt64(height)),
-		GasLimit:   uint64(params.GasLimit),
+		GasLimit:   math.MaxUint32,
 		//Extra:      w.extra,
 		Time:        timestamp,
 		Difficulty:  big.NewInt(1),
@@ -155,9 +159,16 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 		Txs:     txSelected,
 	}
 
+	var na int
+	intf.Router.Call("transactionalstore", "AddData", &transactional.AddDataRequest{
+		Data:        currentinfo,
+		RecoverFunc: "parentinfo",
+	}, &na)
+
 	m.MsgBroker.Send(actor.MsgAppHash, block.Hash())
 	m.MsgBroker.Send(actor.MsgPendingBlock, block)
 	m.MsgBroker.Send(actor.MsgParentInfo, currentinfo)
 	m.MsgBroker.Send(actor.MsgLocalParentInfo, currentinfo)
+	m.CheckPoint("send appHash")
 	return nil
 }

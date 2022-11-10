@@ -1,11 +1,9 @@
 package core
 
 import (
-	"fmt"
-
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
 )
 
 type Initializer struct {
@@ -40,7 +38,7 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 		if err := intf.Router.Call("statestore", "GetParentInfo", &iin, &parentInfo); err != nil {
 			panic(err)
 		}
-		fmt.Printf("[core.Initializer.OnMessageArrived] init parent info: %v\n", parentInfo)
+		//fmt.Printf("[core.Initializer.OnMessageArrived] init parent info: %v\n", parentInfo)
 		i.MsgBroker.Send(actor.MsgLocalParentInfo, &parentInfo)
 		i.MsgBroker.Send(actor.MsgParentInfo, &parentInfo)
 		i.inited = true

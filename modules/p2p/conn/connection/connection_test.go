@@ -6,8 +6,8 @@ package connection_test
 import (
 	"testing"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/connection"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/connection"
 )
 
 func TestConnectTimeout(t *testing.T) {

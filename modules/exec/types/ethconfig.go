@@ -1,15 +1,16 @@
 package types
 
 import (
+	"math"
 	"math/big"
 
-	mainCfg "github.com/HPISTechnologies/component-lib/config"
-	"github.com/HPISTechnologies/evm/common"
-	"github.com/HPISTechnologies/evm/consensus"
-	"github.com/HPISTechnologies/evm/core/types"
-	"github.com/HPISTechnologies/evm/core/vm"
-	"github.com/HPISTechnologies/evm/params"
-	adaptor "github.com/HPISTechnologies/vm-adaptor/evm"
+	mainCfg "github.com/arcology-network/component-lib/config"
+	"github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/consensus"
+	"github.com/arcology-network/evm/core/types"
+	"github.com/arcology-network/evm/core/vm"
+	"github.com/arcology-network/evm/params"
+	adaptor "github.com/arcology-network/vm-adaptor/evm"
 )
 
 // fakeChain implements the ChainContext interface.
@@ -24,7 +25,7 @@ func (chain *fakeChain) Engine() consensus.Engine {
 	return nil
 }
 
-//var coinbase = common.BytesToAddress([]byte{100, 100, 100})
+// var coinbase = common.BytesToAddress([]byte{100, 100, 100})
 var coinbase = common.HexToAddress("0x3d361736e7c94ee64f74c57a82b2af7ee17c2bf1")
 
 func MainConfig() *adaptor.Config {
@@ -36,7 +37,7 @@ func MainConfig() *adaptor.Config {
 		ParentHash:  common.Hash{},
 		Time:        new(big.Int).SetUint64(10000000),
 		Coinbase:    &coinbase,
-		GasLimit:    uint64(params.GasLimit),
+		GasLimit:    math.MaxUint64,
 		Difficulty:  new(big.Int).SetUint64(10000000),
 	}
 	cfg.ChainConfig.ChainID = mainCfg.MainConfig.ChainId

@@ -1,15 +1,15 @@
 package storage
 
 import (
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
 )
 
 type StorageDebug struct {
 	actor.WorkerThread
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewStorageDebug(concurrency int, groupid string) actor.IWorkerEx {
 	s := StorageDebug{}
 	s.Set(concurrency, groupid)

@@ -7,9 +7,13 @@ import (
 	"math"
 	"math/big"
 	"net/http"
+	"net/url"
+	"strconv"
+	"strings"
 	"time"
 
-	mstypes "github.com/HPISTechnologies/main/modules/storage/types"
+	kafkalib "github.com/arcology-network/component-lib/kafka/lib"
+	mstypes "github.com/arcology-network/main/modules/storage/types"
 )
 
 type data struct {
@@ -20,12 +24,27 @@ type data struct {
 
 type Handler struct {
 	scanCache *mstypes.ScanCache
+
+	fetchFrequency time.Duration
+	max            uint64
+	host           string
+	step           string
+	fetchAhead     int64 //second
 }
 
-func NewHandler(scanCache *mstypes.ScanCache) *Handler {
-	return &Handler{
-		scanCache: scanCache,
+func NewHandler(scanCache *mstypes.ScanCache, params map[string]interface{}) *Handler {
+	handle := Handler{
+		scanCache:      scanCache,
+		fetchFrequency: time.Duration(params["prometheus_fetch_frequency"].(float64)) * time.Second, //time.Duration(waits) * time.Second
+		fetchAhead:     int64(params["prometheus_fetch_ahead"].(float64)),
+		host:           params["prometheus_host"].(string),
+		step:           params["prometheus_fetch_step"].(string),
 	}
+
+	tim := kafkalib.SyncTimer{}
+	tim.StartTimer(handle.fetchFrequency, handle.timerQuery)
+
+	return &handle
 }
 
 func getTimeStr(timestamp *big.Int) string {
@@ -89,9 +108,9 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				raw := make([]string, 5)
 				//{"1", "1 min ago", "50000", "0xabc...def", "30,000,000"}
 				raw[0] = fmt.Sprintf("%v", blocks[i].Height)
-				raw[1] = getTimeStr(blocks[i].Time)
+				raw[1] = fmt.Sprintf("%v", blocks[i].Time) //getTimeStr(blocks[i].Time)
 				raw[2] = fmt.Sprintf("%v", blocks[i].TxNumbers)
-				raw[3] = blocks[i].Proposer
+				raw[3] = blocks[i].Hash
 				raw[4] = fmt.Sprintf("%v", blocks[i].GasUsed)
 				raws[i] = raw
 			}
@@ -101,7 +120,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 						{"text": "Block", "type": "string"},
 						{"text": "Age", "type": "string"},
 						{"text": "Txn", "type": "string"},
-						{"text": "Producer", "type": "string"},
+						{"text": "Hash", "type": "string"},
 						{"text": "Gas Used", "type": "string"},
 					},
 					Rows: raws,
@@ -115,13 +134,14 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			transactions := h.scanCache.GetLatestTxs()
 			raws := make([][]string, len(transactions))
 			for i := range transactions {
-				raw := make([]string, 5)
+				raw := make([]string, 6)
 				//{"0xabc...def", "1 min ago", "0x111...111", "0x222...222", "0 Ether"}
 				raw[0] = transactions[i].TxHash
-				raw[1] = getTimeStr(transactions[i].Time)
-				raw[2] = transactions[i].From
-				raw[3] = transactions[i].To
-				raw[4] = fmt.Sprintf("%v", transactions[i].Value)
+				raw[1] = fmt.Sprintf("%v", transactions[i].Time) //getTimeStr(transactions[i].Time)
+				raw[2] = transactions[i].Sender
+				raw[3] = transactions[i].SendTo
+				raw[4] = fmt.Sprintf("%v", transactions[i].Amount)
+				raw[5] = transactions[i].Status
 				raws[i] = raw
 			}
 			jsonStr, _ := json.Marshal([]data{
@@ -129,15 +149,122 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 					Columns: []map[string]string{
 						{"text": "Txn Hash", "type": "string"},
 						{"text": "Age", "type": "string"},
-						{"text": "From", "type": "string"},
-						{"text": "To", "type": "string"},
-						{"text": "Value", "type": "string"},
+						{"text": "Sender", "type": "string"},
+						{"text": "SendTo", "type": "string"},
+						{"text": "Amount", "type": "string"},
+						{"text": "Status", "type": "string"},
 					},
 					Rows: raws,
 					Type: "table",
 				},
 			})
 			w.Write(jsonStr)
+		case "Tabs":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			tabs := h.scanCache.GetAllTabs()
+			jsonStr, _ := json.Marshal(tabs)
+			w.Write(jsonStr)
 		}
 	}
+}
+
+func (h *Handler) timerQuery() {
+	current := time.Now().Unix()
+	from := strconv.FormatInt(current-h.fetchAhead, 10)
+	to := strconv.FormatInt(current, 10)
+	for k, _ := range dic {
+		res := queryData(k, h.host, from, to, h.step)
+		if res == nil || len(res.Data.Result) == 0 {
+			continue
+		}
+		vals := res.Data.Result[0].Values
+		if len(vals) == 0 {
+			continue
+		}
+		switch k {
+		case "height":
+			h.scanCache.SetTabs(mstypes.BlockHeight, parseInt(vals[len(vals)-1][1]))
+		case "totals":
+			h.scanCache.SetTabs(mstypes.TotalTxs, parseInt(vals[len(vals)-1][1]))
+		case "tps":
+			latestVal := uint64(0)
+			for i := 0; i < len(vals); i++ {
+				latestVal = parseInt(vals[i][1])
+				if latestVal > h.max {
+					h.max = latestVal
+				}
+			}
+			h.scanCache.SetTabs(mstypes.Tps, latestVal)
+			h.scanCache.SetTabs(mstypes.MaxTps, h.max)
+		}
+		//fmt.Printf("=========tabs:%v\n", h.scanCache.GetAllTabs())
+	}
+}
+
+var (
+	dic = map[string]string{
+		"height": "tendermint_consensus_height",
+		"totals": "consensus_processed_txs_total{job=~\"monaco\"}",
+		"tps":    "consensus_real_time_tps{job=~\"monaco\"}",
+	}
+)
+
+func queryData(target, _host, from, to, step string) *Response {
+	params := url.Values{}
+	Url, _ := url.Parse(_host + "/api/datasources/proxy/2/api/v1/query_range")
+	params.Set("query", dic[target])
+	params.Set("start", from) //"1666921554")
+	params.Set("end", to)     //"1666921854")   //
+	params.Set("step", step)
+	Url.RawQuery = params.Encode()
+	urlPath := Url.String()
+	resp, err := http.Get(urlPath)
+	if resp == nil {
+		fmt.Printf("query from prometheus err: %v urlPath:%v\n", err, urlPath)
+		return nil
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	// strbody := string(body)
+	// fmt.Println("==============" + strbody)
+
+	var response Response
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		fmt.Printf("query from prometheus Unmarshal err=%v\n", err)
+		return nil
+	}
+	return &response
+}
+
+func parseInt(val interface{}) uint64 {
+	v := val.(string)
+	uv, err := strconv.ParseUint(strings.Split(v, ".")[0], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return uv
+}
+
+type Response struct {
+	Status string `json:"status"`
+	Data   INData `json:"data"`
+}
+
+type INData struct {
+	ResultType string   `json:"resultType"`
+	Result     []Result `json:"result"`
+}
+type Result struct {
+	Metric Metric          `json:"metric"`
+	Values [][]interface{} `json:"values"`
+}
+
+type Metric struct {
+	Name     string `json:"__name__"`
+	Chain_id string `json:"chain_id"`
+	Instance string `json:"instance"`
+	Job      string `json:"job"`
 }

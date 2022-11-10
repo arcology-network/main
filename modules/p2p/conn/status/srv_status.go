@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"sync"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
 )
 
 type Peer struct {

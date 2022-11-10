@@ -4,12 +4,12 @@ import (
 	"context"
 	"sync"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	evmCommon "github.com/HPISTechnologies/evm/common"
-	gatewayTypes "github.com/HPISTechnologies/main/modules/gateway/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	evmCommon "github.com/arcology-network/evm/common"
+	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
 )
 
 type LocalReceiver struct {
@@ -21,7 +21,7 @@ var (
 	initOnce    sync.Once
 )
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewLocalReceiver(concurrency int, groupid string) actor.IWorkerEx {
 	initOnce.Do(func() {
 		in := LocalReceiver{}
@@ -53,7 +53,10 @@ func (lr *LocalReceiver) ReceivedTransactions(ctx context.Context, args *types.S
 	checkingtxs := make([][]byte, txLen)
 	common.ParallelWorker(txLen, lr.Concurrency, lr.txWorker, args.Txs, &checkingtxs)
 	txsPack := gatewayTypes.TxsPack{
-		Txs: checkingtxs,
+		Txs: &types.IncomingTxs{
+			Txs: checkingtxs,
+			Src: types.NewTxSource(types.TxSourceLocal, "frontend"),
+		},
 	}
 	lr.MsgBroker.Send(actor.MsgTxLocalsUnChecked, &txsPack)
 
@@ -64,9 +67,12 @@ func (lr *LocalReceiver) ReceivedTransactions(ctx context.Context, args *types.S
 func (lr *LocalReceiver) SendRawTransaction(ctx context.Context, args *types.RawTransactionArgs, reply *types.RawTransactionReply) error {
 	txLen := 1
 	checkingtxs := make([][]byte, txLen)
-	common.ParallelWorker(txLen, lr.Concurrency, lr.txWorker, [][]byte{args.Txs}, &checkingtxs)
+	common.ParallelWorker(txLen, lr.Concurrency, lr.txWorker, [][]byte{args.Tx}, &checkingtxs)
 	txsPack := gatewayTypes.TxsPack{
-		Txs:        checkingtxs,
+		Txs: &types.IncomingTxs{
+			Txs: checkingtxs,
+			Src: types.NewTxSource(types.TxSourceLocal, "ethapi"),
+		},
 		TxHashChan: make(chan ethCommon.Hash, 1),
 	}
 	lr.MsgBroker.Send(actor.MsgTxLocalsUnChecked, &txsPack)

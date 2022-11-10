@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
 )
 
 func TestPeerSendRecv(t *testing.T) {

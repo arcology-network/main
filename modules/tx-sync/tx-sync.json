@@ -1,0 +1,14 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19020"
+    },
+    "actors": {
+        "txsync.reap_timeout_watcher": {
+            "batch_size": 1000
+        },
+        "txsync.server": {},
+        "p2p.client": {
+            "cluster_name": "__global__"
+        }
+    }
+}

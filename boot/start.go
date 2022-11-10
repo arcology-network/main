@@ -7,11 +7,11 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	tmcmn "github.com/HPISTechnologies/3rd-party/tm/common"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/log"
-	"github.com/HPISTechnologies/component-lib/streamer"
-	"github.com/HPISTechnologies/main/config"
+	tmcmn "github.com/arcology-network/3rd-party/tm/common"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/log"
+	"github.com/arcology-network/component-lib/streamer"
+	"github.com/arcology-network/main/config"
 )
 
 var StartCmd = &cobra.Command{

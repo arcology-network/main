@@ -3,10 +3,10 @@ package txsync
 import (
 	"fmt"
 
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/main/modules/p2p"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/main/modules/p2p"
 )
 
 type SyncServer struct {

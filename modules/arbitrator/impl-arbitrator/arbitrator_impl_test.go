@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HPISTechnologies/common-lib/common"
+	"github.com/arcology-network/common-lib/common"
 )
 
 func TestStringAppend(t *testing.T) {

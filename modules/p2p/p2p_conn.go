@@ -5,15 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"sync"
-	"time"
 
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/peer"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/server"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
-	"github.com/go-zookeeper/zk"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/peer"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/main/modules/p2p/conn/server"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
 )
 
 type P2pConn struct {
@@ -67,13 +65,7 @@ func (conn *P2pConn) Config(params map[string]interface{}) {
 }
 
 func (conn *P2pConn) OnStart() {
-	zkConn, _, err := zk.Connect(conn.cfg.ZooKeeper.Servers, 3*time.Second)
-	if err != nil {
-		panic(err)
-	}
-	// defer zkConn.Close()
-
-	collector := status.NewCollector(conn.cfg, zkConn)
+	collector := status.NewCollector(conn.cfg, conn.cfg.ZooKeeper.Servers)
 	collector.UpdateZKStatus()
 	go collector.Start()
 
@@ -96,7 +88,7 @@ func (conn *P2pConn) OnStart() {
 		}
 	}()
 
-	watcher, err := config.NewPeerConfigWatcher(zkConn, conn.cfg.ZooKeeper.PeerConfigRoot, func(configs []*config.PeerConfig) {
+	watcher, err := config.NewPeerConfigWatcher(conn.cfg.ZooKeeper.Servers, conn.cfg.ZooKeeper.PeerConfigRoot, func(configs []*config.PeerConfig) {
 		var peersToServe []*config.PeerConfig
 		for _, cfg := range configs {
 			fmt.Printf("%v\n", cfg)

@@ -5,9 +5,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/HPISTechnologies/common-lib/common"
-	urlcmn "github.com/HPISTechnologies/concurrenturl/v2/common"
-	"github.com/HPISTechnologies/concurrenturl/v2/type/commutative"
+	"github.com/arcology-network/common-lib/common"
+	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
+	"github.com/arcology-network/concurrenturl/v2/type/commutative"
 )
 
 var (

@@ -1,8 +1,8 @@
 package types
 
 import (
-	"github.com/HPISTechnologies/common-lib/types"
-	mevmCommon "github.com/HPISTechnologies/evm/common"
+	"github.com/arcology-network/common-lib/types"
+	mevmCommon "github.com/arcology-network/evm/common"
 )
 
 type ExecutorParameter struct {

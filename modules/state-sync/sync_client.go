@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/main/modules/p2p"
-	"github.com/HPISTechnologies/main/modules/storage"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/main/modules/p2p"
+	"github.com/arcology-network/main/modules/storage"
 )
 
 /*
@@ -162,6 +162,12 @@ func (cli *SyncClient) OnMessageArrived(msgs []*actor.Message) error {
 				ParentHash: sp.Parent.ParentHash,
 				ParentRoot: sp.Parent.ParentRoot,
 			}, &na)
+
+			states := sp.SchdStates.([]storage.SchdState)
+			for _, state := range states {
+				intf.Router.Call("schdstore", "DirectWrite", &state, &na)
+			}
+
 			// TODO: validate the sync point.
 			go func() {
 				for i := range sp.Slices {

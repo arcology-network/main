@@ -1,3 +1,5 @@
+//go:build !CI
+
 package boot
 
 import (
@@ -7,29 +9,28 @@ import (
 	"testing"
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	ccdb "github.com/HPISTechnologies/common-lib/cachedstorage"
-	cmntypes "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/component-lib/mock/kafka"
-	"github.com/HPISTechnologies/component-lib/mock/rpc"
-	"github.com/HPISTechnologies/concurrenturl/v2"
-	urlcommon "github.com/HPISTechnologies/concurrenturl/v2/common"
-	urldb "github.com/HPISTechnologies/concurrenturl/v2/storage"
-	urltype "github.com/HPISTechnologies/concurrenturl/v2/type"
-	"github.com/HPISTechnologies/concurrenturl/v2/type/commutative"
-	"github.com/HPISTechnologies/concurrenturl/v2/type/noncommutative"
-	evmcommon "github.com/HPISTechnologies/evm/common"
-	"github.com/HPISTechnologies/evm/consensus"
-	evmtypes "github.com/HPISTechnologies/evm/core/types"
-	"github.com/HPISTechnologies/evm/core/vm"
-	"github.com/HPISTechnologies/evm/crypto"
-	"github.com/HPISTechnologies/evm/params"
-	"github.com/HPISTechnologies/main/config"
-	"github.com/HPISTechnologies/main/modules/exec"
-	adaptor "github.com/HPISTechnologies/vm-adaptor/evm"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	ccdb "github.com/arcology-network/common-lib/cachedstorage"
+	cmntypes "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/mock/kafka"
+	"github.com/arcology-network/component-lib/mock/rpc"
+	"github.com/arcology-network/concurrenturl/v2"
+	urlcommon "github.com/arcology-network/concurrenturl/v2/common"
+	urldb "github.com/arcology-network/concurrenturl/v2/storage"
+	urltype "github.com/arcology-network/concurrenturl/v2/type"
+	"github.com/arcology-network/concurrenturl/v2/type/commutative"
+	"github.com/arcology-network/concurrenturl/v2/type/noncommutative"
+	evmcommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/consensus"
+	evmtypes "github.com/arcology-network/evm/core/types"
+	"github.com/arcology-network/evm/core/vm"
+	"github.com/arcology-network/evm/crypto"
+	"github.com/arcology-network/evm/params"
+	"github.com/arcology-network/main/config"
+	adaptor "github.com/arcology-network/vm-adaptor/evm"
 )
 
 var (
@@ -41,12 +42,12 @@ var (
 func TestExecSvc(t *testing.T) {
 	config.DownloaderCreator = kafka.NewDownloaderCreator(t)
 	config.UploaderCreator = kafka.NewUploaderCreator(t)
-	exec.SnapshotLookup = &mockSnapshotDict{}
+	//exec.SnapshotLookup = &mockSnapshotDict{}
 	intf.RPCCreator = rpc.NewRPCServerInitializer(t)
 
 	globalConfig := config.LoadGlobalConfig("../config/global.json")
 	kafkaConfig := config.LoadKafkaConfig("../config/kafka.json")
-	appConfig := config.LoadAppConfig("../config/exec.json")
+	appConfig := config.LoadAppConfig("../modules/exec/exec.json")
 	brk, _, uploaders := initApp(globalConfig, kafkaConfig, appConfig)
 
 	initDB(t)
@@ -72,7 +73,7 @@ func TestExecSvc(t *testing.T) {
 	contractAddress := ethCommon.BytesToAddress(coreAddress.Bytes())
 	for i := 0; i < nBatches; i++ {
 		msgs := make([]*cmntypes.StandardMessage, 0, nMsgs)
-		ids := make([]uint32, 0, nMsgs)
+		//ids := make([]uint32, 0, nMsgs)
 		for j := 0; j < nMsgs; j++ {
 			data := append(sig, evmcommon.BytesToHash([]byte{byte(i / 256), byte(i % 256), byte(j / 256), byte(j % 256)}).Bytes()...)
 			data = append(data, evmcommon.BytesToHash([]byte{byte(i / 256), byte(i % 256), byte(j / 256), byte(j % 256)}).Bytes()...)
@@ -90,50 +91,44 @@ func TestExecSvc(t *testing.T) {
 				TxHash: ethCommon.BytesToHash([]byte{byte(i), byte(j / 256), byte(j % 256)}),
 				Native: &msg,
 			})
-			ids = append(ids, uint32(i*nMsgs+j+1))
-		}
-		batches = append(batches, &cmntypes.ExecutingSequence{
-			Msgs:     msgs,
-			Txids:    ids,
-			Parallel: true,
-		})
-	}
-
-	durations := []time.Duration{}
-	for i := 0; i < nBatches; i += 4 {
-		begin := time.Now()
-		response := cmntypes.ExecutorResponses{}
-		request := cmntypes.ExecutorRequest{
-			Sequences:     []*cmntypes.ExecutingSequence{batches[i], batches[i+1], batches[i+2], batches[i+3]},
-			Precedings:    []*ethCommon.Hash{},
-			PrecedingHash: ethCommon.Hash{},
-			Timestamp:     new(big.Int),
-			Parallelism:   4,
 		}
 
-		intf.Router.Call("executor-1", "ExecTxs", &actor.Message{
-			Name:   actor.MsgTxsToExecute,
-			Height: 1,
-			Data:   &request,
-		}, &response)
-		durations = append(durations, time.Since(begin))
+		durations := []time.Duration{}
+		for i := 0; i < nBatches; i += 4 {
+			begin := time.Now()
+			response := cmntypes.ExecutorResponses{}
+			request := cmntypes.ExecutorRequest{
+				Sequences:     []*cmntypes.ExecutingSequence{batches[i], batches[i+1], batches[i+2], batches[i+3]},
+				Precedings:    [][]*ethCommon.Hash{},
+				PrecedingHash: []ethCommon.Hash{},
+				Timestamp:     new(big.Int),
+				Parallelism:   4,
+			}
 
-		for _, status := range response.StatusList {
-			if status != 1 {
-				t.Fail()
-				return
+			intf.Router.Call("executor-1", "ExecTxs", &actor.Message{
+				Name:   actor.MsgTxsToExecute,
+				Height: 1,
+				Data:   &request,
+			}, &response)
+			durations = append(durations, time.Since(begin))
+
+			for _, status := range response.StatusList {
+				if status != 1 {
+					t.Fail()
+					return
+				}
 			}
 		}
-	}
 
-	t.Log(formatDurations(durations))
-	time.Sleep(3 * time.Second)
-	t.Log(uploaders[0].(*kafka.Uploader).GetCounter())
-	t.Log(uploaders[0].(*kafka.Uploader).GetDataSizeCounter())
-	t.Log(uploaders[1].(*kafka.Uploader).GetCounter())
-	t.Log(uploaders[1].(*kafka.Uploader).GetDataSizeCounter())
-	t.Log(uploaders[2].(*kafka.Uploader).GetCounter())
-	t.Log(uploaders[2].(*kafka.Uploader).GetDataSizeCounter())
+		t.Log(formatDurations(durations))
+		time.Sleep(3 * time.Second)
+		t.Log(uploaders[0].(*kafka.Uploader).GetCounter())
+		t.Log(uploaders[0].(*kafka.Uploader).GetDataSizeCounter())
+		t.Log(uploaders[1].(*kafka.Uploader).GetCounter())
+		t.Log(uploaders[1].(*kafka.Uploader).GetDataSizeCounter())
+		t.Log(uploaders[2].(*kafka.Uploader).GetCounter())
+		t.Log(uploaders[2].(*kafka.Uploader).GetDataSizeCounter())
+	}
 }
 
 func formatDurations(durations []time.Duration) string {

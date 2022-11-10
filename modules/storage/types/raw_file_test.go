@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/HPISTechnologies/common-lib/codec"
+	"github.com/arcology-network/common-lib/codec"
 )
 
 func TestOp(t *testing.T) {

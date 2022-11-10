@@ -1,10 +1,10 @@
 package consensus
 
 import (
-	"github.com/HPISTechnologies/common-lib/mhasher"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	"github.com/HPISTechnologies/consensus-engine/types"
+	"github.com/arcology-network/common-lib/mhasher"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/consensus-engine/types"
 )
 
 func init() {

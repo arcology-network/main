@@ -7,10 +7,10 @@ import (
 	"math/big"
 	"testing"
 
-	ethcmn "github.com/HPISTechnologies/evm/common"
-	ethtyp "github.com/HPISTechnologies/evm/core/types"
-	ethcrp "github.com/HPISTechnologies/evm/crypto"
-	ethrlp "github.com/HPISTechnologies/evm/rlp"
+	ethcmn "github.com/arcology-network/evm/common"
+	ethtyp "github.com/arcology-network/evm/core/types"
+	ethcrp "github.com/arcology-network/evm/crypto"
+	ethrlp "github.com/arcology-network/evm/rlp"
 	bip32 "github.com/tyler-smith/go-bip32"
 	bip39 "github.com/tyler-smith/go-bip39"
 )

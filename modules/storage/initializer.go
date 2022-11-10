@@ -2,34 +2,35 @@ package storage
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/gob"
 	"fmt"
 	"io"
-	"math"
 	"math/big"
 	"os"
 	"strings"
 
-	ethcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	cstore "github.com/HPISTechnologies/common-lib/cachedstorage"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	intf "github.com/HPISTechnologies/component-lib/interface"
-	ccurl "github.com/HPISTechnologies/concurrenturl/v2"
-	urlcmn "github.com/HPISTechnologies/concurrenturl/v2/common"
-	urltyp "github.com/HPISTechnologies/concurrenturl/v2/type"
-	"github.com/HPISTechnologies/concurrenturl/v2/type/commutative"
-	evmcmn "github.com/HPISTechnologies/evm/common"
-	stypes "github.com/HPISTechnologies/main/modules/storage/types"
-	adaptor "github.com/HPISTechnologies/vm-adaptor/evm"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	cstore "github.com/arcology-network/common-lib/cachedstorage"
+	"github.com/arcology-network/common-lib/transactional"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/component-lib/storage"
+	ccurl "github.com/arcology-network/concurrenturl/v2"
+	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
+	urltyp "github.com/arcology-network/concurrenturl/v2/type"
+	"github.com/arcology-network/concurrenturl/v2/type/commutative"
+	"github.com/arcology-network/consensus-engine/state"
+	evmcmn "github.com/arcology-network/evm/common"
+	adaptor "github.com/arcology-network/vm-adaptor/evm"
 )
 
 type Initializer struct {
 	actor.WorkerThread
 
-	accountFile        string
-	storage_url_path   string
-	storage_url_shards int
-	storage_url_depts  int
+	accountFile      string
+	storage_url_path string
 }
 
 func NewInitializer(concurrency int, groupId string) actor.IWorkerEx {
@@ -54,17 +55,30 @@ func (i *Initializer) Config(params map[string]interface{}) {
 	//mstypes.CreateDB(params)
 	i.accountFile = params["account_file"].(string)
 	i.storage_url_path = params["storage_url_path"].(string)
-	i.storage_url_shards = int(params["storage_url_shards"].(float64))
-	i.storage_url_depts = int(params["storage_url_depts"].(float64))
 }
 
 func (i *Initializer) InitMsgs() []*actor.Message {
-	// TODO: load latest block height from db.
-	height := 0
+	var na int
+	var state state.State
+	if err := intf.Router.Call("tmstatestore", "Load", &na, &state); err != nil {
+		panic(err)
+	}
+	height := state.LastBlockHeight
 
 	var db urlcmn.DatastoreInterface
 	var rootHash ethcmn.Hash
 	if height == 0 {
+		// Make place holder for recover functions.
+		transactional.RegisterRecoverFunc("urlupdate", func(interface{}, []byte) error {
+			return nil
+		})
+		transactional.RegisterRecoverFunc("parentinfo", func(interface{}, []byte) error {
+			return nil
+		})
+		transactional.RegisterRecoverFunc("schdstate", func(interface{}, []byte) error {
+			return nil
+		})
+
 		db, rootHash = i.initGenesisAccounts()
 		var na int
 		intf.Router.Call("statestore", "Save", &State{
@@ -73,8 +87,73 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			ParentRoot: rootHash,
 		}, &na)
 	} else {
-		panic("not yet implemented")
+		db = cstore.NewDataStore(
+			nil,
+			cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
+			cstore.NewParaBadgerDB(i.storage_url_path, urlcmn.Eth10AccountShard),
+			func(v interface{}) []byte { return urltyp.ToBytes(v) },
+			func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+		)
+
+		platform := urlcmn.NewPlatform()
+		meta, _ := commutative.NewMeta(platform.Eth10Account())
+		db.Inject(platform.Eth10Account(), meta)
+
+		// Register recover function.
+		transactional.RegisterRecoverFunc("urlupdate", func(_ interface{}, bs []byte) error {
+			var updates storage.UrlUpdate
+			if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&updates); err != nil {
+				fmt.Printf("Error decoding UrlUpdate, err = %v\n", err)
+				return err
+			}
+
+			values := make([]interface{}, len(updates.EncodedValues))
+			for i, v := range updates.EncodedValues {
+				values[i] = urltyp.FromBytes(v)
+			}
+			db.BatchInject(updates.Keys, values)
+			fmt.Printf("[storage.Initializer] Recover urlupdate.\n")
+			return nil
+		})
+		transactional.RegisterRecoverFunc("parentinfo", func(_ interface{}, bs []byte) error {
+			var pi cmntyp.ParentInfo
+			if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&pi); err != nil {
+				fmt.Printf("Error decoding ParentInfo, err = %v\n", err)
+				return err
+			}
+
+			var na int
+			intf.Router.Call("statestore", "Save", &State{
+				Height:     uint64(height),
+				ParentHash: pi.ParentHash,
+				ParentRoot: pi.ParentRoot,
+			}, &na)
+			fmt.Printf("[storage.Initializer] Recover parentinfo = %v\n", pi)
+			return nil
+		})
+		transactional.RegisterRecoverFunc("schdstate", func(_ interface{}, bs []byte) error {
+			var state SchdState
+			if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&state); err != nil {
+				fmt.Printf("Error decoding SchdState, err = %v\n", err)
+				return err
+			}
+
+			var na int
+			intf.Router.Call("schdstore", "DirectWrite", &state, &na)
+			fmt.Printf("[storage.Initializer] Recover schdstate.\n")
+			return nil
+		})
+		// Recover.
+		txID := fmt.Sprintf("%d", height)
+		var na int
+		fmt.Printf("[storage.Initializer] Recover transactional store to height: %s\n", txID)
+		err := intf.Router.Call("transactionalstore", "Recover", &txID, &na)
+		if err != nil {
+			panic(fmt.Sprintf("[storage.Initializer] Error occurred while recovering transactional store: %v\n", err))
+		}
 	}
+
+	intf.Router.Call("urlstore", "Init", db, &na)
 
 	return []*actor.Message{
 		{
@@ -97,21 +176,18 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 
 func (i *Initializer) initGenesisAccounts() (urlcmn.DatastoreInterface, ethcmn.Hash) {
 	accounts := i.loadGenesisAccounts()
-	var na int
 	// filedb, err := cstore.NewFileDB(i.storage_url_path, uint32(i.storage_url_shards), uint8(i.storage_url_depts))
 	// if err != nil {
 	// 	panic("create filedb err!:" + err.Error())
 	// }
 	db := cstore.NewDataStore(
 		nil,
-		cstore.NewCachePolicy(math.MaxUint64, 1),
-		//filedb,
-		stypes.NewMemoryDB(),
+		cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
+		// stypes.NewMemoryDB(),
+		cstore.NewParaBadgerDB(i.storage_url_path, urlcmn.Eth10AccountShard),
 		func(v interface{}) []byte { return urltyp.ToBytes(v) },
 		func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
 	)
-
-	intf.Router.Call("urlstore", "Init", db, &na)
 
 	platform := urlcmn.NewPlatform()
 	meta, _ := commutative.NewMeta(platform.Eth10Account())
@@ -119,10 +195,10 @@ func (i *Initializer) initGenesisAccounts() (urlcmn.DatastoreInterface, ethcmn.H
 
 	transitions := i.generateTransitions(db, accounts)
 	url := ccurl.NewConcurrentUrl(db)
-	url.Indexer().Import(transitions)
+	url.Import(transitions)
 	url.PostImport()
 	url.Precommit([]uint32{0})
-	keys, values := url.Indexer().KVs()
+	keys, values := url.KVs()
 	encodedValues := make([][]byte, 0, len(values))
 	for _, v := range values {
 		if v != nil {

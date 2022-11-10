@@ -3,9 +3,9 @@ package coordinator
 import (
 	"fmt"
 
-	ethcmn "github.com/HPISTechnologies/3rd-party/eth/common"
-	cmntyp "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
+	ethcmn "github.com/arcology-network/3rd-party/eth/common"
+	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
 )
 
 const (
@@ -25,6 +25,7 @@ type DecisionMaker struct {
 	storageUp            bool
 	maxPeerHeights       []uint64
 	consensusUp          bool
+	initHeight           uint64
 }
 
 func NewDecisionMaker(concurrency int, groupId string) actor.IWorkerEx {
@@ -62,6 +63,7 @@ func (dm *DecisionMaker) Inputs() ([]string, bool) {
 func (dm *DecisionMaker) Outputs() map[string]int {
 	return map[string]int{
 		actor.MsgBlockStart:     1,
+		actor.MsgBlockEnd:       1,
 		actor.MsgReapCommand:    1,
 		actor.MsgTxBlocks:       1,
 		actor.MsgBlockCompleted: 1,
@@ -81,6 +83,7 @@ func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 		switch msg.Name {
 		case actor.MsgStorageUp:
 			dm.storageUp = true
+			dm.initHeight = msg.Height
 		case actor.MsgConsensusMaxPeerHeight:
 			dm.maxPeerHeights = append(dm.maxPeerHeights, msg.Data.(uint64))
 		case actor.MsgConsensusUp:
@@ -95,7 +98,10 @@ func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 				dm.state = dmStateFastSync
 			} else {
 				fmt.Printf("[DecisionMaker.OnMessageArrived] switch to dmStateBlockSync\n")
-				dm.MsgBroker.Send(actor.MsgBlockCompleted, actor.MsgBlockCompleted_Success)
+				if dm.initHeight == 0 {
+					dm.MsgBroker.Send(actor.MsgBlockEnd, "")
+					dm.MsgBroker.Send(actor.MsgBlockCompleted, actor.MsgBlockCompleted_Success)
+				}
 				dm.MsgBroker.Send(actor.MsgReapCommand, nil)
 				dm.state = dmStateBlockSync
 			}

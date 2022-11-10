@@ -7,9 +7,9 @@ import (
 	"fmt"
 	"math/big"
 
-	ethcmn "github.com/HPISTechnologies/evm/common"
-	ethtyp "github.com/HPISTechnologies/evm/core/types"
-	ethcrp "github.com/HPISTechnologies/evm/crypto"
+	ethcmn "github.com/arcology-network/evm/common"
+	ethtyp "github.com/arcology-network/evm/core/types"
+	ethcrp "github.com/arcology-network/evm/crypto"
 	"golang.org/x/crypto/sha3"
 )
 

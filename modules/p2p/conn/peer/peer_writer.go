@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/connection"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/main/modules/p2p/conn/connection"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
 )
 
 type PeerWriter struct {

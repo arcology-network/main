@@ -5,11 +5,12 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
 	"github.com/go-zookeeper/zk"
 )
 
 type Monitor struct {
+	zkServers      []string
 	zkConn         *zk.Conn
 	root           string
 	services       map[string]*status.SvcStatus
@@ -17,15 +18,20 @@ type Monitor struct {
 	eventCh        <-chan zk.Event
 }
 
-func NewMonitor(zkConn *zk.Conn, root string, onStatusUpdate func(map[string]*status.SvcStatus)) *Monitor {
+func NewMonitor(zkServers []string, root string, onStatusUpdate func(map[string]*status.SvcStatus)) *Monitor {
+	zkConn, _, err := zk.Connect(zkServers, 30*time.Second)
+	if err != nil {
+		panic(err)
+	}
+
 	m := &Monitor{
+		zkServers:      zkServers,
 		zkConn:         zkConn,
 		root:           root,
 		services:       make(map[string]*status.SvcStatus),
 		onStatusUpdate: onStatusUpdate,
 	}
 
-	var err error
 	_, _, m.eventCh, err = m.zkConn.ChildrenW(m.root)
 	if err != nil {
 		panic(err)
@@ -42,7 +48,16 @@ func (m *Monitor) Serve() {
 		var err error
 		_, _, m.eventCh, err = m.zkConn.ChildrenW(m.root)
 		if err != nil {
-			panic(err)
+			m.zkConn, _, err = zk.Connect(m.zkServers, 30*time.Second)
+			if err != nil {
+				panic(err)
+			}
+
+			_, _, m.eventCh, err = m.zkConn.ChildrenW(m.root)
+			if err != nil {
+				panic(err)
+			}
+			continue
 		}
 
 		if e.Type == zk.EventNodeChildrenChanged {

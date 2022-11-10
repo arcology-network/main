@@ -4,7 +4,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/HPISTechnologies/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
 )
 
 func TestExectime(t *testing.T) {

@@ -3,18 +3,18 @@ package types
 import (
 	"crypto/sha256"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ethTypes "github.com/HPISTechnologies/3rd-party/eth/types"
-	"github.com/HPISTechnologies/common-lib/common"
-	"github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/log"
-	ccurl "github.com/HPISTechnologies/concurrenturl/v2"
-	urlcommon "github.com/HPISTechnologies/concurrenturl/v2/common"
-	ccurlTypes "github.com/HPISTechnologies/concurrenturl/v2/type"
-	mevmCommon "github.com/HPISTechnologies/evm/common"
-	mevmTypes "github.com/HPISTechnologies/evm/core/types"
-	adaptor "github.com/HPISTechnologies/vm-adaptor/evm"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/log"
+	ccurl "github.com/arcology-network/concurrenturl/v2"
+	urlcommon "github.com/arcology-network/concurrenturl/v2/common"
+	ccurlTypes "github.com/arcology-network/concurrenturl/v2/type"
+	mevmCommon "github.com/arcology-network/evm/common"
+	mevmTypes "github.com/arcology-network/evm/core/types"
+	adaptor "github.com/arcology-network/vm-adaptor/evm"
 	"go.uber.org/zap"
 )
 
@@ -122,7 +122,17 @@ func ConvertReceipt(ereceipt *mevmTypes.Receipt) *ethTypes.Receipt {
 	return &dreceipt
 }
 
-//coinbase mevmCommon.Address
+func (es *ExecutionService) Init(eu *adaptor.EUV2, url *ccurl.ConcurrentUrl) {
+	es.Eu = eu
+	es.TxsQueue = NewQueue()
+	es.Url = url
+}
+
+func (es *ExecutionService) SetDB(db *urlcommon.DatastoreInterface) {
+	es.DB = db
+}
+
+// coinbase mevmCommon.Address
 func (es *ExecutionService) Exec(sequence *types.ExecutingSequence, config *adaptor.Config, logg *actor.WorkerThreadLogger, gatherExeclog bool) (*ExecutionResponse, error) {
 	//gatherExeclog := viper.GetBool("execlog")
 
@@ -156,7 +166,7 @@ func (es *ExecutionService) Exec(sequence *types.ExecutingSequence, config *adap
 		th := mevmCommon.BytesToHash(m.TxHash[:])
 		hashList = append(hashList, m.TxHash)
 		msg := ConvertMessage(m)
-		accesses, transitions, receipt, callResult := es.Eu.RunEx(th, int(id), msg, adaptor.NewEVMBlockContextV2(config), adaptor.NewEVMTxContext(*msg))
+		accesses, transitions, nonceTransitions, receipt, callResult := es.Eu.RunEx(th, int(id), msg, adaptor.NewEVMBlockContextV2(config), adaptor.NewEVMTxContext(*msg))
 		if gatherExeclog {
 			logs := es.Api.GetLogs()
 			clogs := make([]types.ExecutingLog, len(logs))
@@ -189,6 +199,8 @@ func (es *ExecutionService) Exec(sequence *types.ExecutingSequence, config *adap
 		}
 
 		result.Transitions = transitions
+		result.Transitions = append(result.Transitions, nonceTransitions...)
+
 		if result.DC != nil {
 			result.DC.ContractAddress = types.Address(ethCommon.HexToAddress(string(result.DC.ContractAddress)).Bytes())
 		}

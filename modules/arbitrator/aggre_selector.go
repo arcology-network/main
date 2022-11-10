@@ -3,13 +3,13 @@ package arbitrator
 import (
 	"time"
 
-	ethCommon "github.com/HPISTechnologies/3rd-party/eth/common"
-	ctypes "github.com/HPISTechnologies/common-lib/types"
-	"github.com/HPISTechnologies/component-lib/actor"
-	"github.com/HPISTechnologies/component-lib/aggregator/aggregator"
-	"github.com/HPISTechnologies/component-lib/log"
-	arbitrator "github.com/HPISTechnologies/main/modules/arbitrator/impl-arbitrator"
-	"github.com/HPISTechnologies/main/modules/arbitrator/types"
+	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ctypes "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/aggregator/aggregator"
+	"github.com/arcology-network/component-lib/log"
+	arbitrator "github.com/arcology-network/main/modules/arbitrator/impl-arbitrator"
+	"github.com/arcology-network/main/modules/arbitrator/types"
 	"go.uber.org/zap"
 )
 
@@ -19,7 +19,7 @@ type EuResultsAggreSelector struct {
 	arbitrator *arbitrator.ArbitratorImpl
 }
 
-//return a Subscriber struct
+// return a Subscriber struct
 func NewEuResultsAggreSelector(concurrency int, groupid string) actor.IWorkerEx {
 	agg := EuResultsAggreSelector{}
 	agg.Set(concurrency, groupid)

@@ -3,16 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
-	"time"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/peer"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/protocol"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/receiver"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/sender"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/server"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
-	"github.com/go-zookeeper/zk"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/peer"
+	"github.com/arcology-network/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/main/modules/p2p/conn/receiver"
+	"github.com/arcology-network/main/modules/p2p/conn/sender"
+	"github.com/arcology-network/main/modules/p2p/conn/server"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
 )
 
 func main() {
@@ -26,13 +24,7 @@ func main() {
 		panic(err)
 	}
 
-	zkConn, _, err := zk.Connect(serverCfg.ZooKeeper.Servers, 3*time.Second)
-	if err != nil {
-		panic(err)
-	}
-	defer zkConn.Close()
-
-	collector := status.NewCollector(serverCfg, zkConn)
+	collector := status.NewCollector(serverCfg, serverCfg.ZooKeeper.Servers)
 	collector.UpdateZKStatus()
 	go collector.Start()
 
@@ -77,7 +69,7 @@ func main() {
 		}
 	}()
 
-	watcher, err := config.NewPeerConfigWatcher(zkConn, serverCfg.ZooKeeper.PeerConfigRoot, func(configs []*config.PeerConfig) {
+	watcher, err := config.NewPeerConfigWatcher(serverCfg.ZooKeeper.Servers, serverCfg.ZooKeeper.PeerConfigRoot, func(configs []*config.PeerConfig) {
 		var peersToServe []*config.PeerConfig
 		for _, cfg := range configs {
 			fmt.Printf("%v\n", cfg)

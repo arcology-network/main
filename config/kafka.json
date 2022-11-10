@@ -12,6 +12,7 @@
             "gasused",
             "execTime",
             "blockstart",
+            "blockend",
             "external.blockstart",
             "external.reapcommand",
             "external.blockcompleted",

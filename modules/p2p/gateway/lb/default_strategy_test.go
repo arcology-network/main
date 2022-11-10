@@ -3,8 +3,8 @@ package lb
 import (
 	"testing"
 
-	"github.com/HPISTechnologies/main/modules/p2p/conn/config"
-	"github.com/HPISTechnologies/main/modules/p2p/conn/status"
+	"github.com/arcology-network/main/modules/p2p/conn/config"
+	"github.com/arcology-network/main/modules/p2p/conn/status"
 )
 
 func TestDefaultStrategy(t *testing.T) {

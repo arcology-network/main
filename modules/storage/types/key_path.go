@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	urlcommon "github.com/HPISTechnologies/concurrenturl/v2/common"
+	urlcommon "github.com/arcology-network/concurrenturl/v2/common"
 )
 
 const (

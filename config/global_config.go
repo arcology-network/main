@@ -6,7 +6,7 @@ import (
 	"math/big"
 	"os"
 
-	cfg "github.com/HPISTechnologies/component-lib/config"
+	cfg "github.com/arcology-network/component-lib/config"
 )
 
 type GlobalConfig struct {

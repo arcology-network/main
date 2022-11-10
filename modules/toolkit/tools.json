@@ -1,0 +1,11 @@
+{
+    "settings": {
+        "prometheus_listen_addr": ":19099"
+    },
+    "actors": {
+        "read_kafka": {
+            "queryheight": 100,
+            "querykey":""
+        }
+    }
+}
