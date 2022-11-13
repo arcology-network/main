@@ -110,13 +110,13 @@ func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 		}
 	case dmStateFastSync:
 		switch msg.Name {
-		case actor.MsgExtBlockStart, actor.MsgExtBlockEnd, actor.MsgExtReapCommand, actor.MsgExtReapingList:
+		case actor.MsgExtBlockStart, actor.MsgExtReapCommand, actor.MsgExtReapingList:
 			if msg.Height >= dm.fastSyncUntil {
 				fmt.Printf("[DecisionMaker.OnMessageArrived] fast sync done countdown, msg name = %s, height = %d\n", msg.Name, msg.Height)
 				delete(dm.fastSyncMessageTypes, msg.Name)
 				dm.updateFSM = true
 			}
-		case actor.MsgExtBlockCompleted:
+		case actor.MsgExtBlockEnd, actor.MsgExtBlockCompleted:
 			if msg.Height+1 >= dm.fastSyncUntil {
 				fmt.Printf("[DecisionMaker.OnMessageArrived] fast sync done countdown, msg name = %s, height = %d\n", msg.Name, msg.Height)
 				delete(dm.fastSyncMessageTypes, msg.Name)
