@@ -137,6 +137,8 @@ github.com/arcology-network/common-lib v0.0.0-20221110013709-f355641f88df h1:nO4
 github.com/arcology-network/common-lib v0.0.0-20221110013709-f355641f88df/go.mod h1:8rs8xQEkI3CVxBmOvunTfHRvLLqQw99HH3/wfc9PSsw=
 github.com/arcology-network/component-lib v0.0.0-20221110023837-88957a7471bb h1:sH52gVTw+Xv8WUlZ4mqbyju4u45+j+8DU6k4VG+9dwE=
 github.com/arcology-network/component-lib v0.0.0-20221110023837-88957a7471bb/go.mod h1:Fe3dzAx7CpdHlca+uRsLM7ERfJUZ067b4t812HT9DXI=
+github.com/arcology-network/component-lib v0.0.0-20221113055155-b0c337e1febe h1:cIjaTv6nIGV1yoF4DRxpVWJnpIiEwTKIgfS+lqTjUfU=
+github.com/arcology-network/component-lib v0.0.0-20221113055155-b0c337e1febe/go.mod h1:+tqlyuePOcYtnyDDOl3M9m9GxkaMm6VIhnoQgd9VmmQ=
 github.com/arcology-network/concurrentlib v0.0.0-20221110045316-d3e3f75e4656 h1:Zh4tUV15lN6uO7MTcYzUHF2pIO0QsfKN4LYqANsr4bE=
 github.com/arcology-network/concurrentlib v0.0.0-20221110045316-d3e3f75e4656/go.mod h1:RQWJl6M8tnuM4/NcliVi1s7H271ycdV2ZFKAiHQROG8=
 github.com/arcology-network/concurrenturl v0.0.0-20221110014513-705bbd1cba8c h1:sT6ambBHXCv3U4H+gQWXMk1NxRaxSvBvGFLA/iQs60U=

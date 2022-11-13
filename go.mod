@@ -26,7 +26,7 @@ require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/arcology-network/3rd-party v0.0.0-20221110004651-3ae5c3009a22
 	github.com/arcology-network/common-lib v0.0.0-20221110013709-f355641f88df
-	github.com/arcology-network/component-lib v0.0.0-20221110023837-88957a7471bb
+	github.com/arcology-network/component-lib v0.0.0-20221113055155-b0c337e1febe
 	github.com/arcology-network/concurrenturl v0.0.0-20221110014513-705bbd1cba8c
 	github.com/arcology-network/consensus-engine v0.0.0-20221110054546-57268b5a4c45
 	github.com/arcology-network/evm v0.0.0-20221110011616-1cdc0ab27c8e

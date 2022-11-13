@@ -35,6 +35,7 @@ func NewDecisionMaker(concurrency int, groupId string) actor.IWorkerEx {
 			actor.MsgConsensusMaxPeerHeight: {},
 			actor.MsgConsensusUp:            {},
 			actor.MsgExtBlockStart:          {},
+			actor.MsgExtBlockEnd:            {},
 			actor.MsgExtReapCommand:         {},
 			actor.MsgExtTxBlocks:            {},
 			actor.MsgExtReapingList:         {},
@@ -51,6 +52,7 @@ func (dm *DecisionMaker) Inputs() ([]string, bool) {
 		actor.MsgConsensusMaxPeerHeight,
 		actor.MsgConsensusUp,
 		actor.MsgExtBlockStart,
+		actor.MsgExtBlockEnd,
 		actor.MsgExtReapCommand,
 		actor.MsgExtTxBlocks,
 		actor.MsgExtBlockCompleted,
@@ -108,7 +110,7 @@ func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 		}
 	case dmStateFastSync:
 		switch msg.Name {
-		case actor.MsgExtBlockStart, actor.MsgExtReapCommand, actor.MsgExtReapingList:
+		case actor.MsgExtBlockStart, actor.MsgExtBlockEnd, actor.MsgExtReapCommand, actor.MsgExtReapingList:
 			if msg.Height >= dm.fastSyncUntil {
 				fmt.Printf("[DecisionMaker.OnMessageArrived] fast sync done countdown, msg name = %s, height = %d\n", msg.Name, msg.Height)
 				delete(dm.fastSyncMessageTypes, msg.Name)
@@ -149,6 +151,8 @@ func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 		switch msg.Name {
 		case actor.MsgExtBlockStart:
 			dm.MsgBroker.Send(actor.MsgBlockStart, msg.Data)
+		case actor.MsgExtBlockEnd:
+			dm.MsgBroker.Send(actor.MsgBlockEnd, msg.Data)
 		case actor.MsgExtReapCommand:
 			dm.MsgBroker.Send(actor.MsgReapCommand, msg.Data)
 		case actor.MsgExtTxBlocks:
@@ -186,6 +190,7 @@ func (dm *DecisionMaker) GetStateDefinitions() map[int][]string {
 			actor.MsgConsensusMaxPeerHeight,
 			actor.MsgConsensusUp,
 			actor.MsgExtBlockStart,
+			actor.MsgExtBlockEnd,
 			actor.MsgExtReapCommand,
 			actor.MsgExtTxBlocks,
 			actor.MsgExtBlockCompleted,
