@@ -83,7 +83,7 @@ func (c *Consensus) Outputs() map[string]int {
 		actor.MsgExtBlockStart:          1,
 		actor.MsgConsensusMaxPeerHeight: 1,
 		actor.MsgConsensusUp:            1,
-		actor.MsgBlockEnd:               1,
+		actor.MsgExtBlockEnd:            1,
 	}
 }
 
@@ -105,6 +105,8 @@ func (c *Consensus) Config(params map[string]interface{}) {
 	c.engineCfg.Instrumentation.PrometheusListenAddr = params["prometheus_listen_addr"].(string)
 	c.engineCfg.P2P.SendRate = 5120000 * 20 //100m
 	c.engineCfg.P2P.RecvRate = 5120000 * 20 //100m
+	c.engineCfg.P2P.MaxNumInboundPeers = 100
+	c.engineCfg.P2P.MaxNumOutboundPeers = 100
 }
 
 func (c *Consensus) OnStart() {
@@ -269,7 +271,7 @@ func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.T
 	msg := <-c.pendingMsgs[actor.MsgAppHash]
 	intf.Router.Call("transactionalstore", "EndTransaction", &na, &na)
 	c.AddLog(log.LogLevel_Debug, "[ApplyTxsSync] After got apphash.")
-	c.MsgBroker.Send(actor.MsgBlockEnd, "", uint64(height))
+	c.MsgBroker.Send(actor.MsgExtBlockEnd, "", uint64(height))
 	c.MsgBroker.Send(actor.MsgExtReapCommand, "", uint64(height))
 	return msg.Data.([]byte)
 }
