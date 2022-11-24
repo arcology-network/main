@@ -138,7 +138,8 @@
             "name": "transactionalstore",
             "service": "storage.transactionalstore",
             "params": {
-                "root": "./transactional/"
+                "root": "./transactional/",
+                "optimization": true
             }
         },
         {

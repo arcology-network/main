@@ -84,7 +84,7 @@ func (indexer *Indexer) QueryPosition(hash string) *Position {
 	}
 
 	data, err := indexer.Db.Get(hash)
-	if err != nil {
+	if err != nil || len(data) == 0 {
 		return nil
 	}
 	p := &Position{}

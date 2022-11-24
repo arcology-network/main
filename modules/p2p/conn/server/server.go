@@ -56,7 +56,7 @@ func NewServer(cfg *config.Config, col *status.Collector, onMsgReceived func(str
 }
 
 func (s *Server) Start() {
-	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", s.cfg.Server.Host, s.cfg.Server.Port))
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", "0.0.0.0", s.cfg.Server.Port))
 	if err != nil {
 		panic(err)
 	}
@@ -118,7 +118,9 @@ func (s *Server) RefreshPeers(peers []*config.PeerConfig) {
 			newPeer := peer.NewPeer(s.cfg.Server.NID, p, s.onMsgReceived)
 			connections, err := newPeer.Connect()
 			if err != nil {
-				panic(err)
+				// panic(err)
+				fmt.Printf("[conn.Server.RefreshPeers] failed to connect to peer [%v]:[%v]\n", s.cfg.Server.NID, p)
+				continue
 			}
 
 			for _, c := range connections {

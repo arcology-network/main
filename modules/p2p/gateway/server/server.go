@@ -99,7 +99,7 @@ func (s *Server) OnSvcStatusUpdate(services map[string]*status.SvcStatus) {
 }
 
 func (s *Server) Serve() {
-	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", s.cfg.Server.Host, s.cfg.Server.Port))
+	addr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", "0.0.0.0", s.cfg.Server.Port))
 	if err != nil {
 		panic(err)
 	}
