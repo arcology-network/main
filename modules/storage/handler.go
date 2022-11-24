@@ -189,16 +189,20 @@ func (h *Handler) timerQuery() {
 			h.scanCache.SetTabs(mstypes.TotalTxs, parseInt(vals[len(vals)-1][1]))
 		case "tps":
 			latestVal := uint64(0)
+			max := uint64(0)
 			for i := 0; i < len(vals); i++ {
 				latestVal = parseInt(vals[i][1])
 				if latestVal > h.max {
 					h.max = latestVal
 				}
+				if latestVal > max {
+					max = latestVal
+				}
 			}
-			h.scanCache.SetTabs(mstypes.Tps, latestVal)
+
+			h.scanCache.SetTabs(mstypes.Tps, max)
 			h.scanCache.SetTabs(mstypes.MaxTps, h.max)
 		}
-		//fmt.Printf("=========tabs:%v\n", h.scanCache.GetAllTabs())
 	}
 }
 
