@@ -211,6 +211,74 @@ var (
 		"height": "tendermint_consensus_height",
 		"totals": "consensus_processed_txs_total{job=~\"monaco\"}",
 		"tps":    "consensus_real_time_tps{job=~\"monaco\"}",
+
+	}
+)
+
+func queryData(target, _host, from, to, step string) *Response {
+	params := url.Values{}
+	Url, _ := url.Parse(_host + "/api/datasources/proxy/2/api/v1/query_range")
+	params.Set("query", dic[target])
+	params.Set("start", from) //"1666921554")
+	params.Set("end", to)     //"1666921854")   //
+	params.Set("step", step)
+	Url.RawQuery = params.Encode()
+	urlPath := Url.String()
+	resp, err := http.Get(urlPath)
+	if resp == nil {
+		fmt.Printf("query from prometheus err: %v urlPath:%v\n", err, urlPath)
+		return nil
+	}
+	defer resp.Body.Close()
+	body, _ := ioutil.ReadAll(resp.Body)
+
+	// strbody := string(body)
+	// fmt.Println("==============" + strbody)
+
+	var response Response
+	err = json.Unmarshal(body, &response)
+	if err != nil {
+		fmt.Printf("query from prometheus Unmarshal err=%v\n", err)
+		return nil
+	}
+	return &response
+}
+
+func parseInt(val interface{}) uint64 {
+	v := val.(string)
+	uv, err := strconv.ParseUint(strings.Split(v, ".")[0], 10, 64)
+	if err != nil {
+		return 0
+	}
+	return uv
+}
+
+type Response struct {
+	Status string `json:"status"`
+	Data   INData `json:"data"`
+}
+
+type INData struct {
+	ResultType string   `json:"resultType"`
+	Result     []Result `json:"result"`
+}
+type Result struct {
+	Metric Metric          `json:"metric"`
+	Values [][]interface{} `json:"values"`
+}
+
+type Metric struct {
+	Name     string `json:"__name__"`
+	Chain_id string `json:"chain_id"`
+	Instance string `json:"instance"`
+	Job      string `json:"job"`
+}
+
+var (
+	dic = map[string]string{
+		"height": "tendermint_consensus_height",
+		"totals": "consensus_processed_txs_total{job=~\"monaco\"}",
+		"tps":    "consensus_real_time_tps{job=~\"monaco\"}",
 	}
 )
 
