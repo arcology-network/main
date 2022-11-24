@@ -23,15 +23,19 @@ replace github.com/deliveroo/jsonrpc-go => github.com/cody-yang/jsonrpc-go v1.0.
 // replace github.com/arcology-network/evm => ../evm/
 
 require (
+	github.com/arcology-network/common-lib v0.0.0-20221124074600-09b0a62272cb
+	github.com/arcology-network/component-lib v0.0.0-20221113055155-b0c337e1febe
+	github.com/arcology-network/concurrentlib v0.0.0-20221113061248-a32a864b2f2d // indirect
+	github.com/arcology-network/concurrenturl v0.0.0-20221113061100-fdd1a282d214
+	github.com/arcology-network/urlarbitrator-engine v0.0.0-20221113061219-6b77d7f8e156
+	github.com/arcology-network/vm-adaptor v0.0.0-20221113061315-cb9b8108b49a
+)
+
+require (
 	github.com/BurntSushi/toml v0.3.1
 	github.com/arcology-network/3rd-party v0.0.0-20221110004651-3ae5c3009a22
-	github.com/arcology-network/common-lib v0.0.0-20221110013709-f355641f88df
-	github.com/arcology-network/component-lib v0.0.0-20221113055155-b0c337e1febe
-	github.com/arcology-network/concurrenturl v0.0.0-20221110014513-705bbd1cba8c
 	github.com/arcology-network/consensus-engine v0.0.0-20221110054546-57268b5a4c45
 	github.com/arcology-network/evm v0.0.0-20221110011616-1cdc0ab27c8e
-	github.com/arcology-network/urlarbitrator-engine v0.0.0-20221110025906-6a811a6a0cd8
-	github.com/arcology-network/vm-adaptor v0.0.0-20221110051331-93b2a7431470
 	github.com/go-kit/kit v0.10.0
 	github.com/go-zookeeper/zk v1.0.2
 	github.com/prometheus/client_golang v1.11.0
@@ -59,7 +63,6 @@ require (
 	github.com/anacrolix/sync v0.2.0 // indirect
 	github.com/anacrolix/utp v0.0.0-20180219060659-9e0e1d1d0572 // indirect
 	github.com/apache/thrift v0.13.0 // indirect
-	github.com/arcology-network/concurrentlib v0.0.0-20221110045316-d3e3f75e4656 // indirect
 	github.com/armon/go-metrics v0.4.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/bombsimon/wsl/v3 v3.0.0 // indirect
