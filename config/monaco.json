@@ -251,7 +251,8 @@
             "name": "transactionalstore",
             "service": "storage.transactionalstore",
             "params": {
-                "root": "/home/weizp/monacos/transactional/"
+                "root": "/home/weizp/monacos/transactional/",
+                "optimization": true
             }
         },
         {
