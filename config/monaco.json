@@ -42,7 +42,8 @@
             "prometheus_host":"http://50.99.150.71:3030",
             "prometheus_fetch_frequency":10,
             "prometheus_fetch_ahead":300,
-            "prometheus_fetch_step":"3"
+            "prometheus_fetch_step":"3",
+            "coefficient":130
         },
         "storage_debug": {},
         "storage.statesyncstore": {
