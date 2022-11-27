@@ -30,6 +30,8 @@ type Handler struct {
 	host           string
 	step           string
 	fetchAhead     int64 //second
+
+	coefficient uint64
 }
 
 func NewHandler(scanCache *mstypes.ScanCache, params map[string]interface{}) *Handler {
@@ -39,6 +41,7 @@ func NewHandler(scanCache *mstypes.ScanCache, params map[string]interface{}) *Ha
 		fetchAhead:     int64(params["prometheus_fetch_ahead"].(float64)),
 		host:           params["prometheus_host"].(string),
 		step:           params["prometheus_fetch_step"].(string),
+		coefficient:    uint64(params["coefficient"].(float64)),
 	}
 
 	tim := kafkalib.SyncTimer{}
@@ -201,7 +204,7 @@ func (h *Handler) timerQuery() {
 			}
 
 			h.scanCache.SetTabs(mstypes.Tps, max)
-			h.scanCache.SetTabs(mstypes.MaxTps, h.max)
+			h.scanCache.SetTabs(mstypes.MaxTps, h.max*h.coefficient/100)
 		}
 	}
 }
