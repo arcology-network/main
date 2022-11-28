@@ -202,8 +202,9 @@ func (h *Handler) timerQuery() {
 					max = latestVal
 				}
 			}
-
-			h.scanCache.SetTabs(mstypes.Tps, max)
+			if max > 0 {
+				h.scanCache.SetTabs(mstypes.Tps, max)
+			}
 			h.scanCache.SetTabs(mstypes.MaxTps, h.max*h.coefficient/100)
 		}
 	}
