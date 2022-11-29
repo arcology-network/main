@@ -59,16 +59,26 @@ func (c *TxUnsigner) OnMessageArrived(msgs []*actor.Message) error {
 			}
 
 			messages := c.unSignTxs(filteredTxs)
-			txHashes := make([]ethCommon.Hash, len(messages))
+			notNils := make([]*types.StandardMessage, 0, len(messages))
 			for i := range messages {
-				txHashes[i] = messages[i].TxHash
+				if messages[i] != nil {
+					notNils = append(notNils, messages[i])
+				}
 			}
-			c.MsgBroker.Send(actor.MsgMessager, &types.IncomingMsgs{
-				Msgs: messages,
-				Src:  checkingTxsPack.Src,
-			})
+
+			if len(notNils) > 0 {
+				c.MsgBroker.Send(actor.MsgMessager, &types.IncomingMsgs{
+					Msgs: notNils,
+					Src:  checkingTxsPack.Src,
+				})
+			}
+
 			if checkingTxsPack.TxHashChan != nil {
-				checkingTxsPack.TxHashChan <- txHashes[0]
+				if len(notNils) > 0 {
+					checkingTxsPack.TxHashChan <- notNils[0].TxHash
+				} else {
+					checkingTxsPack.TxHashChan <- ethCommon.Hash{}
+				}
 			}
 		}
 	}
@@ -91,6 +101,8 @@ func (c *TxUnsigner) unSignTxs(ctxs []*tpptypes.CheckingTx) []*types.StandardMes
 				err := ctxs[i].UnSign(c.chainID)
 				if err != nil {
 					fmt.Printf("========================UnSign err:%v\n", err)
+					messages[i] = nil
+					continue
 				}
 				messages[i] = &ctxs[i].Message
 			}
