@@ -18,12 +18,28 @@ import (
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 )
 
-func ToTransactionResponse(tx *ethrpc.RPCTransaction) map[string]string {
+func ToTransactionResponse(tx *ethrpc.RPCTransaction, chainid uint64) map[string]string {
+	tostr := "0x"
+	if tx.To != nil {
+		tostr = tx.To.Hex()
+	}
 	return map[string]string{
-		"value":    NumberToHex(tx.Value),
-		"gas":      NumberToHex(tx.Gas),
-		"gasPrice": NumberToHex(tx.GasPrice),
-		"from":     tx.From.Hex(),
+		"blockHash":        tx.BlockHash.Hex(),
+		"blockNumber":      fmt.Sprintf("0x%x", tx.BlockNumber.Bytes()),
+		"from":             tx.From.Hex(),
+		"gas":              NumberToHex(tx.Gas),
+		"gasPrice":         NumberToHex(tx.GasPrice),
+		"hash":             tx.Hash.Hex(),
+		"input":            fmt.Sprintf("0x%x", tx.Input),
+		"nonce":            NumberToHex(tx.Nonce),
+		"to":               tostr,
+		"transactionIndex": NumberToHex(*tx.TransactionIndex),
+		"value":            NumberToHex(tx.Value),
+		"type":             NumberToHex(tx.Type),
+		"chainId":          NumberToHex(chainid),
+		"v":                fmt.Sprintf("0x%x", tx.V.Bytes()),
+		"r":                fmt.Sprintf("0x%x", tx.R.Bytes()),
+		"s":                fmt.Sprintf("0x%x", tx.S.Bytes()),
 	}
 }
 func ToBlockIndex(v interface{}) (int, error) {

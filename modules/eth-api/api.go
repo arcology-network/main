@@ -94,6 +94,7 @@ func parseBlock(block *ethrpc.RPCBlock) interface{} {
 	for i := range block.Transactions {
 		transactions[i] = fmt.Sprintf("%x", block.Transactions[i])
 	}
+	uncles := make([]string, 0)
 	header := block.Header
 	return map[string]interface{}{
 		"number":           NumberToHex(header.Number),
@@ -114,6 +115,8 @@ func parseBlock(block *ethrpc.RPCBlock) interface{} {
 		"transactionsRoot": header.TxHash,
 		"receiptsRoot":     header.ReceiptHash,
 		"transactions":     transactions,
+		"totalDifficulty":  "0x0",
+		"uncles":           uncles,
 	}
 }
 
@@ -150,7 +153,7 @@ func getCode(ctx context.Context, params []interface{}) (interface{}, error) {
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return code, nil
+	return fmt.Sprintf("0x%x", code), nil
 }
 
 func getBalance(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -271,7 +274,8 @@ func getTransactionByHash(ctx context.Context, params []interface{}) (interface{
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return ToTransactionResponse(tx), nil
+
+	return ToTransactionResponse(tx, options.ChainID), nil
 }
 
 func sendRawTransaction(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -359,7 +363,7 @@ func getTransactionByBlockHashAndIndex(ctx context.Context, params []interface{}
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return ToTransactionResponse(tx), nil
+	return ToTransactionResponse(tx, options.ChainID), nil
 }
 func getTransactionByBlockNumberAndIndex(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
@@ -375,7 +379,7 @@ func getTransactionByBlockNumberAndIndex(ctx context.Context, params []interface
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return ToTransactionResponse(tx), nil
+	return ToTransactionResponse(tx, options.ChainID), nil
 }
 func getUncleCountByBlockHash(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
@@ -567,8 +571,8 @@ func startJsonRpc() {
 	server := jsonrpc.New()
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
 		return func(ctx context.Context, params interface{}) (interface{}, error) {
-			//method := jsonrpc.MethodFromContext(ctx)
-			//fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
+			// method := jsonrpc.MethodFromContext(ctx)
+			// fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
 			return next(ctx, params)
 		}
 	})
