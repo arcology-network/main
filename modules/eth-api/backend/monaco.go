@@ -148,7 +148,13 @@ func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*ethrpc.RPCTransaction,
 		Data:      hash,
 	}, &response)
 	if err != nil {
-		return nil, err
+		err = intf.Router.Call("pool", "Query", &cmntyp.QueryRequest{
+			QueryType: cmntyp.QueryType_Transaction,
+			Data:      hash,
+		}, &response)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return response.Data.(*ethrpc.RPCTransaction), nil
 }

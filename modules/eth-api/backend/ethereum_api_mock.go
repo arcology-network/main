@@ -10,6 +10,8 @@ import (
 	ethcmn "github.com/arcology-network/evm/common"
 	ethtyp "github.com/arcology-network/evm/core/types"
 	ethrlp "github.com/arcology-network/evm/rlp"
+
+	"github.com/arcology-network/evm/common/hexutil"
 )
 
 type EthereumAPIMock struct {
@@ -100,14 +102,14 @@ func (mock *EthereumAPIMock) GetTransactionByHash(hash ethcmn.Hash) (*ethrpc.RPC
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
 
-	ti := uint64(0)
+	ti := hexutil.Uint64(uint64(0))
 	return &ethrpc.RPCTransaction{
 		From:             ethcmn.HexToAddress("0x57de3b28c55095e5ca67a8e20fa9d7d5d9aef891"),
 		Gas:              0x1400,
-		GasPrice:         new(big.Int).SetUint64(0xff),
-		BlockNumber:      new(big.Int).Set(mock.blockHeader.Number),
+		GasPrice:         (*hexutil.Big)(big.NewInt(256)),
+		BlockNumber:      (*hexutil.Big)(mock.blockHeader.Number), //new(big.Int).Set(mock.blockHeader.Number),
 		TransactionIndex: &ti,
-		Value:            new(big.Int).SetUint64(0),
+		Value:            (*hexutil.Big)(big.NewInt(0)),
 	}, nil
 }
 
@@ -151,28 +153,28 @@ func (mock *EthereumAPIMock) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash,
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
 
-	ti := uint64(0)
+	ti := hexutil.Uint64(uint64(0))
 	return &ethrpc.RPCTransaction{
 		From:             ethcmn.HexToAddress("0x57de3b28c55095e5ca67a8e20fa9d7d5d9aef891"),
 		Gas:              0x1400,
-		GasPrice:         new(big.Int).SetUint64(0xff),
-		BlockNumber:      new(big.Int).Set(mock.blockHeader.Number),
+		GasPrice:         (*hexutil.Big)(big.NewInt(256)),
+		BlockNumber:      (*hexutil.Big)(mock.blockHeader.Number), //new(big.Int).Set(mock.blockHeader.Number),
 		TransactionIndex: &ti,
-		Value:            new(big.Int).SetUint64(0),
+		Value:            (*hexutil.Big)(big.NewInt(0)),
 	}, nil
 }
 func (mock *EthereumAPIMock) GetTransactionByBlockNumberAndIndex(number int64, index int) (*ethrpc.RPCTransaction, error) {
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
 
-	ti := uint64(0)
+	ti := hexutil.Uint64(uint64(0))
 	return &ethrpc.RPCTransaction{
 		From:             ethcmn.HexToAddress("0x57de3b28c55095e5ca67a8e20fa9d7d5d9aef891"),
 		Gas:              0x1400,
-		GasPrice:         new(big.Int).SetUint64(0xff),
-		BlockNumber:      new(big.Int).Set(mock.blockHeader.Number),
+		GasPrice:         (*hexutil.Big)(big.NewInt(256)),
+		BlockNumber:      (*hexutil.Big)(mock.blockHeader.Number), //new(big.Int).Set(mock.blockHeader.Number),
 		TransactionIndex: &ti,
-		Value:            new(big.Int).SetUint64(0),
+		Value:            (*hexutil.Big)(big.NewInt(0)),
 	}, nil
 }
 

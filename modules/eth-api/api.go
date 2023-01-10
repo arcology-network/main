@@ -13,6 +13,8 @@ import (
 	mainCfg "github.com/arcology-network/component-lib/config"
 	"github.com/arcology-network/component-lib/ethrpc"
 	ethereum "github.com/arcology-network/evm"
+	"github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/common/hexutil"
 	ethtyp "github.com/arcology-network/evm/core/types"
 	"github.com/arcology-network/evm/params"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
@@ -46,8 +48,9 @@ var backend internal.EthereumAPI
 var wallet *wal.Wallet
 
 func version(ctx context.Context) (interface{}, error) {
-	return options.ChainID, nil
+	//return options.ChainID, nil
 	//return NumberToHex(options.ChainID), nil
+	return fmt.Sprintf("%d", options.ChainID), nil
 }
 
 func chainId(ctx context.Context) (interface{}, error) {
@@ -94,25 +97,29 @@ func parseBlock(block *ethrpc.RPCBlock) interface{} {
 	for i := range block.Transactions {
 		transactions[i] = fmt.Sprintf("%x", block.Transactions[i])
 	}
+	uncles := make([]string, 0)
 	header := block.Header
 	return map[string]interface{}{
-		"number":           NumberToHex(header.Number),
+		"uncles": uncles,
+
+		"number":           (*hexutil.Big)(header.Number),
 		"hash":             header.Hash(),
 		"parentHash":       header.ParentHash,
-		"nonce":            NumberToHex(header.Nonce),
+		"nonce":            header.Nonce,
 		"mixHash":          header.MixDigest,
 		"sha3Uncles":       header.UncleHash,
 		"logsBloom":        header.Bloom,
 		"stateRoot":        header.Root,
 		"miner":            header.Coinbase,
-		"difficulty":       NumberToHex(header.Difficulty),
-		"extraData":        header.Extra,
-		"size":             header.Size(),
-		"gasLimit":         NumberToHex(header.GasLimit),
-		"gasUsed":          NumberToHex(header.GasUsed),
-		"timestamp":        NumberToHex(header.Time),
+		"difficulty":       (*hexutil.Big)(header.Difficulty),
+		"extraData":        hexutil.Bytes(header.Extra),
+		"size":             hexutil.Uint64(header.Size()),
+		"gasLimit":         hexutil.Uint64(header.GasLimit),
+		"gasUsed":          hexutil.Uint64(header.GasUsed),
+		"timestamp":        hexutil.Uint64(header.Time),
 		"transactionsRoot": header.TxHash,
 		"receiptsRoot":     header.ReceiptHash,
+		"totalDifficulty":  (*hexutil.Big)(header.Difficulty),
 		"transactions":     transactions,
 	}
 }
@@ -150,7 +157,7 @@ func getCode(ctx context.Context, params []interface{}) (interface{}, error) {
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return code, nil
+	return fmt.Sprintf("0x%x", code), nil
 }
 
 func getBalance(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -246,6 +253,10 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 	}
 	var receipt *ethtyp.Receipt
 
+	// receipt, err = backend.GetTransactionReceipt(hash)
+	// if receipt == nil {
+	// 	return "null", nil
+	// }
 	queryCounter := options.Waits
 	for queryIdx := 0; queryIdx < queryCounter; queryIdx++ {
 		receipt, err = backend.GetTransactionReceipt(hash)
@@ -258,7 +269,45 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 			break
 		}
 	}
-	return receipt, nil
+
+	tx, err := backend.GetTransactionByHash(hash)
+	if err != nil {
+		fmt.Printf("<<<<<<<<<<<<<<<<getTransactionByHash err:%v\n", err)
+		return nil, jsonrpc.InternalError(err)
+	}
+
+	fields := map[string]interface{}{
+		"blockHash":         receipt.BlockHash,
+		"blockNumber":       hexutil.Uint64(receipt.BlockNumber.Uint64()),
+		"transactionHash":   hash,
+		"transactionIndex":  hexutil.Uint64(receipt.TransactionIndex),
+		"from":              tx.From,
+		"to":                tx.To,
+		"gasUsed":           hexutil.Uint64(receipt.GasUsed),
+		"cumulativeGasUsed": hexutil.Uint64(receipt.CumulativeGasUsed),
+		"contractAddress":   nil,
+		"logs":              receipt.Logs,
+		"logsBloom":         receipt.Bloom,
+		"type":              hexutil.Uint(receipt.Type),
+	}
+	//fields["effectiveGasPrice"] = hexutil.Uint64(receipt.)
+	// Assign receipt status or post state.
+	if len(receipt.PostState) > 0 {
+		fields["root"] = hexutil.Bytes(receipt.PostState)
+	} else {
+		fields["status"] = hexutil.Uint(receipt.Status)
+	}
+	if receipt.Logs == nil {
+		fields["logs"] = []*ethtyp.Log{}
+	}
+	// If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
+	if receipt.ContractAddress != (common.Address{}) {
+		fields["contractAddress"] = receipt.ContractAddress
+	}
+
+	fields["effectiveGasPrice"] = hexutil.Uint64(tx.GasPrice.ToInt().Uint64())
+
+	return fields, nil
 }
 
 func getTransactionByHash(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -271,7 +320,8 @@ func getTransactionByHash(ctx context.Context, params []interface{}) (interface{
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return ToTransactionResponse(tx), nil
+
+	return ToTransactionResponse(tx, options.ChainID), nil
 }
 
 func sendRawTransaction(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -297,6 +347,9 @@ func call(ctx context.Context, params []interface{}) (interface{}, error) {
 	}
 	if msg.GasPrice == nil {
 		msg.GasPrice = big.NewInt(0xff)
+	}
+	if msg.Value == nil {
+		msg.Value = big.NewInt(0)
 	}
 	ret, err := backend.Call(msg)
 	if err != nil {
@@ -359,7 +412,7 @@ func getTransactionByBlockHashAndIndex(ctx context.Context, params []interface{}
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return ToTransactionResponse(tx), nil
+	return ToTransactionResponse(tx, options.ChainID), nil
 }
 func getTransactionByBlockNumberAndIndex(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
@@ -375,7 +428,7 @@ func getTransactionByBlockNumberAndIndex(ctx context.Context, params []interface
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return ToTransactionResponse(tx), nil
+	return ToTransactionResponse(tx, options.ChainID), nil
 }
 func getUncleCountByBlockHash(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
@@ -554,6 +607,10 @@ func getFilterLogs(ctx context.Context, params []interface{}) (interface{}, erro
 	return logs, nil
 }
 
+func clientVersion(ctx context.Context) (interface{}, error) {
+	return fmt.Sprintf("client-%d", options.ChainID), nil
+}
+
 func startJsonRpc() {
 	filters := internal.NewFilters()
 	options.ChainID = mainCfg.MainConfig.ChainId.Uint64()
@@ -564,30 +621,38 @@ func startJsonRpc() {
 	}
 	privateKeys := LoadKeys(options.KeyFile)
 
+	// logFile, err := os.OpenFile("./rpc.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	// if err != nil {
+	// 	fmt.Println("open log file failed, err:", err)
+	// 	return
+	// }
+	// log.SetOutput(logFile)
+	// log.SetFlags(log.Lmicroseconds | log.Ldate)
+
 	server := jsonrpc.New()
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
 		return func(ctx context.Context, params interface{}) (interface{}, error) {
-			//method := jsonrpc.MethodFromContext(ctx)
-			//fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
+			// method := jsonrpc.MethodFromContext(ctx)
+			// fmt.Printf(">>>>>>>>>>>>>>*****method: %v \t params:%v \n", method, params)
 			return next(ctx, params)
 		}
 	})
 	server.Register(jsonrpc.Methods{
 		"net_version":               version,
-		"eth_chainId":               chainId,
+		"eth_chainId":               chainId, //mock_chainId, //
 		"eth_blockNumber":           blockNumber,
-		"eth_getBlockByNumber":      getBlockByNumber,
+		"eth_getBlockByNumber":      getBlockByNumber, //mock_getBlockByNumber, //
 		"eth_getBlockByHash":        getBlockByHash,
-		"eth_getTransactionCount":   getTransactionCount,
+		"eth_getTransactionCount":   getTransactionCount, //mock_getTransactionCount, //
 		"eth_getCode":               getCode,
 		"eth_getBalance":            getBalance,
 		"eth_getStorageAt":          getStorageAt,
-		"eth_accounts":              accounts,
-		"eth_estimateGas":           estimateGas,
+		"eth_accounts":              accounts,    //mock_accounts,    //
+		"eth_estimateGas":           estimateGas, //mock_estimateGas, //
 		"eth_gasPrice":              gasPrice,
-		"eth_sendTransaction":       sendTransaction,
-		"eth_getTransactionReceipt": getTransactionReceipt,
-		"eth_getTransactionByHash":  getTransactionByHash,
+		"eth_sendTransaction":       sendTransaction,       //mock_sendTransaction,       //
+		"eth_getTransactionReceipt": getTransactionReceipt, //mock_getTransactionReceipt, //
+		"eth_getTransactionByHash":  getTransactionByHash,  //mock_getTransactionByHash,  //
 		"eth_sendRawTransaction":    sendRawTransaction,
 		"eth_call":                  call,
 		"eth_getLogs":               getLogs,
@@ -617,6 +682,8 @@ func startJsonRpc() {
 		"eth_uninstallFilter":             uninstallFilter,
 		"eth_getFilterChanges":            getFilterChanges,
 		"eth_getFilterLogs":               getFilterLogs,
+
+		"web3_clientVersion": clientVersion,
 	})
 
 	if options.Debug {

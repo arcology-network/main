@@ -133,6 +133,17 @@ func (p *Pool) Reap(limit int) []*cmntyp.StandardMessage {
 	return results
 }
 
+func (p *Pool) QueryByHash(hash ethcmn.Hash) *cmntyp.StandardMessage {
+	keys := make([]string, 1)
+	keys[0] = string(hash.Bytes())
+	txs := p.TxByHash.BatchGet(keys)
+	if txs[0] != nil {
+		return txs[0].(*cmntyp.StandardMessage)
+	} else {
+		return nil
+	}
+}
+
 func (p *Pool) CherryPick(hashes []ethcmn.Hash) []*cmntyp.StandardMessage {
 	p.CherryPickResult = make([]*cmntyp.StandardMessage, len(hashes))
 	p.Waitings = make(map[ethcmn.Hash]int)

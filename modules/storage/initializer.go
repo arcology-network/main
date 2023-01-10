@@ -23,6 +23,7 @@ import (
 	"github.com/arcology-network/concurrenturl/v2/type/commutative"
 	"github.com/arcology-network/consensus-engine/state"
 	evmcmn "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/main/modules/core"
 	adaptor "github.com/arcology-network/vm-adaptor/evm"
 )
 
@@ -86,6 +87,15 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			ParentHash: ethcmn.Hash{},
 			ParentRoot: rootHash,
 		}, &na)
+		parentinfo := &cmntyp.ParentInfo{
+			ParentHash: ethcmn.Hash{},
+			ParentRoot: rootHash,
+		}
+		_, block, err := core.CreateBlock(parentinfo, uint64(0), big.NewInt(0), ethcmn.Address{}, rootHash, uint64(0), ethcmn.Hash{}, ethcmn.Hash{}, [][]byte{})
+		if err != nil {
+			panic("Create genesis block err!")
+		}
+		intf.Router.Call("blockstore", "Save", block, &na)
 	} else {
 		db = cstore.NewDataStore(
 			nil,
@@ -245,7 +255,7 @@ func (i *Initializer) loadGenesisAccounts() map[ethcmn.Address]*cmntyp.Account {
 		}
 
 		accounts[ethcmn.HexToAddress(segments[1])] = &cmntyp.Account{
-			Nonce:   1,
+			Nonce:   0,
 			Balance: balance,
 		}
 	}
@@ -282,7 +292,7 @@ func getTransitions(db urlcmn.DatastoreInterface, addresses []ethcmn.Address, ac
 		address := evmcmn.BytesToAddress(addr.Bytes())
 		stateDB.CreateAccount(address)
 		stateDB.SetBalance(address, accounts[i].Balance)
-		stateDB.SetNonce(address, accounts[i].Nonce)
+		//stateDB.SetNonce(address, accounts[i].Nonce)
 	}
 	_, transitions := url.Export(false)
 	return transitions
