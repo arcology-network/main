@@ -116,12 +116,40 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	}
 
 	m.CheckPoint("start makeBlock")
+	m.AddLog(log.LogLevel_Info, "hashes", zap.String("Root", fmt.Sprintf("%x", accthash.Bytes())), zap.String("rcpthash", fmt.Sprintf("%x", rcpthash.Bytes())), zap.String("txhash", fmt.Sprintf("%x", txhash.Bytes())))
 
+	header, block, err := CreateBlock(parentinfo, height, timestamp, coinbase, accthash, gasused, txhash, rcpthash, txSelected)
+	if err != nil {
+		m.AddLog(log.LogLevel_Error, "block header eccode err", zap.String("err", err.Error()))
+		return err
+	}
+
+	// save cache root and header hash
+	currentinfo := &types.ParentInfo{
+		ParentHash: header.Hash(),
+		ParentRoot: accthash,
+	}
+
+	var na int
+	intf.Router.Call("transactionalstore", "AddData", &transactional.AddDataRequest{
+		Data:        currentinfo,
+		RecoverFunc: "parentinfo",
+	}, &na)
+
+	m.MsgBroker.Send(actor.MsgAppHash, block.Hash())
+	m.MsgBroker.Send(actor.MsgPendingBlock, block)
+	m.MsgBroker.Send(actor.MsgParentInfo, currentinfo)
+	m.MsgBroker.Send(actor.MsgLocalParentInfo, currentinfo)
+	m.CheckPoint("send appHash")
+	return nil
+}
+
+func CreateBlock(parentinfo *types.ParentInfo, height uint64, timestamp *big.Int, coinbase ethCommon.Address, accthash ethCommon.Hash, gasused uint64, txhash ethCommon.Hash, rcpthash ethCommon.Hash, txSelected [][]byte) (*ethTypes.Header, *types.MonacoBlock, error) {
 	header := &ethTypes.Header{
 		ParentHash: parentinfo.ParentHash,
 		Number:     big.NewInt(common.Uint64ToInt64(height)),
 		GasLimit:   math.MaxUint32,
-		//Extra:      w.extra,
+
 		Time:        timestamp,
 		Difficulty:  big.NewInt(1),
 		Coinbase:    coinbase,
@@ -131,18 +159,9 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 		ReceiptHash: rcpthash,
 	}
 
-	m.AddLog(log.LogLevel_Info, "hashes", zap.String("Root", fmt.Sprintf("%x", accthash.Bytes())), zap.String("rcpthash", fmt.Sprintf("%x", rcpthash.Bytes())), zap.String("txhash", fmt.Sprintf("%x", txhash.Bytes())))
-	//save cache root and header hash
-	currentinfo := &types.ParentInfo{
-		ParentHash: header.Hash(),
-		ParentRoot: accthash,
-	}
-
-	//*******************************make block*******************************
 	ethHeader, err := ethRlp.EncodeToBytes(&header)
 	if err != nil {
-		m.AddLog(log.LogLevel_Error, "block header eccode err", zap.String("err", err.Error()))
-		return err
+		return nil, nil, err
 	}
 
 	headers := [][]byte{}
@@ -158,17 +177,5 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 		Headers: headers,
 		Txs:     txSelected,
 	}
-
-	var na int
-	intf.Router.Call("transactionalstore", "AddData", &transactional.AddDataRequest{
-		Data:        currentinfo,
-		RecoverFunc: "parentinfo",
-	}, &na)
-
-	m.MsgBroker.Send(actor.MsgAppHash, block.Hash())
-	m.MsgBroker.Send(actor.MsgPendingBlock, block)
-	m.MsgBroker.Send(actor.MsgParentInfo, currentinfo)
-	m.MsgBroker.Send(actor.MsgLocalParentInfo, currentinfo)
-	m.CheckPoint("send appHash")
-	return nil
+	return header, block, nil
 }

@@ -1,14 +1,23 @@
 package pool
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"math"
+	"sync"
 
 	ethCommon "github.com/arcology-network/3rd-party/eth/common"
+	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
+	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/component-lib/ethrpc"
 	"github.com/arcology-network/component-lib/log"
 	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
+	evmCommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/common/hexutil"
+	evmtypes "github.com/arcology-network/evm/core/types"
 	"go.uber.org/zap"
 )
 
@@ -29,13 +38,27 @@ const (
 	poolStateCherryPick
 )
 
+var (
+	rpcInstance actor.IWorkerEx
+	initRpcOnce sync.Once
+)
+
 // return a Subscriber struct
 func NewAggrSelector(concurrency int, groupid string) actor.IWorkerEx {
-	agg := AggrSelector{
-		state: poolStateClean,
-	}
-	agg.Set(concurrency, groupid)
-	return &agg
+	// agg := AggrSelector{
+	// 	state: poolStateClean,
+	// }
+	// agg.Set(concurrency, groupid)
+	// return &agg
+
+	initRpcOnce.Do(func() {
+		rpcInstance = &AggrSelector{
+			state: poolStateClean,
+		}
+		rpcInstance.(*AggrSelector).Set(concurrency, groupid)
+	})
+
+	return rpcInstance
 }
 
 func (a *AggrSelector) Inputs() ([]string, bool) {
@@ -169,4 +192,45 @@ func (a *AggrSelector) Height() uint64 {
 		return math.MaxUint64
 	}
 	return a.height
+}
+
+func (a *AggrSelector) Query(ctx context.Context, request *types.QueryRequest, response *types.QueryResult) error {
+	switch request.QueryType {
+	case types.QueryType_Transaction:
+		hash := request.Data.(evmCommon.Hash)
+		st := a.pool.QueryByHash(ethCommon.BytesToHash(hash.Bytes()))
+		if st == nil {
+			response.Data = nil
+			return errors.New("hash not found")
+		}
+		txReal := st.TxRawData[1:]
+		otx := new(ethTypes.Transaction)
+		if err := ethRlp.DecodeBytes(txReal, otx); err != nil {
+			return errors.New("tx decode err")
+		}
+		// transactionIndex := uint64(0)
+		v, s, r := otx.RawSignatureValues()
+		msg := st.Native
+		transaction := ethrpc.RPCTransaction{
+			// BlockHash:        ethCommon.Hash{},
+			// BlockNumber:      big.NewInt(0),
+			// TransactionIndex: &transactionIndex,
+
+			Type:     hexutil.Uint64(evmtypes.LegacyTxType),
+			From:     evmCommon.Address(msg.From()),
+			Gas:      hexutil.Uint64(otx.Gas()),
+			GasPrice: (*hexutil.Big)(otx.GasPrice()),
+			Hash:     hash,
+			Input:    hexutil.Bytes(otx.Data()),
+			Nonce:    hexutil.Uint64(otx.Nonce()),
+			To:       (*evmCommon.Address)(msg.To()),
+			Value:    (*hexutil.Big)(otx.Value()),
+			V:        (*hexutil.Big)(v),
+			R:        (*hexutil.Big)(r),
+			S:        (*hexutil.Big)(s),
+		}
+
+		response.Data = &transaction
+	}
+	return nil
 }

@@ -24,7 +24,7 @@ replace github.com/deliveroo/jsonrpc-go => github.com/cody-yang/jsonrpc-go v1.0.
 
 require (
 	github.com/arcology-network/common-lib v1.7.1
-	github.com/arcology-network/component-lib v1.7.1
+	github.com/arcology-network/component-lib v1.7.2-0.20230110032245-686a7ff66f7f
 	github.com/arcology-network/concurrentlib v1.7.1 // indirect
 	github.com/arcology-network/concurrenturl v1.7.1
 	github.com/arcology-network/urlarbitrator-engine v1.7.1

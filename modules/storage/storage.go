@@ -20,6 +20,7 @@ import (
 	"github.com/arcology-network/component-lib/log"
 	evm "github.com/arcology-network/evm"
 	evmCommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/common/hexutil"
 	evmTypes "github.com/arcology-network/evm/core/types"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	"github.com/prometheus/client_golang/prometheus"
@@ -574,24 +575,26 @@ func (rs *Storage) getTransaction(height uint64, idx int) (*ethrpc.RPCTransactio
 	if err != nil {
 		return nil, err
 	}
-	transactionIndex := uint64(receipt.TransactionIndex)
 	v, s, r := tx.RawSignatureValues()
+	blockHash := evmCommon.Hash(receipt.BlockHash)
+	transactionindex := hexutil.Uint64(uint64(receipt.TransactionIndex))
 	return &ethrpc.RPCTransaction{
-		BlockHash:        evmCommon.Hash(receipt.BlockHash),
-		BlockNumber:      receipt.BlockNumber,
-		From:             evmCommon.Address(msg.From()),
-		Gas:              receipt.GasUsed,
-		GasPrice:         tx.GasPrice(),
-		Hash:             evmCommon.Hash(receipt.TxHash),
-		Input:            msg.Data(),
-		Nonce:            tx.Nonce(),
-		To:               (*evmCommon.Address)(msg.To()),
-		TransactionIndex: &transactionIndex,
-		Value:            msg.Value(),
-		Type:             uint64(receipt.Type),
-		V:                v,
-		S:                s,
-		R:                r,
+		BlockHash:        &blockHash,
+		BlockNumber:      (*hexutil.Big)(receipt.BlockNumber),
+		TransactionIndex: &transactionindex,
+
+		Type:     hexutil.Uint64(receipt.Type),
+		From:     evmCommon.Address(msg.From()),
+		Gas:      hexutil.Uint64(receipt.GasUsed),
+		GasPrice: (*hexutil.Big)(tx.GasPrice()),
+		Hash:     evmCommon.Hash(receipt.TxHash),
+		Input:    hexutil.Bytes(tx.Data()),
+		Nonce:    hexutil.Uint64(tx.Nonce()),
+		To:       (*evmCommon.Address)(msg.To()),
+		Value:    (*hexutil.Big)(tx.Value()),
+		V:        (*hexutil.Big)(v),
+		R:        (*hexutil.Big)(r),
+		S:        (*hexutil.Big)(s),
 	}, nil
 }
 func (rs *Storage) getQueryHeight(number int64) uint64 {

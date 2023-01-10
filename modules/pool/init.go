@@ -3,6 +3,7 @@ package pool
 import (
 	"github.com/arcology-network/component-lib/actor"
 	aggr "github.com/arcology-network/component-lib/aggregator/v3"
+	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/storage"
 )
 
@@ -20,5 +21,9 @@ func init() {
 			actor.MsgBlockEnd,
 			&aggr.EuResultOperation{},
 		)
+	})
+
+	intf.Factory.Register("pool", func(concurrency int, groupId string) interface{} {
+		return NewAggrSelector(concurrency, groupId)
 	})
 }

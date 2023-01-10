@@ -14,33 +14,16 @@ import (
 	"github.com/arcology-network/component-lib/ethrpc"
 	eth "github.com/arcology-network/evm"
 	ethcmn "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/common/hexutil"
 	ethflt "github.com/arcology-network/evm/eth/filters"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
+	jsonrpc "github.com/deliveroo/jsonrpc-go"
 )
 
-func ToTransactionResponse(tx *ethrpc.RPCTransaction, chainid uint64) map[string]string {
-	tostr := "0x"
-	if tx.To != nil {
-		tostr = tx.To.Hex()
-	}
-	return map[string]string{
-		"blockHash":        tx.BlockHash.Hex(),
-		"blockNumber":      fmt.Sprintf("0x%x", tx.BlockNumber.Bytes()),
-		"from":             tx.From.Hex(),
-		"gas":              NumberToHex(tx.Gas),
-		"gasPrice":         NumberToHex(tx.GasPrice),
-		"hash":             tx.Hash.Hex(),
-		"input":            fmt.Sprintf("0x%x", tx.Input),
-		"nonce":            NumberToHex(tx.Nonce),
-		"to":               tostr,
-		"transactionIndex": NumberToHex(*tx.TransactionIndex),
-		"value":            NumberToHex(tx.Value),
-		"type":             NumberToHex(tx.Type),
-		"chainId":          NumberToHex(chainid),
-		"v":                fmt.Sprintf("0x%x", tx.V.Bytes()),
-		"r":                fmt.Sprintf("0x%x", tx.R.Bytes()),
-		"s":                fmt.Sprintf("0x%x", tx.S.Bytes()),
-	}
+
+func ToTransactionResponse(tx *ethrpc.RPCTransaction, chainid uint64) interface{} { //} map[string]string {
+	tx.ChainID = (*hexutil.Big)(big.NewInt(0).SetUint64(chainid))
+	return tx
 }
 func ToBlockIndex(v interface{}) (int, error) {
 	if str, ok := v.(string); !ok {
@@ -199,9 +182,34 @@ type SendTxArgs struct {
 }
 
 func ToSendTxArgs(v interface{}) (SendTxArgs, error) {
-	callMsg, err := ToCallMsg(v, false)
+	callMsg, err := ToCallMsg(v, true)
 	if err != nil {
 		return SendTxArgs{}, err
+	}
+	nonce := uint64(0)
+
+	if noncestr, ok := v.(map[string]interface{})["nonce"]; ok {
+		if str, ok := noncestr.(string); !ok {
+			return SendTxArgs{}, errors.New("unexpected data type given in nonce field")
+		} else {
+			if str[:2] == "0x" {
+				str = str[2:]
+			}
+			nonce, err = strconv.ParseUint(str, 16, 0)
+			if err != nil {
+				return SendTxArgs{}, errors.New("invalid characters included in gas field")
+			}
+		}
+	} else {
+		number, _ := ToBlockNumber("latest")
+		nonce, err = backend.GetTransactionCount(callMsg.From, number)
+		if err != nil {
+			return SendTxArgs{}, jsonrpc.InternalError(err)
+		}
+	}
+
+	if callMsg.Value == nil {
+		callMsg.Value = big.NewInt(0)
 	}
 
 	sendTxArgs := SendTxArgs{
@@ -210,21 +218,9 @@ func ToSendTxArgs(v interface{}) (SendTxArgs, error) {
 		GasPrice: callMsg.GasPrice,
 		Value:    callMsg.Value,
 		Data:     callMsg.Data,
+		Nonce:    nonce,
 	}
-	if nonce, ok := v.(map[string]interface{})["nonce"]; ok {
-		if str, ok := nonce.(string); !ok {
-			return SendTxArgs{}, errors.New("unexpected data type given in nonce field")
-		} else {
-			if str[:2] == "0x" {
-				str = str[2:]
-			}
-			nonce, err := strconv.ParseUint(str, 16, 0)
-			if err != nil {
-				return SendTxArgs{}, errors.New("invalid characters included in gas field")
-			}
-			sendTxArgs.Nonce = nonce
-		}
-	}
+
 	return sendTxArgs, nil
 }
 func ToID(v interface{}) (internal.ID, error) {

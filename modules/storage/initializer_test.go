@@ -47,7 +47,7 @@ func loadGenesisAccounts(filename string) map[ethcmn.Address]*cmntyp.Account {
 		}
 
 		accounts[ethcmn.HexToAddress(segments[1])] = &cmntyp.Account{
-			Nonce:   1,
+			Nonce:   0,
 			Balance: balance,
 		}
 	}
