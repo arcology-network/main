@@ -123,6 +123,8 @@ func parseBlock(block *ethrpc.RPCBlock) interface{} {
 		"receiptsRoot":     header.ReceiptHash,
 		"totalDifficulty":  (*hexutil.Big)(header.Difficulty),
 		"transactions":     transactions,
+		"totalDifficulty":  "0x0",
+		"uncles":           uncles,
 	}
 }
 
@@ -635,7 +637,7 @@ func startJsonRpc() {
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
 		return func(ctx context.Context, params interface{}) (interface{}, error) {
 			// method := jsonrpc.MethodFromContext(ctx)
-			// fmt.Printf(">>>>>>>>>>>>>>*****method: %v \t params:%v \n", method, params)
+			// fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
 			return next(ctx, params)
 		}
 	})
