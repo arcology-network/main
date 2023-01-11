@@ -4,9 +4,11 @@ import (
 	"context"
 	"encoding/hex"
 	"fmt"
+	"log"
 	"math"
 	"math/big"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -121,8 +123,6 @@ func parseBlock(block *ethrpc.RPCBlock) interface{} {
 		"receiptsRoot":     header.ReceiptHash,
 		"totalDifficulty":  (*hexutil.Big)(header.Difficulty),
 		"transactions":     transactions,
-		"totalDifficulty":  "0x0",
-		"uncles":           uncles,
 	}
 }
 
@@ -623,13 +623,13 @@ func startJsonRpc() {
 	}
 	privateKeys := LoadKeys(options.KeyFile)
 
-	// logFile, err := os.OpenFile("./rpc.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	// if err != nil {
-	// 	fmt.Println("open log file failed, err:", err)
-	// 	return
-	// }
-	// log.SetOutput(logFile)
-	// log.SetFlags(log.Lmicroseconds | log.Ldate)
+	logFile, err := os.OpenFile("./rpc.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("open log file failed, err:", err)
+		return
+	}
+	log.SetOutput(logFile)
+	log.SetFlags(log.Lmicroseconds | log.Ldate)
 
 	server := jsonrpc.New()
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
