@@ -236,18 +236,24 @@ func ToFilter(v interface{}) (eth.FilterQuery, error) {
 		return eth.FilterQuery{}, errors.New("unexpected data type given")
 	} else {
 		if v, ok := m["fromBlock"]; ok {
-			from, err := strconv.ParseInt(v.(string), 10, 64)
-			if err != nil {
-				return eth.FilterQuery{}, err
+			from := v.(string)
+			if strings.Index(from, "0x") != 0 {
+				from, err := strconv.ParseInt(v.(string), 10, 64)
+				if err != nil {
+					return eth.FilterQuery{}, err
+				}
+				m["fromBlock"] = fmt.Sprintf("0x%x", from)
 			}
-			m["fromBlock"] = fmt.Sprintf("0x%x", from)
 		}
 		if v, ok := m["toBlock"]; ok {
-			to, err := strconv.ParseInt(v.(string), 10, 64)
-			if err != nil {
-				return eth.FilterQuery{}, err
+			to := v.(string)
+			if strings.Index(to, "0x") != 0 {
+				to, err := strconv.ParseInt(v.(string), 10, 64)
+				if err != nil {
+					return eth.FilterQuery{}, err
+				}
+				m["toBlock"] = fmt.Sprintf("0x%x", to)
 			}
-			m["toBlock"] = fmt.Sprintf("0x%x", to)
 		}
 		bytes, _ := json.Marshal(m)
 		var filter ethflt.FilterCriteria
