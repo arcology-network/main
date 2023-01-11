@@ -123,8 +123,6 @@ func parseBlock(block *ethrpc.RPCBlock) interface{} {
 		"receiptsRoot":     header.ReceiptHash,
 		"totalDifficulty":  (*hexutil.Big)(header.Difficulty),
 		"transactions":     transactions,
-		"totalDifficulty":  "0x0",
-		"uncles":           uncles,
 	}
 }
 
