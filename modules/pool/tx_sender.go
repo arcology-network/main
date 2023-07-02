@@ -24,22 +24,22 @@ func NewTxSender(nonce uint64, obsoleteTime uint64) *TxSender {
 func (s *TxSender) Add(txs []*cmntyp.StandardMessage, stat *TxSourceStatistics, height uint64) (replaced []*cmntyp.StandardMessage) {
 	s.LatestHeight = height
 	for i, tx := range txs {
-		if tx.Native.Nonce() < s.Nonce {
+		if tx.Native.Nonce < s.Nonce {
 			// Do not insert this transaction into Pool's TxByHash.
 			txs[i] = nil
 			stat.NumLowNonce++
 			continue
 		}
 
-		if oldTx, ok := s.TxByNonce[tx.Native.Nonce()]; ok {
-			if tx.Native.GasPrice().Cmp(oldTx.Native.GasPrice()) > 0 {
+		if oldTx, ok := s.TxByNonce[tx.Native.Nonce]; ok {
+			if tx.Native.GasPrice.Cmp(oldTx.Native.GasPrice) > 0 {
 				// Remove the old transaction from Pool's TxByHash.
-				replaced = append(replaced, s.TxByNonce[tx.Native.Nonce()])
-				s.TxByNonce[tx.Native.Nonce()] = tx
+				replaced = append(replaced, s.TxByNonce[tx.Native.Nonce])
+				s.TxByNonce[tx.Native.Nonce] = tx
 				stat.NumValid++
 			}
 		} else {
-			s.TxByNonce[tx.Native.Nonce()] = tx
+			s.TxByNonce[tx.Native.Nonce] = tx
 			stat.NumValid++
 		}
 	}

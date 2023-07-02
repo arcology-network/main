@@ -7,16 +7,17 @@ import (
 	"math/big"
 	"testing"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
-	ethtyp "github.com/arcology-network/3rd-party/eth/types"
 	cstore "github.com/arcology-network/common-lib/cachedstorage"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	ccurl "github.com/arcology-network/concurrenturl/v2"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
-	urltyp "github.com/arcology-network/concurrenturl/v2/type"
-	"github.com/arcology-network/concurrenturl/v2/type/commutative"
+	ccurl "github.com/arcology-network/concurrenturl"
+	"github.com/arcology-network/concurrenturl/commutative"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	ccdb "github.com/arcology-network/concurrenturl/storage"
+	evmCommon "github.com/arcology-network/evm/common"
 	evmcmn "github.com/arcology-network/evm/common"
-	adaptor "github.com/arcology-network/vm-adaptor/evm"
+	"github.com/arcology-network/evm/core"
+	ccapi "github.com/arcology-network/vm-adaptor/api"
+	"github.com/arcology-network/vm-adaptor/eth"
 )
 
 func TestPoolWithUncheckedTx(t *testing.T) {
@@ -34,7 +35,7 @@ func TestPoolWithUncheckedTx(t *testing.T) {
 		t.Fail()
 	}
 
-	clearList := make([]ethcmn.Hash, len(reaped))
+	clearList := make([]evmCommon.Hash, len(reaped))
 	for i := range reaped {
 		clearList[i] = reaped[i].TxHash
 	}
@@ -68,7 +69,7 @@ func TestPoolWithCheckedTx(t *testing.T) {
 		t.Fail()
 	}
 
-	clearList := make([]ethcmn.Hash, len(reaped))
+	clearList := make([]evmCommon.Hash, len(reaped))
 	for i := range reaped {
 		clearList[i] = reaped[i].TxHash
 	}
@@ -96,7 +97,7 @@ func TestPoolCherryPick(t *testing.T) {
 	p := NewPool(db, 100, false)
 	p.Add(batch1, "tester", 1)
 
-	clearList := make([]ethcmn.Hash, n*2)
+	clearList := make([]evmCommon.Hash, n*2)
 	for i := range batch1 {
 		clearList[i] = batch1[i].TxHash
 	}
@@ -139,7 +140,7 @@ func TestPoolAdd(t *testing.T) {
 		t.Fail()
 	}
 
-	clearList := make([]ethcmn.Hash, len(reaped))
+	clearList := make([]evmCommon.Hash, len(reaped))
 	for i := range reaped {
 		clearList[i] = reaped[i].TxHash
 	}
@@ -171,7 +172,7 @@ func TestPoolReapEmptyTxSender(t *testing.T) {
 		t.Fail()
 	}
 
-	clearList := make([]ethcmn.Hash, len(reaped))
+	clearList := make([]evmCommon.Hash, len(reaped))
 	for i := range reaped {
 		clearList[i] = reaped[i].TxHash
 	}
@@ -210,7 +211,7 @@ func TestPoolCleanObsolete(t *testing.T) {
 		t.Fail()
 	}
 
-	clearList := make([]ethcmn.Hash, len(reaped))
+	clearList := make([]evmCommon.Hash, len(reaped))
 	for i := range reaped {
 		clearList[i] = reaped[i].TxHash
 	}
@@ -236,66 +237,79 @@ func TestPoolCleanObsolete(t *testing.T) {
 	}
 }
 
-func initdb(path string) (urlcmn.DatastoreInterface, *cstore.ParaBadgerDB) {
-	badger := cstore.NewParaBadgerDB(path, urlcmn.Eth10AccountShard)
+func initdb(path string) (interfaces.Datastore, *cstore.ParaBadgerDB) {
+	badger := cstore.NewParaBadgerDB(path, ccurl.Eth10AccountShard)
 	db := cstore.NewDataStore(
 		nil,
 		cstore.NewCachePolicy(math.MaxUint64, 1),
 		badger,
-		func(v interface{}) []byte { return urltyp.ToBytes(v) },
-		func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+		// func(v interface{}) []byte { return urltyp.ToBytes(v) },
+		// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+		func(v interface{}) []byte {
+			return ccdb.Codec{}.Encode(v)
+		},
+		func(bytes []byte) interface{} {
+			return ccdb.Codec{}.Decode(bytes)
+		},
 	)
 
-	platform := urlcmn.NewPlatform()
-	meta, _ := commutative.NewMeta(platform.Eth10Account())
-	db.Inject(platform.Eth10Account(), meta)
+	platform := ccurl.NewPlatform()
+	// meta, _ := commutative.NewMeta(platform.Eth10Account())
+	db.Inject(platform.Eth10Account(), commutative.NewPath())
 	return db, badger
 }
 
-func initAccounts(db urlcmn.DatastoreInterface, from, to int) {
+func initAccounts(db interfaces.Datastore, from, to int) {
 	url := ccurl.NewConcurrentUrl(db)
-	stateDB := adaptor.NewStateDBV2(nil, db, url)
-	stateDB.Prepare(evmcmn.Hash{}, evmcmn.Hash{}, 0)
+
+	api := ccapi.NewAPI(url)
+	stateDB := eth.NewImplStateDB(api)
+
+	// stateDB := adaptor.NewStateDBV2(nil, db, url)
+	stateDB.PrepareFormer(evmcmn.Hash{}, evmcmn.Hash{}, 0)
 	for i := from; i < to; i++ {
 		address := evmcmn.BytesToAddress([]byte{byte(i / 256), byte(i % 256)})
 		stateDB.CreateAccount(address)
 		stateDB.SetBalance(address, new(big.Int).SetUint64(100))
 		stateDB.SetNonce(address, 0)
 	}
-	_, transitions := url.Export(false)
+	_, transitions := url.ExportAll()
 	url.Import(transitions)
-	url.PostImport()
-	url.Precommit([]uint32{0})
-	url.Postcommit()
+	url.Sort()
+	url.Finalize([]uint32{0})
+	url.WriteToDbBuffer()
 	url.SaveToDB()
 }
 
-func increaseNonce(db urlcmn.DatastoreInterface, txs []*cmntyp.StandardMessage) {
+func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardMessage) {
 	url := ccurl.NewConcurrentUrl(db)
-	stateDB := adaptor.NewStateDBV2(nil, db, url)
-	stateDB.Prepare(evmcmn.Hash{}, evmcmn.Hash{}, 0)
+	// stateDB := adaptor.NewStateDBV2(nil, db, url)
+	api := ccapi.NewAPI(url)
+	stateDB := eth.NewImplStateDB(api)
+	stateDB.PrepareFormer(evmcmn.Hash{}, evmcmn.Hash{}, 0)
 	for i := range txs {
-		address := evmcmn.BytesToAddress(txs[i].Native.From().Bytes())
+		address := evmcmn.BytesToAddress(txs[i].Native.From.Bytes())
 		stateDB.SetNonce(address, 0)
 	}
-	_, transitions := url.Export(false)
+	_, transitions := url.ExportAll()
 	url.Import(transitions)
-	url.PostImport()
-	url.Precommit([]uint32{0})
-	url.Postcommit()
+	url.Sort()
+	url.Finalize([]uint32{0})
+	url.WriteToDbBuffer()
 	url.SaveToDB()
 }
 
 func genUncheckedTxs(from, to int) []*cmntyp.StandardMessage {
 	txs := make([]*cmntyp.StandardMessage, to-from)
 	for i := from; i < to; i++ {
-		hash := ethcmn.BytesToHash([]byte{byte(i / 256), byte(i % 256)})
-		msg := ethtyp.NewMessage(
-			ethcmn.BytesToAddress([]byte{byte(i / 256), byte(i % 256)}),
+		hash := evmCommon.BytesToHash([]byte{byte(i / 256), byte(i % 256)})
+		msg := core.NewMessage(
+			evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)}),
 			nil,
 			0,
 			nil,
 			0,
+			nil,
 			nil,
 			nil,
 			false,
@@ -311,14 +325,15 @@ func genUncheckedTxs(from, to int) []*cmntyp.StandardMessage {
 func genCheckedTxs(from, to int, nonce uint64, gasPrice uint64) []*cmntyp.StandardMessage {
 	txs := make([]*cmntyp.StandardMessage, to-from)
 	for i := from; i < to; i++ {
-		hash := ethcmn.BytesToHash([]byte{byte(i / 256), byte(i % 256), byte(nonce), byte(gasPrice % 256)})
-		msg := ethtyp.NewMessage(
-			ethcmn.BytesToAddress([]byte{byte(i / 256), byte(i % 256)}),
+		hash := evmCommon.BytesToHash([]byte{byte(i / 256), byte(i % 256), byte(nonce), byte(gasPrice % 256)})
+		msg := core.NewMessage(
+			evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)}),
 			nil,
 			nonce,
 			nil,
 			0,
 			new(big.Int).SetUint64(gasPrice),
+			nil,
 			nil,
 			true,
 		)

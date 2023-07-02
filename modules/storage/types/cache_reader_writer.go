@@ -3,12 +3,13 @@ package types
 import (
 	"math/big"
 
-	urlcommon "github.com/arcology-network/concurrenturl/v2/common"
-	"github.com/arcology-network/concurrenturl/v2/type/commutative"
-	"github.com/arcology-network/concurrenturl/v2/type/noncommutative"
+	"github.com/arcology-network/concurrenturl/commutative"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	"github.com/arcology-network/concurrenturl/noncommutative"
+	"github.com/holiman/uint256"
 )
 
-func GetBalance(ds urlcommon.DatastoreInterface, addr string) (*big.Int, error) {
+func GetBalance(ds interfaces.Datastore, addr string) (*big.Int, error) {
 	key := getBalancePath(addr)
 	obj, err := ds.Retrive(key)
 	if err != nil {
@@ -18,52 +19,52 @@ func GetBalance(ds urlcommon.DatastoreInterface, addr string) (*big.Int, error) 
 		return big.NewInt(0), nil
 	}
 
-	return obj.(*commutative.Balance).Value().(*big.Int), nil
+	return obj.(*commutative.U256).Value().(*uint256.Int).ToBig(), nil
+
 }
-func GetNonce(ds urlcommon.DatastoreInterface, addr string) (int64, error) {
+func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
 	obj, err := ds.Retrive(getNoncePath(addr))
 	if err != nil {
 		return 0, err
 	}
-	//return obj.(urlcommon.TypeInterface).Value().(*commutative.Int64).Value().(int64), nil
-	return obj.(*commutative.Int64).Value().(int64), nil
+	return obj.(*commutative.Uint64).Value().(uint64), nil
 }
-func GetCode(ds urlcommon.DatastoreInterface, addr string) ([]byte, error) {
+func GetCode(ds interfaces.Datastore, addr string) ([]byte, error) {
 	obj, err := ds.Retrive(getCodePath(addr))
 	if err != nil {
 		return []byte{}, err
 	}
-	return obj.(*noncommutative.Bytes).Data(), nil
+	return obj.(*noncommutative.Bytes).Value().([]byte), nil
 }
 
-func GetStorage(ds urlcommon.DatastoreInterface, addr, key string) ([]byte, error) {
+func GetStorage(ds interfaces.Datastore, addr, key string) ([]byte, error) {
 	obj, err := ds.Retrive(getStorageKeyPath(addr, key))
 	if err != nil {
 		return []byte{}, err
 	}
-	return obj.(*noncommutative.Bytes).Data(), nil
+	return obj.(*noncommutative.Bytes).Value().([]byte), nil
 }
 
-func GetContainerArray(ds urlcommon.DatastoreInterface, addr, id string, idx int) ([]byte, error) {
+func GetContainerArray(ds interfaces.Datastore, addr, id string, idx int) ([]byte, error) {
 	obj, err := ds.Retrive(getContainerArrayPath(addr, id, idx))
 	if err != nil {
 		return []byte{}, err
 	}
-	return obj.(*noncommutative.Bytes).Data(), nil
+	return obj.(*noncommutative.Bytes).Value().([]byte), nil
 }
 
-func GetContainerMap(ds urlcommon.DatastoreInterface, addr, id string, key []byte) ([]byte, error) {
+func GetContainerMap(ds interfaces.Datastore, addr, id string, key []byte) ([]byte, error) {
 	obj, err := ds.Retrive(getContainerMapPath(addr, id, key))
 	if err != nil {
 		return []byte{}, err
 	}
-	return obj.(*noncommutative.Bytes).Data(), nil
+	return obj.(*noncommutative.Bytes).Value().([]byte), nil
 }
 
-func GetContainerQueue(ds urlcommon.DatastoreInterface, addr, id string, key []byte) ([]byte, error) {
+func GetContainerQueue(ds interfaces.Datastore, addr, id string, key []byte) ([]byte, error) {
 	obj, err := ds.Retrive(getContainerQueuePath(addr, id, key))
 	if err != nil {
 		return []byte{}, err
 	}
-	return obj.(*noncommutative.Bytes).Data(), nil
+	return obj.(*noncommutative.Bytes).Value().([]byte), nil
 }

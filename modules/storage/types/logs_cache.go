@@ -3,7 +3,6 @@ package types
 import (
 	"sync"
 
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/component-lib/ethrpc"
 	evm "github.com/arcology-network/evm"
 	evmCommon "github.com/arcology-network/evm/common"
@@ -63,7 +62,7 @@ func (lc *LogCaches) Query(filter evm.FilterQuery) []*evmTypes.Log {
 	return ethrpc.FilteLogs(logs, filter)
 }
 
-func (lc *LogCaches) Add(height uint64, receipts []*ethTypes.Receipt) {
+func (lc *LogCaches) Add(height uint64, receipts []*evmTypes.Receipt) {
 	lc.lock.Lock()
 	defer lc.lock.Unlock()
 	logs := ethrpc.ToLogs(receipts)

@@ -6,12 +6,12 @@ import (
 	"sync"
 	"time"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
-	cmncmn "github.com/arcology-network/common-lib/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/common"
+	types "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
 	engine "github.com/arcology-network/main/modules/scheduler/lib"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	"github.com/arcology-network/main/modules/storage"
@@ -29,11 +29,11 @@ type Scheduler struct {
 
 	// Data structures used in one block.
 	context       *processContext
-	transfers     []*cmntyp.StandardMessage
-	contractCalls []*cmntyp.StandardMessage
+	transfers     []*types.StandardMessage
+	contractCalls []*types.StandardMessage
 
 	// Data structures used all the time.
-	contractDict map[ethcmn.Address]struct{}
+	contractDict map[evmCommon.Address]struct{}
 }
 
 var (
@@ -47,9 +47,9 @@ func NewScheduler(concurrency int, groupId string) actor.IWorkerEx {
 		schd := &Scheduler{
 			schdEngine:    schdEngine,
 			context:       createProcessContext(),
-			transfers:     make([]*cmntyp.StandardMessage, 0, 50000),
-			contractCalls: make([]*cmntyp.StandardMessage, 0, 50000),
-			contractDict:  make(map[ethcmn.Address]struct{}),
+			transfers:     make([]*types.StandardMessage, 0, 50000),
+			contractCalls: make([]*types.StandardMessage, 0, 50000),
+			contractDict:  make(map[evmCommon.Address]struct{}),
 		}
 		schd.Set(concurrency, groupId)
 		schdInstance = schd
@@ -96,25 +96,25 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 			}
 
 			previous = state.Height
-			cmncmn.MergeMaps(schd.contractDict, cmncmn.SliceToDict(state.NewContracts))
+			common.MergeMaps(schd.contractDict, common.SliceToDict(state.NewContracts))
 
 			if len(state.ConflictionLefts) > 0 {
 				schd.schdEngine.Update(
-					cmncmn.ToReferencedSlice(state.ConflictionLefts),
-					cmncmn.ToReferencedSlice(state.ConflictionRights),
+					common.ToReferencedSlice(state.ConflictionLefts),
+					common.ToReferencedSlice(state.ConflictionRights),
 				)
 			}
 		}
 	})
 
-	var stdMsgs []*cmntyp.StandardMessage
+	var stdMsgs []*types.StandardMessage
 	for _, msg := range msgs {
 		switch msg.Name {
 		case actor.MsgBlockStart:
 			schd.context.timestamp = msg.Data.(*actor.BlockStart).Timestamp
 		case actor.MsgMessagersReaped:
 			schd.CheckPoint("received messagersReaped")
-			ssm := msg.Data.(cmntyp.SendingStandardMessages)
+			ssm := msg.Data.(types.SendingStandardMessages)
 			stdMsgs = ssm.ToMessages()
 
 			fmt.Printf("start new schedule height:%v\n", msg.Height)
@@ -136,8 +136,8 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 
 	// Send summarized results.
 	// State changes of Scheduler.
-	conflictL := make([]ethcmn.Address, 0, len(schd.context.conflicts))
-	conflictR := make([]ethcmn.Address, 0, len(schd.context.conflicts))
+	conflictL := make([]evmCommon.Address, 0, len(schd.context.conflicts))
+	conflictR := make([]evmCommon.Address, 0, len(schd.context.conflicts))
 	for cl, crs := range schd.context.conflicts {
 		for _, cr := range crs {
 			conflictL = append(conflictL, cl)
@@ -160,56 +160,56 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 			flags[i] = true
 		}
 	}
-	schd.MsgBroker.Send(actor.MsgInclusive, &cmntyp.InclusiveList{
+	schd.MsgBroker.Send(actor.MsgInclusive, &types.InclusiveList{
 		HashList:   schd.context.executed,
 		Successful: flags,
 	})
 	schd.CheckPoint("send inclusive")
 	// Spawned transactions.
-	schd.MsgBroker.Send(actor.MsgSpawnedRelations, schd.context.spawnedRelations)
+	// schd.MsgBroker.Send(actor.MsgSpawnedRelations, schd.context.spawnedRelations)
 	// Exec time.
 	execTime := time.Since(timeStart)
-	schd.MsgBroker.Send(actor.MsgExecTime, &cmntyp.StatisticalInformation{
+	schd.MsgBroker.Send(actor.MsgExecTime, &types.StatisticalInformation{
 		Key:      actor.MsgExecTime,
 		TimeUsed: execTime,
 		Value:    fmt.Sprintf("%v", execTime),
 	})
 
 	// Update states of scheduler.
-	cmncmn.MergeMaps(schd.contractDict, cmncmn.SliceToDict(schd.context.newContracts))
+	common.MergeMaps(schd.contractDict, common.SliceToDict(schd.context.newContracts))
 	if len(conflictL) > 0 {
 		schd.schdEngine.Update(
-			cmncmn.ToReferencedSlice(conflictL),
-			cmncmn.ToReferencedSlice(conflictR),
+			common.ToReferencedSlice(conflictL),
+			common.ToReferencedSlice(conflictR),
 		)
 		// Add all the conflicted addresses into contractDict,
 		// since we may miss some contract deployments.
-		cmncmn.MergeMaps(schd.contractDict, cmncmn.SliceToDict(conflictL))
-		cmncmn.MergeMaps(schd.contractDict, cmncmn.SliceToDict(conflictR))
+		common.MergeMaps(schd.contractDict, common.SliceToDict(conflictL))
+		common.MergeMaps(schd.contractDict, common.SliceToDict(conflictR))
 	}
 	return nil
 }
 
 func (schd *Scheduler) SetParallelism(
 	ctx context.Context,
-	request *cmntyp.ClusterConfig,
-	response *cmntyp.SetReply,
+	request *types.ClusterConfig,
+	response *types.SetReply,
 ) error {
 	schd.parallelism = request.Parallelism
 	return nil
 }
 
-func (schd *Scheduler) splitMessagesByType(msgs []*cmntyp.StandardMessage) {
+func (schd *Scheduler) splitMessagesByType(msgs []*types.StandardMessage) {
 	schd.transfers = schd.transfers[:0]
 	schd.contractCalls = schd.contractCalls[:0]
 
 	for _, msg := range msgs {
-		if msg.Native.To() == nil {
+		if msg.Native.To == nil {
 			schd.transfers = append(schd.transfers, msg)
 			continue
 		}
 
-		if _, ok := schd.contractDict[*msg.Native.To()]; ok {
+		if _, ok := schd.contractDict[*msg.Native.To]; ok {
 			schd.contractCalls = append(schd.contractCalls, msg)
 		} else {
 			schd.transfers = append(schd.transfers, msg)
@@ -229,7 +229,7 @@ func (schd *Scheduler) createGenerations() []*generation {
 			schd.context,
 			[]*batch{newBatch(
 				schd.context,
-				[]*cmntyp.ExecutingSequence{cmntyp.NewExecutingSequence(schd.transfers, true)},
+				[]*types.ExecutingSequence{types.NewExecutingSequence(schd.transfers, true)},
 			)},
 		))
 	}

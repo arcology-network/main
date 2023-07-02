@@ -4,8 +4,6 @@ import (
 	"math/big"
 	"time"
 
-	thdcmn "github.com/arcology-network/3rd-party/eth/common"
-	thdtyp "github.com/arcology-network/3rd-party/eth/types"
 	cmncmn "github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
@@ -13,6 +11,8 @@ import (
 	intf "github.com/arcology-network/component-lib/interface"
 	eth "github.com/arcology-network/evm"
 	ethcmn "github.com/arcology-network/evm/common"
+	evmCommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/core"
 	ethtyp "github.com/arcology-network/evm/core/types"
 	ethcrp "github.com/arcology-network/evm/crypto"
 	"github.com/arcology-network/evm/rlp"
@@ -161,19 +161,20 @@ func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*ethrpc.RPCTransaction,
 
 func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 	var response cmntyp.ExecutorResponses
-	var to *thdcmn.Address
+	var to *evmCommon.Address
 	if msg.To != nil {
-		addr := thdcmn.BytesToAddress(msg.To.Bytes())
+		addr := evmCommon.BytesToAddress(msg.To.Bytes())
 		to = &addr
 	}
-	message := thdtyp.NewMessage(
-		thdcmn.BytesToAddress(msg.From.Bytes()),
+	message := core.NewMessage(
+		evmCommon.BytesToAddress(msg.From.Bytes()),
 		to,
 		1,
 		msg.Value,
 		msg.Gas,
 		msg.GasPrice,
 		msg.Data,
+		nil,
 		false,
 	)
 	hash, _ := msgHash(&message)
@@ -195,8 +196,8 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 					Txids:      []uint32{0},
 				},
 			},
-			Precedings:    [][]*thdcmn.Hash{nil},
-			PrecedingHash: []thdcmn.Hash{{}},
+			Precedings:    [][]*evmCommon.Hash{nil},
+			PrecedingHash: []evmCommon.Hash{{}},
 			Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
 			Parallelism:   1,
 			Debug:         true,
@@ -296,8 +297,8 @@ func (m *Monaco) GetBlockTransactionCountByNumber(number int64) (int, error) {
 }
 
 type messageRLP struct {
-	To         *thdcmn.Address
-	From       thdcmn.Address
+	To         *evmCommon.Address
+	From       evmCommon.Address
 	Nonce      uint64
 	Amount     *big.Int
 	GasLimit   uint64
@@ -306,18 +307,18 @@ type messageRLP struct {
 	CheckNonce bool
 }
 
-func msgHash(msg *thdtyp.Message) (thdcmn.Hash, error) {
-	var hash thdcmn.Hash
+func msgHash(msg *core.Message) (evmCommon.Hash, error) {
+	var hash evmCommon.Hash
 	sha := sha3.NewLegacyKeccak256().(ethcrp.KeccakState)
 	rlp.Encode(sha, &messageRLP{
-		To:         msg.To(),
-		From:       msg.From(),
-		Nonce:      msg.Nonce(),
-		Amount:     msg.Value(),
-		GasLimit:   msg.Gas(),
-		GasPrice:   msg.GasPrice(),
-		Data:       msg.Data(),
-		CheckNonce: msg.CheckNonce(),
+		To:         msg.To,
+		From:       msg.From,
+		Nonce:      msg.Nonce,
+		Amount:     msg.Value,
+		GasLimit:   msg.GasLimit,
+		GasPrice:   msg.GasPrice,
+		Data:       msg.Data,
+		CheckNonce: !msg.SkipAccountChecks,
 	})
 	sha.Read(hash[:])
 	return hash, nil

@@ -5,8 +5,10 @@ import (
 
 	"github.com/arcology-network/common-lib/mempool"
 	ctypes "github.com/arcology-network/common-lib/types"
-	urltype "github.com/arcology-network/concurrenturl/v2/type"
-	"github.com/arcology-network/concurrenturl/v2/type/commutative"
+	"github.com/arcology-network/concurrenturl/commutative"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	"github.com/holiman/uint256"
 )
 
 type BalanceTransition struct {
@@ -39,25 +41,25 @@ func (per *ProcessedEuResult) Reset(hash string) {
 func Process(ars *ctypes.TxAccessRecords, perPool, uniPool *mempool.Mempool) *ProcessedEuResult {
 	per := perPool.Get().(*ProcessedEuResult)
 	per.Reset(ars.Hash)
-	univalues := urltype.Univalues{}
-	univalues = univalues.DecodeV2(ars.Accesses, uniPool.Get, nil)
+
+	univalues := univaluepk.UnivaluesDecode(ars.Accesses, uniPool.Get, nil)
 	for _, uv := range univalues {
-		univalue := uv.(*urltype.Univalue)
+		univalue := uv.(interfaces.Univalue)
 		per.Txs = append(per.Txs, univalue.GetTx())
 		per.Paths = append(per.Paths, *univalue.GetPath())
 		per.Reads = append(per.Reads, univalue.Reads())
 		per.Writes = append(per.Writes, univalue.Writes())
-		per.Composite = append(per.Composite, univalue.Composite())
+		per.Composite = append(per.Composite, true) //univalue.Composite())
 		switch v := univalue.Value().(type) {
-		case *commutative.Balance:
-			if v.GetDelta().(*big.Int).Sign() >= 0 {
+		case *commutative.U256:
+			if v.Delta().(*uint256.Int).ToBig().Sign() >= 0 {
 				continue
 			}
 			per.Transitions = append(per.Transitions, &BalanceTransition{
 				Path:   *univalue.GetPath(),
 				Tx:     univalue.GetTx(),
-				Origin: v.Value().(*big.Int),
-				Delta:  v.GetDelta().(*big.Int),
+				Origin: v.Value().(*uint256.Int).ToBig(),
+				Delta:  v.Delta().(*uint256.Int).ToBig(),
 			})
 		}
 	}

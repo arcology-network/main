@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/arcology-network/common-lib/mempool"
-	urltype "github.com/arcology-network/concurrenturl/v2/type"
+	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 )
 
 var ProcessedEuResultPool *mempool.Mempool
@@ -13,6 +13,6 @@ func init() {
 		return &ProcessedEuResult{}
 	})
 	UnivaluePool = mempool.NewMempool("univalue", func() interface{} {
-		return &urltype.Univalue{}
+		return &univaluepk.Univalue{}
 	})
 }

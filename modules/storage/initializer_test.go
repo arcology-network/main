@@ -11,8 +11,8 @@ import (
 	"strings"
 	"testing"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 func TestLoadFile(t *testing.T) {
@@ -20,7 +20,7 @@ func TestLoadFile(t *testing.T) {
 	loadGenesisAccounts(filename)
 }
 
-func loadGenesisAccounts(filename string) map[ethcmn.Address]*cmntyp.Account {
+func loadGenesisAccounts(filename string) map[evmCommon.Address]*types.Account {
 	file, err := os.OpenFile(filename, os.O_RDWR, 0666)
 	if err != nil {
 		panic(err)
@@ -28,7 +28,7 @@ func loadGenesisAccounts(filename string) map[ethcmn.Address]*cmntyp.Account {
 	defer file.Close()
 
 	buf := bufio.NewReader(file)
-	accounts := make(map[ethcmn.Address]*cmntyp.Account)
+	accounts := make(map[evmCommon.Address]*types.Account)
 	for {
 		line, err := buf.ReadString('\n')
 		if err != nil {
@@ -46,7 +46,7 @@ func loadGenesisAccounts(filename string) map[ethcmn.Address]*cmntyp.Account {
 			panic(fmt.Sprintf("invalid balance in genesis accounts: %v", segments[2]))
 		}
 
-		accounts[ethcmn.HexToAddress(segments[1])] = &cmntyp.Account{
+		accounts[evmCommon.HexToAddress(segments[1])] = &types.Account{
 			Nonce:   0,
 			Balance: balance,
 		}

@@ -3,9 +3,9 @@ package types
 import (
 	"fmt"
 
-	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/types"
+	evmTypes "github.com/arcology-network/evm/core/types"
+	evmRlp "github.com/arcology-network/evm/rlp"
 )
 
 type BlockCaches struct {
@@ -19,14 +19,14 @@ func NewBlockCaches(path string, cache int) *BlockCaches {
 		db:     NewRawFiles(path),
 	}
 }
-func (rc *BlockCaches) QueryTx(height uint64, idx int) *ethTypes.Transaction {
+func (rc *BlockCaches) QueryTx(height uint64, idx int) *evmTypes.Transaction {
 	block := rc.Query(height)
 	if block == nil || idx >= len(block.Txs) {
 		return nil
 	}
 	data := block.Txs[idx][1:]
-	otx := new(ethTypes.Transaction)
-	if err := ethRlp.DecodeBytes(data, otx); err != nil {
+	otx := new(evmTypes.Transaction)
+	if err := evmRlp.DecodeBytes(data, otx); err != nil {
 		return nil
 	}
 	return otx

@@ -8,20 +8,20 @@ import (
 	"fmt"
 	"sync"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/transactional"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/storage"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
+	ccurl "github.com/arcology-network/concurrenturl"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 var (
 	ssStore *StateSyncStore
 	initS3  sync.Once
-	urlRoot = urlcmn.NewPlatform().Eth10Account()
+	urlRoot = ccurl.NewPlatform().Eth10Account()
 )
 
 type KvDB interface {
@@ -50,7 +50,7 @@ type StateSyncStore struct {
 
 	// Bufferred data
 	urlUpdate *storage.UrlUpdate
-	hash      *ethcmn.Hash
+	hash      *evmCommon.Hash
 	schdState *SchdState
 }
 
@@ -89,7 +89,7 @@ func (store *StateSyncStore) Outputs() map[string]int {
 
 func (store *StateSyncStore) Config(params map[string]interface{}) {
 	store.sliceDB = transactional.NewSimpleFileDB(params["slice_db_root"].(string))
-	store.spDB = cachedstorage.NewParaBadgerDB(params["sync_point_root"].(string), urlcmn.Eth10AccountShard)
+	store.spDB = cachedstorage.NewParaBadgerDB(params["sync_point_root"].(string), ccurl.Eth10AccountShard)
 	store.spInterval = uint64(params["sync_point_interval"].(float64))
 }
 
@@ -122,7 +122,7 @@ func (store *StateSyncStore) OnMessageArrived(msgs []*actor.Message) error {
 			len(store.urlUpdate.EncodedValues),
 			keySize, valueSize)
 	case s3StateAcctHash:
-		store.hash = msg.Data.(*ethcmn.Hash)
+		store.hash = msg.Data.(*evmCommon.Hash)
 		store.state = s3StateParentInfo
 	case s3StateParentInfo:
 		parent := msg.Data.(*cmntyp.ParentInfo)
@@ -255,7 +255,7 @@ func (store *StateSyncStore) InitSyncPoint(ctx context.Context, to *uint64, sp *
 	if err := store.setSyncPoint(&cmntyp.SyncPoint{
 		From:       0,
 		To:         *to,
-		Slices:     make([]ethcmn.Hash, cmntyp.SlicePerSyncPoint),
+		Slices:     make([]evmCommon.Hash, cmntyp.SlicePerSyncPoint),
 		Parent:     &parent,
 		SchdStates: states[:end],
 	}); err != nil {
@@ -389,7 +389,7 @@ func (store *StateSyncStore) makeSyncPoint(from, to uint64) {
 	store.setSyncPoint(&cmntyp.SyncPoint{
 		From:       0,
 		To:         to,
-		Slices:     make([]ethcmn.Hash, cmntyp.SlicePerSyncPoint),
+		Slices:     make([]evmCommon.Hash, cmntyp.SlicePerSyncPoint),
 		Parent:     parent,
 		SchdStates: states[:end],
 	})

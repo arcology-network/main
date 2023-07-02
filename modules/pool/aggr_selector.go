@@ -7,17 +7,16 @@ import (
 	"math"
 	"sync"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/ethrpc"
 	"github.com/arcology-network/component-lib/log"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
+	"github.com/arcology-network/concurrenturl/interfaces"
 	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/evm/common/hexutil"
+	evmTypes "github.com/arcology-network/evm/core/types"
 	evmtypes "github.com/arcology-network/evm/core/types"
+	evmRlp "github.com/arcology-network/evm/rlp"
 	"go.uber.org/zap"
 )
 
@@ -96,7 +95,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 		switch msg.Name {
 		case actor.MsgNonceReady:
 			if a.pool == nil {
-				a.pool = NewPool(*(msg.Data.(*urlcmn.DatastoreInterface)), a.obsoleteTime, a.closeCheck)
+				a.pool = NewPool(*(msg.Data.(*interfaces.Datastore)), a.obsoleteTime, a.closeCheck)
 			} else {
 				a.pool.Clean(msg.Height)
 				a.AddLog(log.LogLevel_Info, fmt.Sprintf("Clear pool on height %d", msg.Height))
@@ -127,7 +126,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 			}
 		case actor.MsgReapinglist:
 			a.CheckPoint("pool received reapinglist")
-			list := make([]ethCommon.Hash, len(msg.Data.(*types.ReapingList).List))
+			list := make([]evmCommon.Hash, len(msg.Data.(*types.ReapingList).List))
 			for i := range list {
 				list[i] = *msg.Data.(*types.ReapingList).List[i]
 			}
@@ -145,7 +144,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 func (a *AggrSelector) send(reaped []*types.StandardMessage, isProposer bool, height uint64) {
 	a.AddLog(log.LogLevel_Debug, "reap end", zap.Int("reapeds", len(reaped)))
 	if isProposer {
-		hashes := make([]*ethCommon.Hash, len(reaped))
+		hashes := make([]*evmCommon.Hash, len(reaped))
 		for i := range hashes {
 			hashes[i] = &reaped[i].TxHash
 		}
@@ -198,32 +197,32 @@ func (a *AggrSelector) Query(ctx context.Context, request *types.QueryRequest, r
 	switch request.QueryType {
 	case types.QueryType_Transaction:
 		hash := request.Data.(evmCommon.Hash)
-		st := a.pool.QueryByHash(ethCommon.BytesToHash(hash.Bytes()))
+		st := a.pool.QueryByHash(evmCommon.BytesToHash(hash.Bytes()))
 		if st == nil {
 			response.Data = nil
 			return errors.New("hash not found")
 		}
 		txReal := st.TxRawData[1:]
-		otx := new(ethTypes.Transaction)
-		if err := ethRlp.DecodeBytes(txReal, otx); err != nil {
+		otx := new(evmTypes.Transaction)
+		if err := evmRlp.DecodeBytes(txReal, otx); err != nil {
 			return errors.New("tx decode err")
 		}
 		// transactionIndex := uint64(0)
 		v, s, r := otx.RawSignatureValues()
 		msg := st.Native
 		transaction := ethrpc.RPCTransaction{
-			// BlockHash:        ethCommon.Hash{},
+			// BlockHash:        evmCommon.Hash{},
 			// BlockNumber:      big.NewInt(0),
 			// TransactionIndex: &transactionIndex,
 
 			Type:     hexutil.Uint64(evmtypes.LegacyTxType),
-			From:     evmCommon.Address(msg.From()),
+			From:     evmCommon.Address(msg.From),
 			Gas:      hexutil.Uint64(otx.Gas()),
 			GasPrice: (*hexutil.Big)(otx.GasPrice()),
 			Hash:     hash,
 			Input:    hexutil.Bytes(otx.Data()),
 			Nonce:    hexutil.Uint64(otx.Nonce()),
-			To:       (*evmCommon.Address)(msg.To()),
+			To:       (*evmCommon.Address)(msg.To),
 			Value:    (*hexutil.Big)(otx.Value()),
 			V:        (*hexutil.Big)(v),
 			R:        (*hexutil.Big)(r),

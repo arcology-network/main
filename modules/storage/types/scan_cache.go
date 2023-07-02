@@ -7,11 +7,12 @@ import (
 	"strings"
 	"sync"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/types"
 	monacoConfig "github.com/arcology-network/component-lib/config"
+	evmCommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/core"
+	evmTypes "github.com/arcology-network/evm/core/types"
+	evmRlp "github.com/arcology-network/evm/rlp"
 )
 
 type Block struct {
@@ -69,15 +70,15 @@ func (sc *ScanCache) GetTabs(style int) uint64 {
 func (sc *ScanCache) SetTabs(style int, val uint64) {
 	sc.tabs[style] = val
 }
-func (sc *ScanCache) BlockReceived(block *types.MonacoBlock, hash []byte, receipts map[ethCommon.Hash]*ethTypes.Receipt) error {
+func (sc *ScanCache) BlockReceived(block *types.MonacoBlock, hash []byte, receipts map[evmCommon.Hash]*evmTypes.Receipt) error {
 	sc.lock.Lock()
 	defer sc.lock.Unlock()
 	tim := big.NewInt(0)
 
 	if len(block.Headers) > 0 {
 		data := block.Headers[0]
-		var header ethTypes.Header
-		err := ethRlp.DecodeBytes(data[1:], &header)
+		var header evmTypes.Header
+		err := evmRlp.DecodeBytes(data[1:], &header)
 
 		if err != nil {
 			return err
@@ -85,7 +86,7 @@ func (sc *ScanCache) BlockReceived(block *types.MonacoBlock, hash []byte, receip
 
 		b := Block{
 			Height:    block.Height,
-			Time:      header.Time,
+			Time:      big.NewInt(int64(header.Time)),
 			TxNumbers: len(block.Txs),
 			//Proposer:  formatHex(header.Coinbase.Hex()),
 			Hash:    fmt.Sprintf("0x%x", hash), // formatHex(fmt.Sprintf("0x%x", hash)),
@@ -95,7 +96,7 @@ func (sc *ScanCache) BlockReceived(block *types.MonacoBlock, hash []byte, receip
 		if len(sc.blocks) > sc.blockNums {
 			sc.blocks = sc.blocks[1:]
 		}
-		tim = header.Time
+		tim = big.NewInt(int64(header.Time))
 	}
 	blocktxnum := len(block.Txs)
 	rawtxs := block.Txs
@@ -121,26 +122,27 @@ func formatHex(hex string) string {
 	nhex := hex[:7] + "..." + hex[len(hex)-4:]
 	return strings.ToLower(nhex)
 }
-func (sc *ScanCache) GetTransaction(tx []byte, height uint64, time *big.Int, receipts map[ethCommon.Hash]*ethTypes.Receipt) (*Transaction, error) {
+func (sc *ScanCache) GetTransaction(tx []byte, height uint64, time *big.Int, receipts map[evmCommon.Hash]*evmTypes.Receipt) (*Transaction, error) {
 	txType := tx[0]
 	txReal := tx[1:]
 	switch txType {
 	case types.TxType_Eth:
-		otx := new(ethTypes.Transaction)
-		if err := ethRlp.DecodeBytes(txReal, otx); err != nil {
+		otx := new(evmTypes.Transaction)
+		if err := evmRlp.DecodeBytes(txReal, otx); err != nil {
 			return nil, err
 		}
-		txhash := ethCommon.RlpHash(otx)
-		msg, err := otx.AsMessage(ethTypes.NewEIP155Signer(sc.chainid))
+		txhash := types.RlpHash(otx)
+
+		msg, err := core.TransactionToMessage(otx, evmTypes.NewEIP155Signer(sc.chainid), nil)
 		if err != nil {
 			return nil, err
 		}
 		toStr := ""
-		if to := msg.To(); to != nil {
+		if to := msg.To; to != nil {
 			toStr = to.Hex() // formatHex(to.Hex())
 		}
 		status := "Failed"
-		if receipts[txhash].Status == ethTypes.ReceiptStatusSuccessful {
+		if receipts[txhash].Status == evmTypes.ReceiptStatusSuccessful {
 			status = "Success"
 		}
 
@@ -148,9 +150,9 @@ func (sc *ScanCache) GetTransaction(tx []byte, height uint64, time *big.Int, rec
 			TxHash:   txhash.Hex(), //formatHex(txhash.Hex()),
 			Height:   height,
 			Time:     time,
-			Sender:   msg.From().Hex(), //formatHex(msg.From().Hex()),
+			Sender:   msg.From.Hex(), //formatHex(msg.From().Hex()),
 			SendTo:   toStr,
-			Amount:   msg.Value(),
+			Amount:   msg.Value,
 			GasLimit: otx.Gas(),
 			GasPrice: otx.GasPrice(),
 			Status:   status,

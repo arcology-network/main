@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"testing"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 func TestExecTreeBasic(t *testing.T) {
@@ -13,30 +13,30 @@ func TestExecTreeBasic(t *testing.T) {
 	sequences := []*cmntyp.ExecutingSequence{
 		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
 			{
-				TxHash: ethcmn.BytesToHash([]byte{1}),
+				TxHash: evmCommon.BytesToHash([]byte{1}),
 			},
 		}, true),
 		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
 			{
-				TxHash: ethcmn.BytesToHash([]byte{2}),
+				TxHash: evmCommon.BytesToHash([]byte{2}),
 			},
 		}, true),
 		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
 			{
-				TxHash: ethcmn.BytesToHash([]byte{3}),
+				TxHash: evmCommon.BytesToHash([]byte{3}),
 			},
 			{
-				TxHash: ethcmn.BytesToHash([]byte{4}),
+				TxHash: evmCommon.BytesToHash([]byte{4}),
 			},
 		}, false),
 		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
 			{
-				TxHash: ethcmn.BytesToHash([]byte{5}),
+				TxHash: evmCommon.BytesToHash([]byte{5}),
 			},
 		}, true),
 		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
 			{
-				TxHash: ethcmn.BytesToHash([]byte{6}),
+				TxHash: evmCommon.BytesToHash([]byte{6}),
 			},
 		}, true),
 	}
@@ -47,23 +47,23 @@ func TestExecTreeBasic(t *testing.T) {
 		t.Errorf("num of branches, expected 5, got %d", len(branches))
 		return
 	}
-	branch := tree.getBranch(ethcmn.BytesToHash([]byte{1}))
-	if !bytes.Equal(branch.id.Bytes(), ethcmn.BytesToHash([]byte{1}).Bytes()) {
+	branch := tree.getBranch(evmCommon.BytesToHash([]byte{1}))
+	if !bytes.Equal(branch.id.Bytes(), evmCommon.BytesToHash([]byte{1}).Bytes()) {
 		t.Errorf("get parallel branch error.")
 		return
 	}
-	branch = tree.getBranch(ethcmn.BytesToHash([]byte{3}))
+	branch = tree.getBranch(evmCommon.BytesToHash([]byte{3}))
 	if !bytes.Equal(branch.id.Bytes(), sequences[2].SequenceId.Bytes()) {
 		t.Errorf("get sequential branch error.")
 		return
 	}
 
-	tree.updateSequentialBranches(map[ethcmn.Hash][]ethcmn.Hash{
+	tree.updateSequentialBranches(map[evmCommon.Hash][]evmCommon.Hash{
 		sequences[2].SequenceId: {
-			ethcmn.BytesToHash([]byte{3}),
-			ethcmn.BytesToHash([]byte{3, 1}),
-			ethcmn.BytesToHash([]byte{4}),
-			ethcmn.BytesToHash([]byte{4, 1}),
+			evmCommon.BytesToHash([]byte{3}),
+			evmCommon.BytesToHash([]byte{3, 1}),
+			evmCommon.BytesToHash([]byte{4}),
+			evmCommon.BytesToHash([]byte{4, 1}),
 		},
 	})
 	t.Log("after updateSequentialBranches.")
@@ -75,16 +75,16 @@ func TestExecTreeBasic(t *testing.T) {
 		t.Errorf("num of txs, expected 8, got %d", len(tree.txHash2BranchId))
 		return
 	}
-	branch = tree.getBranch(ethcmn.BytesToHash([]byte{3, 1}))
+	branch = tree.getBranch(evmCommon.BytesToHash([]byte{3, 1}))
 	if !bytes.Equal(branch.id.Bytes(), sequences[2].SequenceId.Bytes()) {
 		t.Errorf("get sequential branch error.")
 		return
 	}
 
-	froms := []ethcmn.Hash{ethcmn.BytesToHash([]byte{5}), ethcmn.BytesToHash([]byte{6})}
+	froms := []evmCommon.Hash{evmCommon.BytesToHash([]byte{5}), evmCommon.BytesToHash([]byte{6})}
 	tree.mergeBranches(
-		[]*ethcmn.Hash{&froms[0], &froms[1]},
-		ethcmn.BytesToHash([]byte{5, 6}),
+		[]*evmCommon.Hash{&froms[0], &froms[1]},
+		evmCommon.BytesToHash([]byte{5, 6}),
 		sequences[4].SequenceId,
 	)
 	t.Log("after mergeBranches.")
@@ -95,7 +95,7 @@ func TestExecTreeBasic(t *testing.T) {
 	if len(tree.txHash2BranchId) != 9 {
 		t.Errorf("num of txs, expected 9, got %d", len(tree.txHash2BranchId))
 	}
-	branch = tree.getBranch(ethcmn.BytesToHash([]byte{5}))
+	branch = tree.getBranch(evmCommon.BytesToHash([]byte{5}))
 	if !bytes.Equal(branch.id.Bytes(), sequences[4].SequenceId.Bytes()) ||
 		len(branch.layers) != 2 ||
 		len(branch.layers[0]) != 2 ||

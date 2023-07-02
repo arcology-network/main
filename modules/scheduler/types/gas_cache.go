@@ -4,12 +4,12 @@ import (
 	"sort"
 	"sync"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 type GasCache struct {
-	DictionaryHash map[ethCommon.Hash]uint64
+	DictionaryHash map[evmCommon.Hash]uint64
 	lock           sync.RWMutex
 }
 

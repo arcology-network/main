@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strings"
 
-	urlcommon "github.com/arcology-network/concurrenturl/v2/common"
+	"github.com/arcology-network/concurrenturl"
 )
 
 const (
@@ -15,33 +15,30 @@ const (
 var BASE_URL string
 
 func init() {
-	BASE_URL = urlcommon.NewPlatform().Eth10()
+	BASE_URL = concurrenturl.NewPlatform().Eth10()
 }
 
 func getBalancePath(addr string) string {
-	paths, _, _ := urlcommon.NewPlatform().Builtin(BASE_URL, addr)
-	return paths[3]
+	return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Balance)
 }
 func getNoncePath(addr string) string {
-	paths, _, _ := urlcommon.NewPlatform().Builtin(BASE_URL, addr)
-	return paths[2]
+	return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Nonce)
 }
 func getCodePath(addr string) string {
-	paths, _, _ := urlcommon.NewPlatform().Builtin(BASE_URL, addr)
-	return paths[1]
+	return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Code)
 }
 
 func getStorageKeyPath(addr, key string) string {
-	paths, _, _ := urlcommon.NewPlatform().Builtin(BASE_URL, addr)
+	// paths, _, _ := concurrenturl.NewPlatform().Builtin(BASE_URL, addr)
 	if !strings.HasPrefix(key, "0x") {
 		key = "0x" + key
 	}
-	return paths[7] + key
+	return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Native) + key
 }
 
 func getContainerValuePath(addr, id string, key interface{}) string {
-	paths, _, _ := urlcommon.NewPlatform().Builtin(BASE_URL, addr)
-	return fmt.Sprintf("%s%v", paths[6]+id+"/", key)
+	// paths, _, _ := concurrenturl.NewPlatform().Builtin(BASE_URL, addr)
+	return fmt.Sprintf("%s%v", concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Container)+id+"/", key)
 }
 func getContainerStoredKey(key []byte) string {
 	return "$" + hex.EncodeToString(key)

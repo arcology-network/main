@@ -5,19 +5,20 @@ import (
 	"fmt"
 	"math/big"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/core"
+	evmTypes "github.com/arcology-network/evm/core/types"
+	evmRlp "github.com/arcology-network/evm/rlp"
 	"go.uber.org/zap"
 )
 
 type CheckingTxsPack struct {
 	Txs        []*CheckingTx
 	Src        types.TxSource
-	TxHashChan chan ethCommon.Hash
+	TxHashChan chan evmCommon.Hash
 }
 
 type CheckingTx struct {
@@ -27,11 +28,11 @@ type CheckingTx struct {
 
 func (ctx *CheckingTx) UnSign(chainID *big.Int) error {
 	otx := ctx.Transaction.Native
-	msg, err := otx.AsMessage(ethTypes.NewEIP155Signer(chainID))
+	msg, err := core.TransactionToMessage(otx, evmTypes.NewEIP155Signer(chainID), nil)
 	if err != nil {
 		return err
 	}
-	ctx.Message.Native = &msg
+	ctx.Message.Native = msg
 	return nil
 }
 
@@ -40,11 +41,11 @@ func NewCheckingTxHash(tx []byte, txfrom byte) (*CheckingTx, error) {
 	txReal := tx[1:]
 	switch txType {
 	case types.TxType_Eth:
-		otx := new(ethTypes.Transaction)
-		if err := ethRlp.DecodeBytes(txReal, otx); err != nil {
+		otx := new(evmTypes.Transaction)
+		if err := evmRlp.DecodeBytes(txReal, otx); err != nil {
 			return nil, err
 		}
-		txhash := ethCommon.RlpHash(otx)
+		txhash := types.RlpHash(otx)
 
 		checkingTx := CheckingTx{
 			Message: types.StandardMessage{

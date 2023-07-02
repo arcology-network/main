@@ -5,8 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/component-lib/ethrpc"
 	evm "github.com/arcology-network/evm"
 	evmCommon "github.com/arcology-network/evm/common"
@@ -84,37 +82,37 @@ func TestFilter(t *testing.T) {
 }
 
 func TestCache(t *testing.T) {
-	hashes := []ethCommon.Hash{
-		ethCommon.HexToHash("65cebc3290e9d0b1b829c52ab29f56644da2ec2d40dffa8cc6cbb6f075b64868"),
-		ethCommon.HexToHash("046adbeb350177eb24729e06d588683c58fd4d47efe63c86c8481b1e31bef9eb"),
-		ethCommon.HexToHash("30f9990ac8ba7fc6524349f5d04e164ad4ea1332da03cb6120b8245bb3111271"),
-		ethCommon.HexToHash("ba0854ad05fe15aedda700358d9a1828476569d832cd27fe1e1dca3396129363"),
+	hashes := []evmCommon.Hash{
+		evmCommon.HexToHash("65cebc3290e9d0b1b829c52ab29f56644da2ec2d40dffa8cc6cbb6f075b64868"),
+		evmCommon.HexToHash("046adbeb350177eb24729e06d588683c58fd4d47efe63c86c8481b1e31bef9eb"),
+		evmCommon.HexToHash("30f9990ac8ba7fc6524349f5d04e164ad4ea1332da03cb6120b8245bb3111271"),
+		evmCommon.HexToHash("ba0854ad05fe15aedda700358d9a1828476569d832cd27fe1e1dca3396129363"),
 
-		ethCommon.HexToHash("19b77851c540b06f56082f1dae419c7a9935aabe93bbfb05fd5e098ea61ed0bc"),
-		ethCommon.HexToHash("809f675444f2123543c53dcdc2e1b0521639efe85d8f5bb8da07163ce1193ae8"),
-		ethCommon.HexToHash("d2f2f030885c01963b0ebf34e07b683bdea3645deb1741012d3ae8afd6fef122"),
-		ethCommon.HexToHash("6e922066483291034dbbf02caf27333f14b781f3ef33fb242b05dbaef50ea8fc"),
+		evmCommon.HexToHash("19b77851c540b06f56082f1dae419c7a9935aabe93bbfb05fd5e098ea61ed0bc"),
+		evmCommon.HexToHash("809f675444f2123543c53dcdc2e1b0521639efe85d8f5bb8da07163ce1193ae8"),
+		evmCommon.HexToHash("d2f2f030885c01963b0ebf34e07b683bdea3645deb1741012d3ae8afd6fef122"),
+		evmCommon.HexToHash("6e922066483291034dbbf02caf27333f14b781f3ef33fb242b05dbaef50ea8fc"),
 
-		ethCommon.HexToHash("5d5291e4d3b17905c7cea61458eec5b3014951715d8916088823ba99f7d27b31"),
-		ethCommon.HexToHash("ceadb0381fae28438b66787027611361bf734571e6c176dbb0d1ae23a9256b3c"),
-		ethCommon.HexToHash("1779d7cbac346c4dd4fe45b7230afe059c26259da4ccf4a3792e1640a180caac"),
-		ethCommon.HexToHash("a81271460d441189fc8bf152cd31cc9c65eaeea1bf7ec4a091d3908814549ff7"),
+		evmCommon.HexToHash("5d5291e4d3b17905c7cea61458eec5b3014951715d8916088823ba99f7d27b31"),
+		evmCommon.HexToHash("ceadb0381fae28438b66787027611361bf734571e6c176dbb0d1ae23a9256b3c"),
+		evmCommon.HexToHash("1779d7cbac346c4dd4fe45b7230afe059c26259da4ccf4a3792e1640a180caac"),
+		evmCommon.HexToHash("a81271460d441189fc8bf152cd31cc9c65eaeea1bf7ec4a091d3908814549ff7"),
 
-		ethCommon.HexToHash("8e7b805c11007230f11d1cad66e0a2ca6b0d992fa0a5a87158c4574b0192eec5"),
-		ethCommon.HexToHash("18a6df993d58d2de7134cf22a36af7de5d1481384281f1710e0c99bde3c5fe23"),
-		ethCommon.HexToHash("a33c7671a6a4d29f6aaf950a2ba0a810c8f01325dc39e0ba96a77061c155eca7"),
-		ethCommon.HexToHash("5f29535942e5ef712a6a09f011634bb077681ddc444c0f26b9e20f015c6edfa5"),
+		evmCommon.HexToHash("8e7b805c11007230f11d1cad66e0a2ca6b0d992fa0a5a87158c4574b0192eec5"),
+		evmCommon.HexToHash("18a6df993d58d2de7134cf22a36af7de5d1481384281f1710e0c99bde3c5fe23"),
+		evmCommon.HexToHash("a33c7671a6a4d29f6aaf950a2ba0a810c8f01325dc39e0ba96a77061c155eca7"),
+		evmCommon.HexToHash("5f29535942e5ef712a6a09f011634bb077681ddc444c0f26b9e20f015c6edfa5"),
 	}
-	addres := []ethCommon.Address{
-		ethCommon.HexToAddress("0xcb5223CED9dB576B666E1CB7936B7633B82898e0"),
-		ethCommon.HexToAddress("0x56D4271067BA9dE8739908DEc9b437D48953288a"),
-		ethCommon.HexToAddress("0xA5D87b9756185d498136cE7009523C43F6a6D8D1"),
-		ethCommon.HexToAddress("0x80d906d5a1d853EcB8ee1Ee0DDe362D8C182ddE3"),
+	addres := []evmCommon.Address{
+		evmCommon.HexToAddress("0xcb5223CED9dB576B666E1CB7936B7633B82898e0"),
+		evmCommon.HexToAddress("0x56D4271067BA9dE8739908DEc9b437D48953288a"),
+		evmCommon.HexToAddress("0xA5D87b9756185d498136cE7009523C43F6a6D8D1"),
+		evmCommon.HexToAddress("0x80d906d5a1d853EcB8ee1Ee0DDe362D8C182ddE3"),
 
-		ethCommon.HexToAddress("0x0F118c0979C4228c64e19f6339f81B72f27D1A6d"),
-		ethCommon.HexToAddress("0x313a5a5DB1D97Dfe98d8e411Ff732f8F5C391b55"),
-		ethCommon.HexToAddress("0x7E12b44DfC4a411BBD8FC969727b297B92Bf1F9d"),
-		ethCommon.HexToAddress("0x0f946C307D98104e8aC61129D631a36562901345"),
+		evmCommon.HexToAddress("0x0F118c0979C4228c64e19f6339f81B72f27D1A6d"),
+		evmCommon.HexToAddress("0x313a5a5DB1D97Dfe98d8e411Ff732f8F5C391b55"),
+		evmCommon.HexToAddress("0x7E12b44DfC4a411BBD8FC969727b297B92Bf1F9d"),
+		evmCommon.HexToAddress("0x0f946C307D98104e8aC61129D631a36562901345"),
 	}
 	evmlogs := []*evmTypes.Log{
 		&evmTypes.Log{
@@ -184,21 +182,21 @@ func TestCache(t *testing.T) {
 	}
 
 	logcache := NewLogCaches(2)
-	receipts := []*ethTypes.Receipt{
-		&ethTypes.Receipt{
-			BlockHash: ethCommon.BytesToHash(hashes[2].Bytes()),
-			Logs: []*ethTypes.Log{
-				&ethTypes.Log{
+	receipts := []*evmTypes.Receipt{
+		&evmTypes.Receipt{
+			BlockHash: evmCommon.BytesToHash(hashes[2].Bytes()),
+			Logs: []*evmTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[2],
 					Address:   addres[4],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[7], hashes[9],
 					},
 				},
-				&ethTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[2],
 					Address:   addres[4],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[8], hashes[3],
 					},
 				},
@@ -208,59 +206,59 @@ func TestCache(t *testing.T) {
 
 	logcache.Add(4, receipts)
 
-	receipts = []*ethTypes.Receipt{
-		&ethTypes.Receipt{
-			BlockHash: ethCommon.BytesToHash(hashes[0].Bytes()),
-			Logs: []*ethTypes.Log{
-				&ethTypes.Log{
+	receipts = []*evmTypes.Receipt{
+		&evmTypes.Receipt{
+			BlockHash: evmCommon.BytesToHash(hashes[0].Bytes()),
+			Logs: []*evmTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[0],
 					Address:   addres[0],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[1], hashes[2],
 					},
 				},
-				&ethTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[0],
 					Address:   addres[1],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[3], hashes[4],
 					},
 				},
 			},
 		},
-		&ethTypes.Receipt{
-			BlockHash: ethCommon.BytesToHash(hashes[0].Bytes()),
-			Logs: []*ethTypes.Log{
-				&ethTypes.Log{
+		&evmTypes.Receipt{
+			BlockHash: evmCommon.BytesToHash(hashes[0].Bytes()),
+			Logs: []*evmTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[0],
 					Address:   addres[2],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[5], hashes[6],
 					},
 				},
-				&ethTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[0],
 					Address:   addres[3],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[7], hashes[8],
 					},
 				},
 			},
 		},
-		&ethTypes.Receipt{
-			BlockHash: ethCommon.BytesToHash(hashes[0].Bytes()),
-			Logs: []*ethTypes.Log{
-				&ethTypes.Log{
+		&evmTypes.Receipt{
+			BlockHash: evmCommon.BytesToHash(hashes[0].Bytes()),
+			Logs: []*evmTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[0],
 					Address:   addres[4],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[9], hashes[10],
 					},
 				},
-				&ethTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[0],
 					Address:   addres[5],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[11], hashes[12],
 					},
 				},
@@ -344,21 +342,21 @@ func TestCache(t *testing.T) {
 		t.Error("blockhash address and topics query  Error")
 	}
 
-	receipts = []*ethTypes.Receipt{
-		&ethTypes.Receipt{
-			BlockHash: ethCommon.BytesToHash(hashes[1].Bytes()),
-			Logs: []*ethTypes.Log{
-				&ethTypes.Log{
+	receipts = []*evmTypes.Receipt{
+		&evmTypes.Receipt{
+			BlockHash: evmCommon.BytesToHash(hashes[1].Bytes()),
+			Logs: []*evmTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[1],
 					Address:   addres[3],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[11], hashes[12],
 					},
 				},
-				&ethTypes.Log{
+				&evmTypes.Log{
 					BlockHash: hashes[1],
 					Address:   addres[3],
-					Topics: []ethCommon.Hash{
+					Topics: []evmCommon.Hash{
 						hashes[13], hashes[14],
 					},
 				},

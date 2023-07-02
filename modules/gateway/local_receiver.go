@@ -4,7 +4,6 @@ import (
 	"context"
 	"sync"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
@@ -73,7 +72,7 @@ func (lr *LocalReceiver) SendRawTransaction(ctx context.Context, args *types.Raw
 			Txs: checkingtxs,
 			Src: types.NewTxSource(types.TxSourceLocal, "ethapi"),
 		},
-		TxHashChan: make(chan ethCommon.Hash, 1),
+		TxHashChan: make(chan evmCommon.Hash, 1),
 	}
 	lr.MsgBroker.Send(actor.MsgTxLocalsUnChecked, &txsPack)
 

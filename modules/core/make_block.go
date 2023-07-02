@@ -5,15 +5,15 @@ import (
 	"math"
 	"math/big"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/transactional"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
+	evmTypes "github.com/arcology-network/evm/core/types"
+	evmRlp "github.com/arcology-network/evm/rlp"
 	"go.uber.org/zap"
 )
 
@@ -54,10 +54,10 @@ func (m *MakeBlock) OnStart() {
 
 func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 
-	coinbase := ethCommon.Address{}
-	txhash := ethCommon.Hash{}
-	accthash := ethCommon.Hash{}
-	rcpthash := ethCommon.Hash{}
+	coinbase := evmCommon.Address{}
+	txhash := evmCommon.Hash{}
+	accthash := evmCommon.Hash{}
+	rcpthash := evmCommon.Hash{}
 	gasused := uint64(0)
 	txSelected := [][]byte{}
 	parentinfo := &types.ParentInfo{}
@@ -78,14 +78,14 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 			}
 			txSelected = datas.Data // v.Data.([][]byte)
 		case actor.MsgTxHash:
-			hash := v.Data.(*ethCommon.Hash)
+			hash := v.Data.(*evmCommon.Hash)
 			isnil, err := m.IsNil(hash, "txhash")
 			if isnil {
 				return err
 			}
 			txhash = *hash
 		case actor.MsgAcctHash:
-			hash := v.Data.(*ethCommon.Hash)
+			hash := v.Data.(*evmCommon.Hash)
 			isnil, err := m.IsNil(hash, "accthash")
 			if isnil {
 				return err
@@ -93,7 +93,7 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 			accthash = *hash
 			m.AddLog(log.LogLevel_Info, "received accthash", zap.String("accthash", fmt.Sprintf("%x", accthash)))
 		case actor.MsgRcptHash:
-			hash := v.Data.(*ethCommon.Hash)
+			hash := v.Data.(*evmCommon.Hash)
 			isnil, err := m.IsNil(hash, "rcpthash")
 			if isnil {
 				return err
@@ -144,13 +144,13 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func CreateBlock(parentinfo *types.ParentInfo, height uint64, timestamp *big.Int, coinbase ethCommon.Address, accthash ethCommon.Hash, gasused uint64, txhash ethCommon.Hash, rcpthash ethCommon.Hash, txSelected [][]byte) (*ethTypes.Header, *types.MonacoBlock, error) {
-	header := &ethTypes.Header{
+func CreateBlock(parentinfo *types.ParentInfo, height uint64, timestamp *big.Int, coinbase evmCommon.Address, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, txSelected [][]byte) (*evmTypes.Header, *types.MonacoBlock, error) {
+	header := &evmTypes.Header{
 		ParentHash: parentinfo.ParentHash,
 		Number:     big.NewInt(common.Uint64ToInt64(height)),
 		GasLimit:   math.MaxUint32,
 
-		Time:        timestamp,
+		Time:        timestamp.Uint64(),
 		Difficulty:  big.NewInt(1),
 		Coinbase:    coinbase,
 		Root:        accthash,
@@ -159,7 +159,7 @@ func CreateBlock(parentinfo *types.ParentInfo, height uint64, timestamp *big.Int
 		ReceiptHash: rcpthash,
 	}
 
-	ethHeader, err := ethRlp.EncodeToBytes(&header)
+	ethHeader, err := evmRlp.EncodeToBytes(&header)
 	if err != nil {
 		return nil, nil, err
 	}

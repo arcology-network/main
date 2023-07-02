@@ -10,8 +10,6 @@ import (
 	"sync"
 	"time"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	tmCommon "github.com/arcology-network/3rd-party/tm/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
@@ -19,11 +17,13 @@ import (
 	"github.com/arcology-network/consensus-engine/cmd/tendermint/commands"
 	"github.com/arcology-network/consensus-engine/config"
 	tmlog "github.com/arcology-network/consensus-engine/libs/log"
+	tmos "github.com/arcology-network/consensus-engine/libs/os"
 	"github.com/arcology-network/consensus-engine/monaco"
 	"github.com/arcology-network/consensus-engine/node"
 	"github.com/arcology-network/consensus-engine/p2p"
 	"github.com/arcology-network/consensus-engine/privval"
 	"github.com/arcology-network/consensus-engine/proxy"
+	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/libs/cli"
 	"go.uber.org/zap"
@@ -240,9 +240,9 @@ func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.T
 	txID := fmt.Sprintf("%d", height)
 	intf.Router.Call("transactionalstore", "BeginTransaction", &txID, &na)
 
-	reapHashlist := make([]*ethCommon.Hash, len(hashes))
+	reapHashlist := make([]*evmCommon.Hash, len(hashes))
 	for i, h := range hashes {
-		hash := ethCommon.BytesToHash(h)
+		hash := evmCommon.BytesToHash(h)
 		reapHashlist[i] = &hash
 	}
 	c.AddLog(log.LogLevel_Info, "start send reapinglist", zap.Int("reapinglist hashes length", len(reapHashlist)))
@@ -252,7 +252,7 @@ func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.T
 	}, uint64(height))
 	c.CheckPoint("send reapinglist")
 
-	coinbaseAddress := ethCommon.BytesToAddress(coinbase)
+	coinbaseAddress := evmCommon.BytesToAddress(coinbase)
 	multiResult := big.NewInt(0).Mul(big.NewInt(timestamp.Unix()), big.NewInt(c.rate))
 	blockstamp := big.NewInt(0).Add(big.NewInt(c.starter), multiResult)
 	c.MsgBroker.Send(actor.MsgExtBlockStart, &actor.BlockStart{
@@ -314,22 +314,23 @@ func (c *Consensus) startConsensus(backend monaco.BackendProxy, config *config.C
 	logname := "consensus.log"
 	rootDir := viper.GetString(cli.HomeFlag)
 	//create logger
-	if err := tmCommon.EnsureDir(path.Join(rootDir, "log"), 0777); err != nil {
-		tmCommon.PanicSanity(err.Error())
+	if err := tmos.EnsureDir(path.Join(rootDir, "log"), 0777); err != nil {
+		panic(err.Error())
+		// tmos.PanicSanity(err.Error())
 	}
 	logfile, err := os.OpenFile(path.Join(rootDir, "log", logname), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
-		tmCommon.PanicSanity(err.Error())
+		panic(err.Error())
 	}
 
 	// logname := "consensus.log"
 	// //create logger
-	// if err := tmCommon.EnsureDir(path.Join(c.rootDir, "log"), 0777); err != nil {
-	// 	tmCommon.PanicSanity(err.Error())
+	// if err := tmos.EnsureDir(path.Join(c.rootDir, "log"), 0777); err != nil {
+	// 	tmos.PanicSanity(err.Error())
 	// }
 	// logfile, err := os.OpenFile(path.Join(c.rootDir, "log", logname), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	// if err != nil {
-	// 	tmCommon.PanicSanity(err.Error())
+	// 	tmos.PanicSanity(err.Error())
 	// }
 
 	logger := tmlog.NewTMLogger(tmlog.NewSyncWriter(logfile))

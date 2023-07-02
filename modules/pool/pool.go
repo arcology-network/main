@@ -3,14 +3,15 @@ package pool
 import (
 	"fmt"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	cmncmn "github.com/arcology-network/common-lib/common"
-	ccmap "github.com/arcology-network/common-lib/concurrentcontainer/map"
+	ccmap "github.com/arcology-network/common-lib/container/map"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	url "github.com/arcology-network/concurrenturl/v2"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
-	evmcmn "github.com/arcology-network/evm/common"
-	adaptor "github.com/arcology-network/vm-adaptor/evm"
+	url "github.com/arcology-network/concurrenturl"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	evmCommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/core/vm"
+	ccapi "github.com/arcology-network/vm-adaptor/api"
+	"github.com/arcology-network/vm-adaptor/eth"
 )
 
 type Pool struct {
@@ -20,14 +21,18 @@ type Pool struct {
 	TxByHash     *ccmap.ConcurrentMap
 	TxUnchecked  *ccmap.ConcurrentMap
 	SourceStat   map[cmntyp.TxSource]*TxSourceStatistics
-	StateDB      adaptor.StateDB
+	StateDB      vm.StateDB
 
 	CherryPickResult []*cmntyp.StandardMessage
-	Waitings         map[ethcmn.Hash]int
+	Waitings         map[evmCommon.Hash]int
 	ClearList        []string
 }
 
-func NewPool(db urlcmn.DatastoreInterface, obsoleteTime uint64, closeCheck bool) *Pool {
+func NewPool(db interfaces.Datastore, obsoleteTime uint64, closeCheck bool) *Pool {
+
+	url := url.NewConcurrentUrl(db)
+	api := ccapi.NewAPI(url)
+
 	return &Pool{
 		ObsoleteTime: obsoleteTime,
 		CloseCheck:   closeCheck,
@@ -35,8 +40,9 @@ func NewPool(db urlcmn.DatastoreInterface, obsoleteTime uint64, closeCheck bool)
 		TxByHash:     ccmap.NewConcurrentMap(),
 		TxUnchecked:  ccmap.NewConcurrentMap(),
 		SourceStat:   make(map[cmntyp.TxSource]*TxSourceStatistics),
-		StateDB:      adaptor.NewStateDBV2(nil, db, url.NewConcurrentUrl(db)),
+		StateDB:      eth.NewImplStateDB(api), // adaptor.NewStateDBV2(nil, db, url.NewConcurrentUrl(db)),
 	}
+
 }
 
 func (p *Pool) Add(txs []*cmntyp.StandardMessage, src cmntyp.TxSource, height uint64) []*cmntyp.StandardMessage {
@@ -49,8 +55,8 @@ func (p *Pool) Add(txs []*cmntyp.StandardMessage, src cmntyp.TxSource, height ui
 	uncheckedHashes := make([]string, 0, len(txs))
 	uncheckedValues := make([]interface{}, 0, len(txs))
 	for i := range txs {
-		if txs[i].Native.CheckNonce() && !p.CloseCheck {
-			bySender[string(txs[i].Native.From().Bytes())] = append(bySender[string(txs[i].Native.From().Bytes())], txs[i])
+		if !txs[i].Native.SkipAccountChecks && !p.CloseCheck {
+			bySender[string(txs[i].Native.From.Bytes())] = append(bySender[string(txs[i].Native.From.Bytes())], txs[i])
 		} else {
 			uncheckedHashes = append(uncheckedHashes, string(txs[i].TxHash.Bytes()))
 			uncheckedValues = append(uncheckedValues, txs[i])
@@ -72,7 +78,7 @@ func (p *Pool) Add(txs []*cmntyp.StandardMessage, src cmntyp.TxSource, height ui
 	p.TxBySender.BatchUpdate(senders, updates, func(origin interface{}, index int, key string, value interface{}) interface{} {
 		var txSender *TxSender
 		if origin == nil {
-			txSender = NewTxSender(p.StateDB.GetNonce(evmcmn.BytesToAddress([]byte(key))), p.ObsoleteTime)
+			txSender = NewTxSender(p.StateDB.GetNonce(evmCommon.BytesToAddress([]byte(key))), p.ObsoleteTime)
 		} else {
 			txSender = origin.(*TxSender)
 		}
@@ -133,7 +139,7 @@ func (p *Pool) Reap(limit int) []*cmntyp.StandardMessage {
 	return results
 }
 
-func (p *Pool) QueryByHash(hash ethcmn.Hash) *cmntyp.StandardMessage {
+func (p *Pool) QueryByHash(hash evmCommon.Hash) *cmntyp.StandardMessage {
 	keys := make([]string, 1)
 	keys[0] = string(hash.Bytes())
 	txs := p.TxByHash.BatchGet(keys)
@@ -144,9 +150,9 @@ func (p *Pool) QueryByHash(hash ethcmn.Hash) *cmntyp.StandardMessage {
 	}
 }
 
-func (p *Pool) CherryPick(hashes []ethcmn.Hash) []*cmntyp.StandardMessage {
+func (p *Pool) CherryPick(hashes []evmCommon.Hash) []*cmntyp.StandardMessage {
 	p.CherryPickResult = make([]*cmntyp.StandardMessage, len(hashes))
-	p.Waitings = make(map[ethcmn.Hash]int)
+	p.Waitings = make(map[evmCommon.Hash]int)
 	keys := make([]string, len(hashes))
 	for i, hash := range hashes {
 		keys[i] = string(hash.Bytes())
@@ -174,7 +180,7 @@ func (p *Pool) CherryPick(hashes []ethcmn.Hash) []*cmntyp.StandardMessage {
 func (p *Pool) Clean(height uint64) {
 	shardedResults := p.TxBySender.Traverse(func(key string, value interface{}) (interface{}, interface{}) {
 		txSender := value.(*TxSender)
-		newSender, deleted := txSender.Clean(p.StateDB.GetNonce(evmcmn.BytesToAddress([]byte(key))), height)
+		newSender, deleted := txSender.Clean(p.StateDB.GetNonce(evmCommon.BytesToAddress([]byte(key))), height)
 		// Cautions: you cannot return *TxSender(nil) as interface{} directly,
 		// because *TxSender(nil) != nil.
 		if newSender == nil {

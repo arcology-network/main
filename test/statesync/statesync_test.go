@@ -11,11 +11,11 @@ import (
 	"testing"
 	"time"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	cmnst "github.com/arcology-network/component-lib/storage"
 	"github.com/arcology-network/component-lib/streamer"
+	evmCommon "github.com/arcology-network/evm/common"
 	statesync "github.com/arcology-network/main/modules/state-sync"
 	"github.com/arcology-network/main/modules/storage"
 )
@@ -173,7 +173,7 @@ func makeSyncPoint(t *testing.T, root string, keys []string, values [][]byte) *s
 							},
 						},
 						actor.MsgAcctHash: {
-							Data: ethcmn.BytesToHash([]byte(fmt.Sprintf("hash%d", i))),
+							Data: evmCommon.BytesToHash([]byte(fmt.Sprintf("hash%d", i))),
 						},
 					},
 				},

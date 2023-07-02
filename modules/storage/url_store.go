@@ -13,8 +13,8 @@ import (
 	cmntyp "github.com/arcology-network/common-lib/types"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/storage"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
-	urltyp "github.com/arcology-network/concurrenturl/v2/type"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	ccdb "github.com/arcology-network/concurrenturl/storage"
 	strtyp "github.com/arcology-network/main/modules/storage/types"
 )
 
@@ -42,7 +42,7 @@ const (
 )
 
 type UrlStore struct {
-	db      urlcmn.DatastoreInterface
+	db      interfaces.Datastore
 	indexer *MetaIndexer
 }
 
@@ -52,7 +52,7 @@ func NewUrlStore() *UrlStore {
 	}
 }
 
-func (us *UrlStore) Init(ctx context.Context, db urlcmn.DatastoreInterface, _ *int) error {
+func (us *UrlStore) Init(ctx context.Context, db interfaces.Datastore, _ *int) error {
 	us.db = db
 	return nil
 }
@@ -78,7 +78,7 @@ func (us *UrlStore) Get(ctx context.Context, keys *[]string, values *[][]byte) e
 	objs := us.db.BatchRetrive(*keys)
 	datas := make([][]byte, len(objs))
 	for i := range *keys {
-		datas[i] = urltyp.ToBytes(objs[i])
+		datas[i] = ccdb.Codec{}.Encode(objs[i]) //urltyp.ToBytes(objs[i])
 	}
 	*values = datas
 	return nil
@@ -177,7 +177,7 @@ func (us *UrlStore) ApplyData(ctx context.Context, request *cmntyp.SyncDataReque
 			func() {
 				values := make([]interface{}, len(urlUpdate.EncodedValues))
 				for i, v := range urlUpdate.EncodedValues {
-					values[i] = urltyp.FromBytes(v)
+					values[i] = ccdb.Codec{}.Decode(v) //urltyp.FromBytes(v)
 				}
 				us.db.BatchInject(urlUpdate.Keys, values)
 			},

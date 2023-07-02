@@ -3,14 +3,14 @@ package types
 import (
 	"sort"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/common"
-	urlcommon "github.com/arcology-network/concurrenturl/v2/common"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 type SnapShotLookupItem struct {
 	Size          int
-	PrecedingHash ethCommon.Hash
+	PrecedingHash evmCommon.Hash
 }
 
 type Lookups []SnapShotLookupItem
@@ -32,20 +32,20 @@ func (l Lookups) Swap(i, j int) {
 
 type SnapShotLookup struct {
 	Lookup    Lookups
-	Snapshots map[ethCommon.Hash]*urlcommon.DatastoreInterface
+	Snapshots map[evmCommon.Hash]*interfaces.Datastore
 }
 
 func NewLookup() *SnapShotLookup {
 	return &SnapShotLookup{
 		Lookup:    Lookups{},
-		Snapshots: map[ethCommon.Hash]*urlcommon.DatastoreInterface{},
+		Snapshots: map[evmCommon.Hash]*interfaces.Datastore{},
 	}
 }
 
-func (ss *SnapShotLookup) Reset(snapshop *urlcommon.DatastoreInterface) {
-	nilHash := ethCommon.Hash{}
+func (ss *SnapShotLookup) Reset(snapshop *interfaces.Datastore) {
+	nilHash := evmCommon.Hash{}
 	ss.Lookup = Lookups{}
-	ss.Snapshots = map[ethCommon.Hash]*urlcommon.DatastoreInterface{}
+	ss.Snapshots = map[evmCommon.Hash]*interfaces.Datastore{}
 
 	ss.Lookup = append(ss.Lookup, SnapShotLookupItem{
 		Size:          0,
@@ -54,7 +54,7 @@ func (ss *SnapShotLookup) Reset(snapshop *urlcommon.DatastoreInterface) {
 	ss.Snapshots[nilHash] = snapshop
 }
 
-func (ss *SnapShotLookup) AddItem(precedingHash ethCommon.Hash, size int, snapshop *urlcommon.DatastoreInterface) {
+func (ss *SnapShotLookup) AddItem(precedingHash evmCommon.Hash, size int, snapshop *interfaces.Datastore) {
 	ss.Lookup = append(ss.Lookup, SnapShotLookupItem{
 		Size:          size,
 		PrecedingHash: precedingHash,
@@ -63,8 +63,8 @@ func (ss *SnapShotLookup) AddItem(precedingHash ethCommon.Hash, size int, snapsh
 	sort.Sort(ss.Lookup)
 }
 
-func (ss *SnapShotLookup) Query(precedings []*ethCommon.Hash) (*urlcommon.DatastoreInterface, []*ethCommon.Hash) {
-	var sn *urlcommon.DatastoreInterface
+func (ss *SnapShotLookup) Query(precedings []*evmCommon.Hash) (*interfaces.Datastore, []*evmCommon.Hash) {
+	var sn *interfaces.Datastore
 	precedingSize := len(precedings)
 	for _, item := range ss.Lookup {
 		if item.Size > precedingSize {

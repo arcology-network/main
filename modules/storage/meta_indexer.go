@@ -6,12 +6,12 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/common"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
-	"github.com/arcology-network/concurrenturl/v2/type/commutative"
+	ccurl "github.com/arcology-network/concurrenturl"
+	"github.com/arcology-network/concurrenturl/commutative"
 )
 
 var (
-	RootPrefix         = urlcmn.NewPlatform().Eth10Account()
+	RootPrefix         = ccurl.NewPlatform().Eth10Account()
 	ContainerPrefix    = "/storage/containers/"
 	RootPrefixLen      = len(RootPrefix)
 	AddressPrefixLen   = len(RootPrefix) + 40
@@ -116,15 +116,18 @@ func (indexer *MetaIndexer) PrintSummary() {
 func (indexer *MetaIndexer) ExportMetas() (keys []string, values []interface{}) {
 	for i := 0; i < SliceNum; i++ {
 		for container, elements := range indexer.indices[i] {
-			meta, _ := commutative.NewMeta(container)
+
+			// meta, _ := commutative.NewMeta(container)
 			ks := make([]string, 0, len(elements))
 			for e := range elements {
 				ks = append(ks, e)
 			}
-			meta.(*commutative.Meta).SetKeys(ks)
+			// meta.(*commutative.Meta).SetKeys(ks)
+
+			path := commutative.NewPath()
 
 			keys = append(keys, container)
-			values = append(values, meta)
+			values = append(values, path)
 		}
 	}
 	return

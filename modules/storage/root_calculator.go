@@ -1,12 +1,12 @@
 package storage
 
 import (
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/storage"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
-	urltyp "github.com/arcology-network/concurrenturl/v2/type"
+	ccurl "github.com/arcology-network/concurrenturl"
+	"github.com/arcology-network/concurrenturl/indexer"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 const (
@@ -17,14 +17,14 @@ const (
 type RootCalculator struct {
 	actor.WorkerThread
 
-	merkle   *urltyp.AccountMerkle
-	lastRoot ethcmn.Hash
+	merkle   *indexer.AccountMerkle
+	lastRoot evmCommon.Hash
 	state    int
 }
 
 func NewRootCalculator(concurrency int, groupId string) actor.IWorkerEx {
 	rc := &RootCalculator{
-		merkle: urltyp.NewAccountMerkle(urlcmn.NewPlatform()),
+		merkle: indexer.NewAccountMerkle(ccurl.NewPlatform()),
 		state:  rcStateUninit,
 	}
 	rc.Set(concurrency, groupId)
@@ -51,12 +51,12 @@ func (rc *RootCalculator) OnStart() {}
 func (rc *RootCalculator) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	if rc.state == rcStateUninit {
-		rc.lastRoot = msg.Data.(*cmntyp.ParentInfo).ParentRoot
+		rc.lastRoot = msg.Data.(*types.ParentInfo).ParentRoot
 		rc.state = rcStateRunning
 	} else {
 		switch msg.Name {
 		case actor.MsgEuResults:
-			data := msg.Data.(*cmntyp.Euresults)
+			data := msg.Data.(*types.Euresults)
 			_, transitions := storage.GetTransitions(*data)
 			rc.merkle.Import(transitions)
 		case actor.CombinedName(actor.MsgListFulfilled, actor.MsgUrlUpdate):

@@ -3,11 +3,11 @@ package receipthashing
 import (
 	"time"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/mhasher"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
 	"go.uber.org/zap"
 )
 
@@ -46,7 +46,7 @@ func (cr *CalculateRoothash) Stop() {
 
 func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 	var inclusiveList *types.InclusiveList
-	var selectedReceipts *map[ethCommon.Hash]*types.ReceiptHash
+	var selectedReceipts *map[evmCommon.Hash]*types.ReceiptHash
 	for _, v := range msgs {
 		switch v.Name {
 		case actor.MsgInclusive:
@@ -56,7 +56,7 @@ func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 				return err
 			}
 		case actor.MsgSelectedReceiptsHash:
-			selectedReceipts = v.Data.(*map[ethCommon.Hash]*types.ReceiptHash)
+			selectedReceipts = v.Data.(*map[evmCommon.Hash]*types.ReceiptHash)
 			isnil, err := cr.IsNil(selectedReceipts, "selectedReceipts")
 			if isnil {
 				return err
@@ -71,11 +71,11 @@ func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, receipts *map[ethCommon.Hash]*types.ReceiptHash) (ethCommon.Hash, uint64) {
+func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, receipts *map[evmCommon.Hash]*types.ReceiptHash) (evmCommon.Hash, uint64) {
 	begintime := time.Now()
 	datas := make([][]byte, 0, len(inclusiveList.HashList))
 	var gasused uint64 = 0
-	nilroot := ethCommon.Hash{}
+	nilroot := evmCommon.Hash{}
 	if inclusiveList == nil || receipts == nil {
 		return nilroot, 0
 	}
@@ -90,7 +90,7 @@ func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, 
 			}
 		}
 	}
-	roothash := ethCommon.Hash{}
+	roothash := evmCommon.Hash{}
 	if len(datas) > 0 {
 		// src := bytes.Join(datas, []byte(""))
 		// totallen := len(src)
@@ -99,7 +99,7 @@ func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, 
 			cr.AddLog(log.LogLevel_Error, "make roothash err ", zap.String("err", err.Error()))
 			return nilroot, 0
 		}
-		roothash = ethCommon.BytesToHash(roothashbytes)
+		roothash = evmCommon.BytesToHash(roothashbytes)
 		cr.AddLog(log.LogLevel_Info, "calculate recept roothash ", zap.Duration("times", time.Now().Sub(begintime)))
 	}
 	return roothash, gasused

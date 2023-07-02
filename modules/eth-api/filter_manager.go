@@ -4,11 +4,11 @@ import (
 	"math/big"
 	"time"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
+	evmCommon "github.com/arcology-network/evm/common"
+	ethTypes "github.com/arcology-network/evm/core/types"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 )
 
@@ -72,7 +72,7 @@ func (fm *FilterManager) OnMessageArrived(msgs []*actor.Message) error {
 	blockHash := block.Hash()
 	worker := func(start, end int, idx int, args ...interface{}) {
 		for i := start; i < end; i++ {
-			receipts[i].BlockHash = ethCommon.BytesToHash(blockHash)
+			receipts[i].BlockHash = evmCommon.BytesToHash(blockHash)
 			receipts[i].BlockNumber = big.NewInt(int64(block.Height))
 			receipts[i].TransactionIndex = uint(i)
 
@@ -86,7 +86,7 @@ func (fm *FilterManager) OnMessageArrived(msgs []*actor.Message) error {
 	}
 
 	common.ParallelWorker(len(receipts), fm.Concurrency, worker)
-	fm.filters.OnResultsArrived(block.Height, receipts, ethCommon.BytesToHash(blockHash))
+	fm.filters.OnResultsArrived(block.Height, receipts, evmCommon.BytesToHash(blockHash))
 
 	return nil
 }

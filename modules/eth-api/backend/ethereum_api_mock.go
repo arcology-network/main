@@ -12,6 +12,7 @@ import (
 	ethrlp "github.com/arcology-network/evm/rlp"
 
 	"github.com/arcology-network/evm/common/hexutil"
+	"github.com/arcology-network/evm/core"
 )
 
 type EthereumAPIMock struct {
@@ -125,9 +126,9 @@ func (mock *EthereumAPIMock) Call(msg eth.CallMsg) ([]byte, error) {
 func (mock *EthereumAPIMock) SendRawTransaction(rawTx []byte) (ethcmn.Hash, error) {
 	tx := new(ethtyp.Transaction)
 	ethrlp.DecodeBytes(rawTx, tx)
-	msg, _ := tx.AsMessage(ethtyp.NewEIP155Signer(mock.chainID))
-
-	return ethcmn.BytesToHash(msg.Data()[:32]), nil
+	// msg, _ := tx.AsMessage(ethtyp.NewEIP155Signer(mock.chainID))
+	msg, _ := core.TransactionToMessage(tx, ethtyp.NewEIP155Signer(mock.chainID), nil)
+	return ethcmn.BytesToHash(msg.Data[:32]), nil
 }
 
 func (mock *EthereumAPIMock) GetTransactionReceipt(hash ethcmn.Hash) (*ethtyp.Receipt, error) {

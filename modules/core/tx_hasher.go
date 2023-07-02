@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/mhasher"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
 	"go.uber.org/zap"
 )
 
@@ -40,7 +40,7 @@ func (c *CalculateTxHash) OnMessageArrived(msgs []*actor.Message) error {
 	datas := msgs[0].Data.(types.Txs)
 	txs := datas.Data
 	c.CheckPoint("received selectedtx")
-	roothash := ethCommon.Hash{}
+	roothash := evmCommon.Hash{}
 	if len(txs) > 0 {
 		begintime1 := time.Now()
 		roothash = mhasher.GetTxsHash(txs)

@@ -7,23 +7,23 @@ import (
 	"reflect"
 	"testing"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
-func newExeclog(idx int) (*types.ExecutingLogs, ethCommon.Hash) {
+func newExeclog(idx int) (*types.ExecutingLogs, evmCommon.Hash) {
 	logs := types.NewExecutingLogs()
 	logs.Append(fmt.Sprintf("start-%v", idx), fmt.Sprintf("s-%v", idx))
 	logs.Append(fmt.Sprintf("doing-%v", idx), fmt.Sprintf("s-%v", idx))
 	logs.Append(fmt.Sprintf("end-%v", idx), fmt.Sprintf("s-%v", idx))
-	logs.Txhash = ethCommon.BytesToHash([]byte{byte(1 + idx), 2, 3, 4, 5, 6, 7, 8, 9, 10})
+	logs.Txhash = evmCommon.BytesToHash([]byte{byte(1 + idx), 2, 3, 4, 5, 6, 7, 8, 9, 10})
 	return logs, logs.Txhash
 }
 
 func TestExeclog(t *testing.T) {
 	cache := NewExeclogCaches(2, 8)
 	bat1 := make([]string, 3)
-	hashes1 := make([]ethCommon.Hash, 3)
+	hashes1 := make([]evmCommon.Hash, 3)
 	logs1 := make([]*types.ExecutingLogs, 3)
 	for i := range bat1 {
 		log, hash := newExeclog(i)
@@ -44,7 +44,7 @@ func TestExeclog(t *testing.T) {
 	}
 
 	bat2 := make([]string, 3)
-	hashes2 := make([]ethCommon.Hash, 3)
+	hashes2 := make([]evmCommon.Hash, 3)
 	logs2 := make([]*types.ExecutingLogs, 3)
 	for i := range bat2 {
 		log, hash := newExeclog(i + 3)
@@ -71,7 +71,7 @@ func TestExeclog(t *testing.T) {
 	}
 
 	bat3 := make([]string, 3)
-	hashes3 := make([]ethCommon.Hash, 3)
+	hashes3 := make([]evmCommon.Hash, 3)
 	logs3 := make([]*types.ExecutingLogs, 3)
 	for i := range bat3 {
 		log, hash := newExeclog(i + 6)
@@ -85,7 +85,7 @@ func TestExeclog(t *testing.T) {
 	}
 	cache.Save(2, bat3)
 	bat4 := make([]string, 3)
-	hashes4 := make([]ethCommon.Hash, 3)
+	hashes4 := make([]evmCommon.Hash, 3)
 	logs4 := make([]*types.ExecutingLogs, 3)
 	for i := range bat4 {
 		log, hash := newExeclog(i + 9)

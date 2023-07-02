@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	ethcmn "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/core"
 	ethtyp "github.com/arcology-network/evm/core/types"
 	ethcrp "github.com/arcology-network/evm/crypto"
 	ethrlp "github.com/arcology-network/evm/rlp"
@@ -52,13 +53,14 @@ func TestSign(t *testing.T) {
 
 	tx2 := new(ethtyp.Transaction)
 	ethrlp.DecodeBytes(buf.Bytes(), tx2)
-	msg, _ := tx2.AsMessage(ethtyp.NewEIP155Signer(new(big.Int).SetUint64(1)))
+	// msg, _ := tx2.AsMessage(ethtyp.NewEIP155Signer(new(big.Int).SetUint64(1)))
+	msg, _ := core.TransactionToMessage(tx2, ethtyp.NewEIP155Signer(new(big.Int).SetUint64(1)), nil)
 	t.Log(
-		msg.From().Hex(),
-		msg.To().Hex(),
-		msg.Nonce(),
-		msg.Gas(),
-		msg.GasPrice(),
-		msg.Value(),
+		msg.From.Hex(),
+		msg.To.Hex(),
+		msg.Nonce,
+		msg.GasLimit,
+		msg.GasPrice,
+		msg.Value,
 	)
 }

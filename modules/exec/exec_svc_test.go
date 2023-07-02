@@ -6,41 +6,41 @@ import (
 	"testing"
 	"time"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	cachedstorage "github.com/arcology-network/common-lib/cachedstorage"
-	cmncmn "github.com/arcology-network/common-lib/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/config"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/component-lib/storage"
 	"github.com/arcology-network/component-lib/streamer"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
-	urltyp "github.com/arcology-network/concurrenturl/v2/type"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	ccdb "github.com/arcology-network/concurrenturl/storage"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 func TestExecSvcBasic(t *testing.T) {
 	setup(t)
 
-	var response cmntyp.ExecutorResponses
+	var response types.ExecutorResponses
 	intf.Router.Call("executor-1", "ExecTxs", &actor.Message{
-		Msgid:  cmncmn.GenerateUUID(),
+		Msgid:  common.GenerateUUID(),
 		Height: 2,
-		Data: &cmntyp.ExecutorRequest{
-			Sequences: []*cmntyp.ExecutingSequence{
+		Data: &types.ExecutorRequest{
+			Sequences: []*types.ExecutingSequence{
 				{
-					Msgs: []*cmntyp.StandardMessage{
+					Msgs: []*types.StandardMessage{
 						{},
 					},
 					Parallel: true,
 					Txids:    []uint32{1},
 				},
 			},
-			Precedings: [][]*ethcmn.Hash{
+			Precedings: [][]*evmCommon.Hash{
 				{},
 			},
-			PrecedingHash: []ethcmn.Hash{
+			PrecedingHash: []evmCommon.Hash{
 				{},
 			},
 			Timestamp:   new(big.Int),
@@ -55,35 +55,35 @@ func TestExecSvcBasic(t *testing.T) {
 func TestExecSvcMakeSnapshot(t *testing.T) {
 	_, mock := setup(t)
 
-	var response cmntyp.ExecutorResponses
-	precedingHash := ethcmn.BytesToHash([]byte{1})
+	var response types.ExecutorResponses
+	precedingHash := evmCommon.BytesToHash([]byte{1})
 	intf.Router.Call("executor-1", "ExecTxs", &actor.Message{
-		Msgid:  cmncmn.GenerateUUID(),
+		Msgid:  common.GenerateUUID(),
 		Height: 2,
-		Data: &cmntyp.ExecutorRequest{
-			Sequences: []*cmntyp.ExecutingSequence{
+		Data: &types.ExecutorRequest{
+			Sequences: []*types.ExecutingSequence{
 				{
-					Msgs: []*cmntyp.StandardMessage{
+					Msgs: []*types.StandardMessage{
 						{},
 					},
 					Parallel: true,
 					Txids:    []uint32{1},
 				},
 				{
-					Msgs: []*cmntyp.StandardMessage{
+					Msgs: []*types.StandardMessage{
 						{},
 					},
 					Parallel: true,
 					Txids:    []uint32{2},
 				},
 			},
-			Precedings: [][]*ethcmn.Hash{
+			Precedings: [][]*evmCommon.Hash{
 				{},
 				{
 					&precedingHash,
 				},
 			},
-			PrecedingHash: []ethcmn.Hash{
+			PrecedingHash: []evmCommon.Hash{
 				{},
 				{},
 			},
@@ -120,7 +120,7 @@ func setup(tb testing.TB) (*streamer.StatefulStreamer, *mockWorker) {
 	baseWorker := actor.NewHeightController()
 	baseWorker.Next(actor.NewFSMController()).EndWith(execImpl)
 	baseWorker.OnStart()
-	execImpl.eus[0] = &mockExecutionImpl{}
+	// execImpl.eus[0] = &mockExecutionImpl{}
 	execImplActor := actor.NewActorEx("exec-impl", broker, baseWorker)
 	execImplActor.Connect(streamer.NewDisjunctions(execImplActor, 1))
 
@@ -129,12 +129,20 @@ func setup(tb testing.TB) (*streamer.StatefulStreamer, *mockWorker) {
 	mockActor.Connect(streamer.NewDisjunctions(mockActor, 1))
 	broker.Serve()
 
-	var db urlcmn.DatastoreInterface = cachedstorage.NewDataStore(
+	var db interfaces.Datastore = cachedstorage.NewDataStore(
 		nil,
 		cachedstorage.NewCachePolicy(math.MaxUint64, 1),
 		storage.NewReadonlyRpcClient(),
-		func(v interface{}) []byte { return urltyp.ToBytes(v) },
-		func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+		// func(v interface{}) []byte { return urltyp.ToBytes(v) },
+		// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+
+		func(v interface{}) []byte {
+			return ccdb.Codec{}.Encode(v)
+		},
+		func(bytes []byte) interface{} {
+			return ccdb.Codec{}.Decode(bytes)
+		},
+
 		cachedstorage.NotQueryRpc,
 	)
 
@@ -158,7 +166,7 @@ func setup(tb testing.TB) (*streamer.StatefulStreamer, *mockWorker) {
 					Data: &actor.BlockStart{},
 				},
 				actor.MsgParentInfo: {
-					Data: &cmntyp.ParentInfo{},
+					Data: &types.ParentInfo{},
 				},
 			},
 		},

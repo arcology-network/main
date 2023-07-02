@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"time"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"
@@ -43,8 +43,8 @@ func (rca *RpcClientArbitrate) Stop() {
 
 }
 
-func (rca *RpcClientArbitrate) Do(arbitrateList [][][]*types.TxElement, inlog *actor.WorkerThreadLogger, generationIdx, batchIdx int) ([]*ethCommon.Hash, []uint32, []uint32) {
-	results := make([]*ethCommon.Hash, 0, len(arbitrateList))
+func (rca *RpcClientArbitrate) Do(arbitrateList [][][]*types.TxElement, inlog *actor.WorkerThreadLogger, generationIdx, batchIdx int) ([]*evmCommon.Hash, []uint32, []uint32) {
+	results := make([]*evmCommon.Hash, 0, len(arbitrateList))
 	cpairLeft := make([]uint32, 0, len(arbitrateList))
 	cpairRight := make([]uint32, 0, len(arbitrateList))
 	for i, list := range arbitrateList {

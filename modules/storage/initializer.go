@@ -10,21 +10,23 @@ import (
 	"os"
 	"strings"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	cstore "github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/transactional"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	types "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/storage"
-	ccurl "github.com/arcology-network/concurrenturl/v2"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
-	urltyp "github.com/arcology-network/concurrenturl/v2/type"
-	"github.com/arcology-network/concurrenturl/v2/type/commutative"
+	ccurl "github.com/arcology-network/concurrenturl"
+	"github.com/arcology-network/concurrenturl/commutative"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	ccdb "github.com/arcology-network/concurrenturl/storage"
 	"github.com/arcology-network/consensus-engine/state"
-	evmcmn "github.com/arcology-network/evm/common"
+	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/modules/core"
-	adaptor "github.com/arcology-network/vm-adaptor/evm"
+
+	indexer "github.com/arcology-network/concurrenturl/indexer"
+	ccapi "github.com/arcology-network/vm-adaptor/api"
+	"github.com/arcology-network/vm-adaptor/eth"
 )
 
 type Initializer struct {
@@ -66,8 +68,8 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 	}
 	height := state.LastBlockHeight
 
-	var db urlcmn.DatastoreInterface
-	var rootHash ethcmn.Hash
+	var db interfaces.Datastore
+	var rootHash evmCommon.Hash
 	if height == 0 {
 		// Make place holder for recover functions.
 		transactional.RegisterRecoverFunc("urlupdate", func(interface{}, []byte) error {
@@ -84,14 +86,14 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		var na int
 		intf.Router.Call("statestore", "Save", &State{
 			Height:     0,
-			ParentHash: ethcmn.Hash{},
+			ParentHash: evmCommon.Hash{},
 			ParentRoot: rootHash,
 		}, &na)
-		parentinfo := &cmntyp.ParentInfo{
-			ParentHash: ethcmn.Hash{},
+		parentinfo := &types.ParentInfo{
+			ParentHash: evmCommon.Hash{},
 			ParentRoot: rootHash,
 		}
-		_, block, err := core.CreateBlock(parentinfo, uint64(0), big.NewInt(0), ethcmn.Address{}, rootHash, uint64(0), ethcmn.Hash{}, ethcmn.Hash{}, [][]byte{})
+		_, block, err := core.CreateBlock(parentinfo, uint64(0), big.NewInt(0), evmCommon.Address{}, rootHash, uint64(0), evmCommon.Hash{}, evmCommon.Hash{}, [][]byte{})
 		if err != nil {
 			panic("Create genesis block err!")
 		}
@@ -100,14 +102,20 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		db = cstore.NewDataStore(
 			nil,
 			cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
-			cstore.NewParaBadgerDB(i.storage_url_path, urlcmn.Eth10AccountShard),
-			func(v interface{}) []byte { return urltyp.ToBytes(v) },
-			func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+			cstore.NewParaBadgerDB(i.storage_url_path, ccurl.Eth10AccountShard),
+			// func(v interface{}) []byte { return urltyp.ToBytes(v) },
+			// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+			func(v interface{}) []byte {
+				return ccdb.Codec{}.Encode(v)
+			},
+			func(bytes []byte) interface{} {
+				return ccdb.Codec{}.Decode(bytes)
+			},
 		)
 
-		platform := urlcmn.NewPlatform()
-		meta, _ := commutative.NewMeta(platform.Eth10Account())
-		db.Inject(platform.Eth10Account(), meta)
+		platform := ccurl.NewPlatform()
+		// meta, _ := commutative.NewMeta(platform.Eth10Account())
+		db.Inject(platform.Eth10Account(), commutative.NewPath())
 
 		// Register recover function.
 		transactional.RegisterRecoverFunc("urlupdate", func(_ interface{}, bs []byte) error {
@@ -119,14 +127,14 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 
 			values := make([]interface{}, len(updates.EncodedValues))
 			for i, v := range updates.EncodedValues {
-				values[i] = urltyp.FromBytes(v)
+				values[i] = ccdb.Codec{}.Decode(v) //urltyp.FromBytes(v)
 			}
 			db.BatchInject(updates.Keys, values)
 			fmt.Printf("[storage.Initializer] Recover urlupdate.\n")
 			return nil
 		})
 		transactional.RegisterRecoverFunc("parentinfo", func(_ interface{}, bs []byte) error {
-			var pi cmntyp.ParentInfo
+			var pi types.ParentInfo
 			if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&pi); err != nil {
 				fmt.Printf("Error decoding ParentInfo, err = %v\n", err)
 				return err
@@ -184,7 +192,7 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (i *Initializer) initGenesisAccounts() (urlcmn.DatastoreInterface, ethcmn.Hash) {
+func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Hash) {
 	accounts := i.loadGenesisAccounts()
 	// filedb, err := cstore.NewFileDB(i.storage_url_path, uint32(i.storage_url_shards), uint8(i.storage_url_depts))
 	// if err != nil {
@@ -194,41 +202,47 @@ func (i *Initializer) initGenesisAccounts() (urlcmn.DatastoreInterface, ethcmn.H
 		nil,
 		cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
 		// stypes.NewMemoryDB(),
-		cstore.NewParaBadgerDB(i.storage_url_path, urlcmn.Eth10AccountShard),
-		func(v interface{}) []byte { return urltyp.ToBytes(v) },
-		func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+		cstore.NewParaBadgerDB(i.storage_url_path, ccurl.Eth10AccountShard),
+		// func(v interface{}) []byte { return urltyp.ToBytes(v) },
+		// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+		func(v interface{}) []byte {
+			return ccdb.Codec{}.Encode(v)
+		},
+		func(bytes []byte) interface{} {
+			return ccdb.Codec{}.Decode(bytes)
+		},
 	)
 
-	platform := urlcmn.NewPlatform()
-	meta, _ := commutative.NewMeta(platform.Eth10Account())
-	db.Inject(platform.Eth10Account(), meta)
+	platform := ccurl.NewPlatform()
+	// meta, _ := commutative.NewMeta(platform.Eth10Account())
+	db.Inject(platform.Eth10Account(), commutative.NewPath())
 
 	transitions := i.generateTransitions(db, accounts)
 	url := ccurl.NewConcurrentUrl(db)
 	url.Import(transitions)
-	url.PostImport()
-	url.Precommit([]uint32{0})
+	url.Sort()
+	url.Finalize([]uint32{0})
 	keys, values := url.KVs()
 	encodedValues := make([][]byte, 0, len(values))
 	for _, v := range values {
 		if v != nil {
-			univalue := v.(urlcmn.UnivalueInterface)
-			data := urltyp.ToBytes(univalue.Value())
+			univalue := v.(interfaces.Univalue)
+			data := ccdb.Codec{}.Encode(univalue.Value()) //urltyp.ToBytes(univalue.Value())
 			encodedValues = append(encodedValues, data)
 		} else {
 			encodedValues = append(encodedValues, []byte{})
 		}
 	}
 
-	merkle := urltyp.NewAccountMerkle(urlcmn.NewPlatform())
+	merkle := indexer.NewAccountMerkle(ccurl.NewPlatform())
 	merkle.Import(transitions)
-	rootHash := calcRootHash(merkle, ethcmn.Hash{}, keys, encodedValues)
-	url.Postcommit()
+	rootHash := calcRootHash(merkle, evmCommon.Hash{}, keys, encodedValues)
+	url.WriteToDbBuffer()
 	url.SaveToDB()
 	return db, rootHash
 }
 
-func (i *Initializer) loadGenesisAccounts() map[ethcmn.Address]*cmntyp.Account {
+func (i *Initializer) loadGenesisAccounts() map[evmCommon.Address]*types.Account {
 	file, err := os.OpenFile(i.accountFile, os.O_RDWR, 0666)
 	if err != nil {
 		panic(err)
@@ -236,7 +250,7 @@ func (i *Initializer) loadGenesisAccounts() map[ethcmn.Address]*cmntyp.Account {
 	defer file.Close()
 
 	buf := bufio.NewReader(file)
-	accounts := make(map[ethcmn.Address]*cmntyp.Account)
+	accounts := make(map[evmCommon.Address]*types.Account)
 	for {
 		line, err := buf.ReadString('\n')
 		if err != nil {
@@ -254,7 +268,7 @@ func (i *Initializer) loadGenesisAccounts() map[ethcmn.Address]*cmntyp.Account {
 			panic(fmt.Sprintf("invalid balance in genesis accounts: %v", segments[2]))
 		}
 
-		accounts[ethcmn.HexToAddress(segments[1])] = &cmntyp.Account{
+		accounts[evmCommon.HexToAddress(segments[1])] = &types.Account{
 			Nonce:   0,
 			Balance: balance,
 		}
@@ -262,17 +276,17 @@ func (i *Initializer) loadGenesisAccounts() map[ethcmn.Address]*cmntyp.Account {
 	return accounts
 }
 
-func (i *Initializer) generateTransitions(db urlcmn.DatastoreInterface, genesisAccounts map[ethcmn.Address]*cmntyp.Account) []urlcmn.UnivalueInterface {
+func (i *Initializer) generateTransitions(db interfaces.Datastore, genesisAccounts map[evmCommon.Address]*types.Account) []interfaces.Univalue {
 	batch := 10
-	addresses := make([]ethcmn.Address, 0, batch)
-	accounts := make([]*cmntyp.Account, 0, batch)
+	addresses := make([]evmCommon.Address, 0, batch)
+	accounts := make([]*types.Account, 0, batch)
 	index := 0
-	transitions := make([]urlcmn.UnivalueInterface, 0, len(genesisAccounts)*10)
+	transitions := make([]interfaces.Univalue, 0, len(genesisAccounts)*10)
 	for addr, account := range genesisAccounts {
 		if index%batch == 0 && index > 0 {
 			transitions = append(transitions, getTransitions(db, addresses, accounts)...)
-			addresses = make([]ethcmn.Address, 0, batch)
-			accounts = make([]*cmntyp.Account, 0, batch)
+			addresses = make([]evmCommon.Address, 0, batch)
+			accounts = make([]*types.Account, 0, batch)
 		}
 		addresses = append(addresses, addr)
 		accounts = append(accounts, account)
@@ -284,16 +298,19 @@ func (i *Initializer) generateTransitions(db urlcmn.DatastoreInterface, genesisA
 	return transitions
 }
 
-func getTransitions(db urlcmn.DatastoreInterface, addresses []ethcmn.Address, accounts []*cmntyp.Account) []urlcmn.UnivalueInterface {
+func getTransitions(db interfaces.Datastore, addresses []evmCommon.Address, accounts []*types.Account) []interfaces.Univalue {
 	url := ccurl.NewConcurrentUrl(db)
-	stateDB := adaptor.NewStateDBV2(nil, db, url)
-	stateDB.Prepare(evmcmn.Hash{}, evmcmn.Hash{}, 0)
+	api := ccapi.NewAPI(url)
+	stateDB := eth.NewImplStateDB(api)
+	// stateDB := adaptor.NewStateDBV2(nil, db, url)
+	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i, addr := range addresses {
-		address := evmcmn.BytesToAddress(addr.Bytes())
+		address := evmCommon.BytesToAddress(addr.Bytes())
 		stateDB.CreateAccount(address)
 		stateDB.SetBalance(address, accounts[i].Balance)
 		//stateDB.SetNonce(address, accounts[i].Nonce)
 	}
-	_, transitions := url.Export(false)
+	_, transitions := url.ExportAll()
+
 	return transitions
 }

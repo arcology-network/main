@@ -3,16 +3,16 @@ package storage
 import (
 	"context"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/codec"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 )
 
 type State struct {
 	Height     uint64
-	ParentHash ethcmn.Hash
-	ParentRoot ethcmn.Hash
+	ParentHash evmCommon.Hash
+	ParentRoot evmCommon.Hash
 }
 
 func (s *State) Encode() []byte {
@@ -27,8 +27,8 @@ func (s *State) Encode() []byte {
 func (s *State) Decode(data []byte) *State {
 	buffers := [][]byte(codec.Byteset{}.Decode(data).(codec.Byteset))
 	s.Height = uint64(codec.Uint64(0).Decode(buffers[0]).(codec.Uint64))
-	s.ParentHash = ethcmn.BytesToHash(buffers[1])
-	s.ParentRoot = ethcmn.BytesToHash(buffers[2])
+	s.ParentHash = evmCommon.BytesToHash(buffers[1])
+	s.ParentRoot = evmCommon.BytesToHash(buffers[2])
 	return s
 }
 
@@ -70,7 +70,7 @@ func (ss *StateStore) GetHeight(ctx context.Context, _ *int, height *uint64) err
 	return nil
 }
 
-func (ss *StateStore) GetParentInfo(ctx context.Context, na *int, parentInfo *cmntyp.ParentInfo) error {
+func (ss *StateStore) GetParentInfo(ctx context.Context, na *int, parentInfo *types.ParentInfo) error {
 	if ss.state == nil {
 		data, err := ss.db.Read(statefilename)
 		if err != nil {

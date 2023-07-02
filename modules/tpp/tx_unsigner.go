@@ -6,10 +6,10 @@ import (
 	"math/big"
 	"sync"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
 	tpptypes "github.com/arcology-network/main/modules/tpp/types"
 	"go.uber.org/zap"
 )
@@ -77,7 +77,7 @@ func (c *TxUnsigner) OnMessageArrived(msgs []*actor.Message) error {
 				if len(notNils) > 0 {
 					checkingTxsPack.TxHashChan <- notNils[0].TxHash
 				} else {
-					checkingTxsPack.TxHashChan <- ethCommon.Hash{}
+					checkingTxsPack.TxHashChan <- evmCommon.Hash{}
 				}
 			}
 		}

@@ -9,10 +9,10 @@ import (
 	"strings"
 	"sync"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/transactional"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 var (
@@ -22,9 +22,9 @@ var (
 
 type SchdState struct {
 	Height            uint64
-	NewContracts      []ethcmn.Address
-	ConflictionLefts  []ethcmn.Address
-	ConflictionRights []ethcmn.Address
+	NewContracts      []evmCommon.Address
+	ConflictionLefts  []evmCommon.Address
+	ConflictionRights []evmCommon.Address
 }
 
 type SchdStore struct {
@@ -161,15 +161,15 @@ func formatState(state *SchdState) string {
 	return sb.String()
 }
 
-func parseAddressArray(str string) []ethcmn.Address {
+func parseAddressArray(str string) []evmCommon.Address {
 	if len(str) == 0 {
-		return []ethcmn.Address{}
+		return []evmCommon.Address{}
 	}
 
 	segments := strings.Split(str, ",")
-	var addrs []ethcmn.Address
+	var addrs []evmCommon.Address
 	for _, segment := range segments {
-		addrs = append(addrs, ethcmn.HexToAddress(segment))
+		addrs = append(addrs, evmCommon.HexToAddress(segment))
 	}
 	return addrs
 }

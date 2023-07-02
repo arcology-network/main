@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/component-lib/streamer"
+	evmCommon "github.com/arcology-network/evm/common"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 )
 
@@ -38,8 +38,8 @@ func (mock *execRpcMock) check(expected [][]int) {
 	}
 }
 
-func (mock *execRpcMock) ExecTxs(_ context.Context, request *actor.Message, response *cmntyp.ExecutorResponses) error {
-	req := request.Data.(*cmntyp.ExecutorRequest)
+func (mock *execRpcMock) ExecTxs(_ context.Context, request *actor.Message, response *types.ExecutorResponses) error {
+	req := request.Data.(*types.ExecutorRequest)
 	numMsgs := 0
 	for _, seq := range req.Sequences {
 		numMsgs += len(seq.Msgs)
@@ -51,7 +51,7 @@ func (mock *execRpcMock) ExecTxs(_ context.Context, request *actor.Message, resp
 	return nil
 }
 
-func (mock *execRpcMock) GetConfig(_ context.Context, _ *int, config *cmntyp.ExecutorConfig) error {
+func (mock *execRpcMock) GetConfig(_ context.Context, _ *int, config *types.ExecutorConfig) error {
 	config.Concurrency = mock.concurrency
 	return nil
 }
@@ -136,19 +136,19 @@ func runExecClientTestCase(
 	worker := &workerMock{}
 	worker.Init("mock worker", streamer.NewStatefulStreamer())
 
-	msgs := make([]*cmntyp.StandardMessage, numMsgs)
+	msgs := make([]*types.StandardMessage, numMsgs)
 	for i := range msgs {
-		msgs[i] = &cmntyp.StandardMessage{}
+		msgs[i] = &types.StandardMessage{}
 	}
 	ids := make([]uint32, len(msgs))
 	client := NewExecClient(executors, 100)
 	client.Run(
-		map[ethcmn.Hash]*schtyp.Message{
+		map[evmCommon.Hash]*schtyp.Message{
 			{}: {
-				Precedings: &[]*ethcmn.Hash{},
+				Precedings: &[]*evmCommon.Hash{},
 			},
 		},
-		[]*cmntyp.ExecutingSequence{
+		[]*types.ExecutingSequence{
 			{
 				Msgs:     msgs,
 				Parallel: true,

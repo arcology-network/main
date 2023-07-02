@@ -3,8 +3,8 @@ package types
 import (
 	"fmt"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/modules/scheduler/lib"
 )
 
@@ -30,14 +30,14 @@ func (execSched *ExecutingSchedule) Init(conflictFile string) string {
 		return logs
 	}
 	for _, item := range conflictList {
-		lefts := make([]*ethCommon.Address, len(item.Left))
+		lefts := make([]*evmCommon.Address, len(item.Left))
 		for i, entrance := range item.Left {
-			addr := ethCommon.HexToAddress(entrance.ContractAddress)
+			addr := evmCommon.HexToAddress(entrance.ContractAddress)
 			lefts[i] = &addr
 		}
-		rights := make([]*ethCommon.Address, len(item.Right))
+		rights := make([]*evmCommon.Address, len(item.Right))
 		for i, entrance := range item.Right {
-			addr := ethCommon.HexToAddress(entrance.ContractAddress)
+			addr := evmCommon.HexToAddress(entrance.ContractAddress)
 			rights[i] = &addr
 		}
 		ret := execSched.scheduler.Update(lefts, rights)

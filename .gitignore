@@ -25,7 +25,7 @@ config/schdstore/
 config/sync_point/
 config/tmroot/log/
 modules/pool/testdata/
-modules/scheduler/v2/log/
+modules/scheduler/log/
 modules/storage/schdstore/
 modules/storage/slices/
 modules/storage/sync_point/

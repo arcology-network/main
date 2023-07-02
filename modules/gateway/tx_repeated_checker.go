@@ -1,12 +1,12 @@
 package gateway
 
 import (
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/component-lib/storage"
+	evmCommon "github.com/arcology-network/evm/common"
 	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
 )
 
@@ -97,9 +97,9 @@ func (r *TxRepeatedChecker) checkRepeated(txspack *gatewayTypes.TxsPack, from by
 					Tx:  checkedTxs[0],
 					Src: txspack.Txs.Src,
 				}, &response)
-				txspack.TxHashChan <- response.TxHash.(ethcmn.Hash)
+				txspack.TxHashChan <- response.TxHash.(evmCommon.Hash)
 			} else {
-				txspack.TxHashChan <- ethcmn.Hash{}
+				txspack.TxHashChan <- evmCommon.Hash{}
 			}
 		}()
 		return

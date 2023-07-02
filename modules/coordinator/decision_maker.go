@@ -3,9 +3,9 @@ package coordinator
 import (
 	"fmt"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 const (
@@ -127,12 +127,12 @@ func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 		switch msg.Name {
 		case actor.MsgExtBlockStart:
 			fmt.Printf("[DecisionMaker.OnMessageArrived] in dmStateFastSync, on MsgExtBlockStart, height = %v\n", msg.Data.(*actor.BlockStart).Height)
-			dm.MsgBroker.Send(actor.MsgExtAppHash, ethcmn.Hash{}.Bytes())
+			dm.MsgBroker.Send(actor.MsgExtAppHash, evmCommon.Hash{}.Bytes())
 		case actor.MsgExtReapingList:
 			fmt.Printf("[DecisionMaker.OnMessageArrived] in dmStateFastSync, on MsgExtReapingList\n")
 			dm.MsgBroker.Send(actor.MsgMetaBlock, &cmntyp.MetaBlock{
 				Txs:      [][]byte{},
-				Hashlist: []*ethcmn.Hash{},
+				Hashlist: []*evmCommon.Hash{},
 			})
 		}
 

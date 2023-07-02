@@ -7,22 +7,22 @@ import (
 	"reflect"
 	"testing"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	cachedstorage "github.com/arcology-network/common-lib/cachedstorage"
+	evmCommon "github.com/arcology-network/evm/common"
+	evmTypes "github.com/arcology-network/evm/core/types"
 )
 
-func newReceipt(height uint64, idx, idxInBlock int) *ethTypes.Receipt {
-	receipt := ethTypes.Receipt{}
+func newReceipt(height uint64, idx, idxInBlock int) *evmTypes.Receipt {
+	receipt := evmTypes.Receipt{}
 	receipt.PostState = []byte{byte(idx + 1), 2, 3, 4}
 	receipt.Status = 1
 	receipt.CumulativeGasUsed = 100
-	receipt.Bloom = ethTypes.BytesToBloom([]byte{2, byte(idx + 3), 4, 5, 6})
-	receipt.TxHash = ethCommon.HexToHash(hashes[idx])
-	receipt.ContractAddress = ethCommon.BytesToAddress([]byte{1, 2, 3, 4, 5, byte(idx + 6)})
+	receipt.Bloom = evmTypes.BytesToBloom([]byte{2, byte(idx + 3), 4, 5, 6})
+	receipt.TxHash = evmCommon.HexToHash(hashes[idx])
+	receipt.ContractAddress = evmCommon.BytesToAddress([]byte{1, 2, 3, 4, 5, byte(idx + 6)})
 	receipt.GasUsed = 2100
 	receipt.Type = 1
-	receipt.BlockHash = ethCommon.HexToHash(hashes[idx])
+	receipt.BlockHash = evmCommon.HexToHash(hashes[idx])
 	receipt.BlockNumber = big.NewInt(int64(height))
 	receipt.TransactionIndex = uint(idxInBlock)
 	return &receipt
@@ -37,7 +37,7 @@ func TestReceiptCache(t *testing.T) {
 	indexer := NewIndexer(filedb, cacheSize)
 	cache := NewReceiptCaches("receiptfiles", cacheSize, 8)
 
-	receipts1 := make([]*ethTypes.Receipt, 2)
+	receipts1 := make([]*evmTypes.Receipt, 2)
 
 	for i := range receipts1 {
 		receipts1[i] = newReceipt(1, 0+i, i)
@@ -57,7 +57,7 @@ func TestReceiptCache(t *testing.T) {
 		return
 	}
 
-	receipts2 := make([]*ethTypes.Receipt, 2)
+	receipts2 := make([]*evmTypes.Receipt, 2)
 
 	for i := range receipts2 {
 		receipts2[i] = newReceipt(2, 2+i, i)
@@ -78,7 +78,7 @@ func TestReceiptCache(t *testing.T) {
 		return
 	}
 
-	receipts3 := make([]*ethTypes.Receipt, 2)
+	receipts3 := make([]*evmTypes.Receipt, 2)
 
 	for i := range receipts3 {
 		receipts3[i] = newReceipt(3, 4+i, i)

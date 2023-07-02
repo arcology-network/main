@@ -7,27 +7,27 @@ import (
 	"reflect"
 	"testing"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
+	evmTypes "github.com/arcology-network/evm/core/types"
+	evmRlp "github.com/arcology-network/evm/rlp"
 )
 
-func newBlock(height uint64, idx int) (*types.MonacoBlock, []ethCommon.Hash) {
-	header := &ethTypes.Header{
-		ParentHash:  ethCommon.BytesToHash([]byte{byte(1 + idx), byte(2 + idx), byte(3 + idx), byte(4 + idx), 5, 6, 7, 8, 9, 10}),
+func newBlock(height uint64, idx int) (*types.MonacoBlock, []evmCommon.Hash) {
+	header := &evmTypes.Header{
+		ParentHash:  evmCommon.BytesToHash([]byte{byte(1 + idx), byte(2 + idx), byte(3 + idx), byte(4 + idx), 5, 6, 7, 8, 9, 10}),
 		Number:      big.NewInt(common.Uint64ToInt64(height)),
 		GasLimit:    uint64(math.MaxUint64),
-		Time:        big.NewInt(int64(idx)),
+		Time:        uint64(idx),
 		Difficulty:  big.NewInt(1),
-		Coinbase:    ethCommon.BytesToAddress([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}),
-		Root:        ethCommon.BytesToHash([]byte{byte(1 + idx), byte(2 + idx), byte(3 + idx), 4, 5, 6, 7, 8, 9, 10}),
+		Coinbase:    evmCommon.BytesToAddress([]byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 10}),
+		Root:        evmCommon.BytesToHash([]byte{byte(1 + idx), byte(2 + idx), byte(3 + idx), 4, 5, 6, 7, 8, 9, 10}),
 		GasUsed:     100,
-		TxHash:      ethCommon.BytesToHash([]byte{byte(1 + idx), byte(2 + idx), 3, 4, 5, 6, 7, 8, 9, 10}),
-		ReceiptHash: ethCommon.BytesToHash([]byte{byte(1 + idx), 2, 3, 4, 5, 6, 7, 8, 9, 10}),
+		TxHash:      evmCommon.BytesToHash([]byte{byte(1 + idx), byte(2 + idx), 3, 4, 5, 6, 7, 8, 9, 10}),
+		ReceiptHash: evmCommon.BytesToHash([]byte{byte(1 + idx), 2, 3, 4, 5, 6, 7, 8, 9, 10}),
 	}
-	ethHeader, err := ethRlp.EncodeToBytes(&header)
+	ethHeader, err := evmRlp.EncodeToBytes(&header)
 	if err != nil {
 		return nil, nil
 	}
@@ -41,10 +41,10 @@ func newBlock(height uint64, idx int) (*types.MonacoBlock, []ethCommon.Hash) {
 	headers = append(headers, ethHeaders)
 
 	txSelected := make([][]byte, 2)
-	txhashes := make([]ethCommon.Hash, 2)
+	txhashes := make([]evmCommon.Hash, 2)
 	for i := range txSelected {
-		txSelected[i] = ethCommon.Hex2Bytes("01" + txs[idx+i])
-		txhashes[i] = ethCommon.HexToHash(hashes[idx+i])
+		txSelected[i] = evmCommon.Hex2Bytes("01" + txs[idx+i])
+		txhashes[i] = evmCommon.HexToHash(hashes[idx+i])
 	}
 
 	block := &types.MonacoBlock{
@@ -113,9 +113,9 @@ func TestBlockCache(t *testing.T) {
 	}
 
 	tx := cache.QueryTx(3, 1)
-	data := ethCommon.Hex2Bytes("01" + txs[5])
-	otx := new(ethTypes.Transaction)
-	if err := ethRlp.DecodeBytes(data[1:], otx); err != nil {
+	data := evmCommon.Hex2Bytes("01" + txs[5])
+	otx := new(evmTypes.Transaction)
+	if err := evmRlp.DecodeBytes(data[1:], otx); err != nil {
 		t.Error("tx decode Error")
 	}
 	if !reflect.DeepEqual(*tx, *otx) {

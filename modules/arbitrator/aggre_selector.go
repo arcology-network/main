@@ -3,11 +3,11 @@ package arbitrator
 import (
 	"time"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	ctypes "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/aggregator/aggregator"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
 	arbitrator "github.com/arcology-network/main/modules/arbitrator/impl-arbitrator"
 	"github.com/arcology-network/main/modules/arbitrator/types"
 	"go.uber.org/zap"
@@ -70,7 +70,7 @@ func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
 		if len(data) > 0 {
 			for _, v := range data {
 				euResult := v
-				result := a.ag.OnDataReceived(ethCommon.BytesToHash([]byte(euResult.Hash)), euResult)
+				result := a.ag.OnDataReceived(evmCommon.BytesToHash([]byte(euResult.Hash)), euResult)
 				a.SendMsg(result)
 			}
 		}

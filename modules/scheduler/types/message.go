@@ -1,20 +1,21 @@
 package types
 
 import (
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 type Message struct {
 	Message          *types.StandardMessage
-	Precedings       *[]*ethCommon.Hash
-	PrecedingHash    ethCommon.Hash
-	DirectPrecedings *[]*ethCommon.Hash
-	IsSpawned        bool
+	Precedings       *[]*evmCommon.Hash
+	PrecedingHash    evmCommon.Hash
+	DirectPrecedings *[]*evmCommon.Hash
+	// IsSpawned        bool
 }
 
 func (msg Message) FromStandardMessage(stdMsg *types.StandardMessage) *Message {
-	return &Message{Message: stdMsg, IsSpawned: false}
+	// return &Message{Message: stdMsg, IsSpawned: false}
+	return &Message{Message: stdMsg}
 }
 
 type Messages []*Message

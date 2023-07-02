@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/common"
-	ccctrnmap "github.com/arcology-network/common-lib/concurrentcontainer/map"
+	ccctrnmap "github.com/arcology-network/common-lib/container/map"
 )
 
 type MemoryDB struct {

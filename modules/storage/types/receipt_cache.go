@@ -3,9 +3,9 @@ package types
 import (
 	"time"
 
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
+	evmTypes "github.com/arcology-network/evm/core/types"
 )
 
 type ReceiptCaches struct {
@@ -21,12 +21,12 @@ func NewReceiptCaches(path string, cache int, concurrency int) *ReceiptCaches {
 		concurrency: concurrency,
 	}
 }
-func (rc *ReceiptCaches) QueryReceipt(height uint64, idx int) *ethTypes.Receipt {
+func (rc *ReceiptCaches) QueryReceipt(height uint64, idx int) *evmTypes.Receipt {
 	datas := rc.updateCache(height)
 	if datas == nil {
 		return nil
 	}
-	return datas[idx].(*ethTypes.Receipt)
+	return datas[idx].(*evmTypes.Receipt)
 }
 
 func (rc *ReceiptCaches) updateCache(height uint64) []interface{} {
@@ -39,7 +39,7 @@ func (rc *ReceiptCaches) updateCache(height uint64) []interface{} {
 	keys := make([]string, len(buffers))
 	worker := func(start, end int, idx int, args ...interface{}) {
 		for i := start; i < end; i++ {
-			receiptobj := ethTypes.Receipt{}
+			receiptobj := evmTypes.Receipt{}
 			err = common.GobDecode(buffers[i], &receiptobj)
 			if err != nil {
 				continue
@@ -53,7 +53,7 @@ func (rc *ReceiptCaches) updateCache(height uint64) []interface{} {
 	return datas
 }
 
-func (rc *ReceiptCaches) Save(height uint64, receipts []*ethTypes.Receipt) ([]string, []time.Duration) {
+func (rc *ReceiptCaches) Save(height uint64, receipts []*evmTypes.Receipt) ([]string, []time.Duration) {
 	tims := make([]time.Duration, 3)
 	if len(receipts) == 0 {
 		return []string{}, tims

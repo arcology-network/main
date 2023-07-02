@@ -5,11 +5,11 @@ import (
 	"sync"
 	"time"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	cmncmn "github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
+	evmCommon "github.com/arcology-network/evm/common"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
@@ -51,7 +51,7 @@ func NewExecClient(executors []string, batchSize int) *ExecClient {
 }
 
 func (client *ExecClient) Run(
-	messages map[ethcmn.Hash]*schtyp.Message,
+	messages map[evmCommon.Hash]*schtyp.Message,
 	sequences []*cmntyp.ExecutingSequence,
 	timestamp *big.Int,
 	msgTemplate *actor.Message,
@@ -60,12 +60,12 @@ func (client *ExecClient) Run(
 	generationIdx,
 	batchIdx int,
 ) (
-	map[ethcmn.Hash]*cmntyp.ExecuteResponse,
-	map[ethcmn.Hash]ethcmn.Hash,
-	map[ethcmn.Hash][]ethcmn.Hash,
-	[]ethcmn.Address,
-	map[ethcmn.Hash]uint32,
-	map[ethcmn.Hash]ethcmn.Address,
+	map[evmCommon.Hash]*cmntyp.ExecuteResponse,
+	// map[evmCommon.Hash]evmCommon.Hash,
+	// map[evmCommon.Hash][]evmCommon.Hash,
+	[]evmCommon.Address,
+	// map[evmCommon.Hash]uint32,
+	// map[evmCommon.Hash]evmCommon.Address,
 ) {
 	requests := make([]*cmntyp.ExecutorRequest, 0, int(50000/client.batchSize))
 	for _, sequence := range sequences {
@@ -81,8 +81,8 @@ func (client *ExecClient) Run(
 							Parallel: true,
 						},
 					},
-					Precedings:    [][]*ethcmn.Hash{*msg.Precedings},
-					PrecedingHash: []ethcmn.Hash{msg.PrecedingHash},
+					Precedings:    [][]*evmCommon.Hash{*msg.Precedings},
+					PrecedingHash: []evmCommon.Hash{msg.PrecedingHash},
 					Timestamp:     timestamp,
 					Debug:         false,
 				})
@@ -91,8 +91,8 @@ func (client *ExecClient) Run(
 			msg := messages[sequence.SequenceId]
 			requests = append(requests, &cmntyp.ExecutorRequest{
 				Sequences:     []*cmntyp.ExecutingSequence{sequence},
-				Precedings:    [][]*ethcmn.Hash{*msg.Precedings},
-				PrecedingHash: []ethcmn.Hash{msg.PrecedingHash},
+				Precedings:    [][]*evmCommon.Hash{*msg.Precedings},
+				PrecedingHash: []evmCommon.Hash{msg.PrecedingHash},
 				Timestamp:     timestamp,
 				Debug:         false,
 			})
@@ -153,54 +153,54 @@ func (client *ExecClient) Run(
 	ExecTimeGauge.Set(time.Since(execBegin).Seconds())
 
 	// The following code were copied from exec v1.
-	results := make(map[ethcmn.Hash]*cmntyp.ExecuteResponse)
-	spawnedTxs := make(map[ethcmn.Hash]ethcmn.Hash)
-	relations := make(map[ethcmn.Hash][]ethcmn.Hash)
-	contractAddress := make([]ethcmn.Address, 0, 10)
-	txids := make(map[ethcmn.Hash]uint32)
-	defCallees := make(map[ethcmn.Hash]ethcmn.Address)
+	results := make(map[evmCommon.Hash]*cmntyp.ExecuteResponse)
+	// spawnedTxs := make(map[evmCommon.Hash]evmCommon.Hash)
+	// relations := make(map[evmCommon.Hash][]evmCommon.Hash)
+	contractAddress := make([]evmCommon.Address, 0, 10)
+	// txids := make(map[evmCommon.Hash]uint32)
+	// defCallees := make(map[evmCommon.Hash]evmCommon.Address)
 	for _, resps := range responses {
 		for _, r := range resps {
-			if r.DfCalls != nil {
-				for i := range r.DfCalls {
-					results[r.HashList[i]] = &cmntyp.ExecuteResponse{
-						DfCall:  r.DfCalls[i],
-						Hash:    r.HashList[i],
-						Status:  r.StatusList[i],
-						GasUsed: r.GasUsedList[i],
-					}
+			// if r.DfCalls != nil {
+			for i := range r.HashList {
+				results[r.HashList[i]] = &cmntyp.ExecuteResponse{
+					// DfCall:  r.DfCalls[i],
+					Hash:    r.HashList[i],
+					Status:  r.StatusList[i],
+					GasUsed: r.GasUsedList[i],
 				}
 			}
+			// }
 
-			for i, spawnedHash := range r.SpawnedTxs {
-				spawnedTxs[r.SpawnedKeys[i]] = spawnedHash
-			}
+			// for i, spawnedHash := range r.SpawnedTxs {
+			// 	spawnedTxs[r.SpawnedKeys[i]] = spawnedHash
+			// }
 
-			if len(r.RelationKeys) == len(r.RelationSizes) {
-				idx := 0
-				for i, hash := range r.RelationKeys {
-					relations[hash] = r.RelationValues[idx : idx+int(r.RelationSizes[i])]
-					idx = idx + int(r.RelationSizes[i])
-				}
-			}
+			// if len(r.RelationKeys) == len(r.RelationSizes) {
+			// 	idx := 0
+			// 	for i, hash := range r.RelationKeys {
+			// 		relations[hash] = r.RelationValues[idx : idx+int(r.RelationSizes[i])]
+			// 		idx = idx + int(r.RelationSizes[i])
+			// 	}
+			// }
 
 			contractAddress = append(contractAddress, r.ContractAddresses...)
 
-			if len(r.TxidsHash) == len(r.TxidsId) {
-				for i, hash := range r.TxidsHash {
-					txids[hash] = r.TxidsId[i]
-					defCallees[hash] = r.TxidsAddress[i]
-				}
-			}
+			// if len(r.TxidsHash) == len(r.TxidsId) {
+			// 	for i, hash := range r.TxidsHash {
+			// 		txids[hash] = r.TxidsId[i]
+			// 		defCallees[hash] = r.TxidsAddress[i]
+			// 	}
+			// }
 		}
 	}
-	return results, spawnedTxs, relations, contractAddress, txids, defCallees
+	return results, contractAddress
 }
 
 func mergeRequests(requests []*cmntyp.ExecutorRequest) *cmntyp.ExecutorRequest {
 	sequences := make([]*cmntyp.ExecutingSequence, len(requests))
-	precedings := make([][]*ethcmn.Hash, len(requests))
-	precedingHash := make([]ethcmn.Hash, len(requests))
+	precedings := make([][]*evmCommon.Hash, len(requests))
+	precedingHash := make([]evmCommon.Hash, len(requests))
 	for i, request := range requests {
 		sequences[i] = request.Sequences[0]
 		precedings[i] = request.Precedings[0]

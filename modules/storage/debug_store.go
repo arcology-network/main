@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 )
 
@@ -40,7 +40,7 @@ func (ds *DebugStore) SaveLog(ctx context.Context, request *LogSaveRequest, _ *i
 	return nil
 }
 
-func (ds *DebugStore) GetExecLog(ctx context.Context, hash *ethcmn.Hash, log *string) error {
+func (ds *DebugStore) GetExecLog(ctx context.Context, hash *evmCommon.Hash, log *string) error {
 	log = ds.execlog.Query(string(hash.Bytes()))
 	return nil
 }

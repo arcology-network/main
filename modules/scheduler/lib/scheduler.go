@@ -9,13 +9,13 @@ import (
 	"sync"
 	"unsafe"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 var (
-	nilAddress = ethCommon.Address{}
+	nilAddress = evmCommon.Address{}
 )
 
 const (
@@ -67,11 +67,11 @@ func GetCallees(msgs []*types.StandardMessage) ([]byte, []uint32) {
 		callees := args[0].([]interface{})[1].([][]byte)
 		txIds := args[0].([]interface{})[2].([]uint32)
 		for i := start; i < end; i++ {
-			to := msgs[i].Native.To()
+			to := msgs[i].Native.To
 			if to == nil {
 				callees[i] = []byte(nilAddress.Hex()[2:])
 			} else {
-				callees[i] = []byte(msgs[i].Native.To().Hex()[2:])
+				callees[i] = []byte(msgs[i].Native.To.Hex()[2:])
 			}
 			pads := make([]byte, CALLEESIZE-len(callees[i]))
 			callees[i] = append(callees[i], pads...)
@@ -212,7 +212,7 @@ func (s *Scheduler) Schedule(msgs []*types.StandardMessage, height uint64) ([][]
 	return ParseResult(msgs, newTxOrder, branches, generations), ParseLog(buffer)
 }
 
-func PaddingRight(ones []*ethCommon.Address, twos []*ethCommon.Address) ([]byte, []byte) {
+func PaddingRight(ones []*evmCommon.Address, twos []*evmCommon.Address) ([]byte, []byte) {
 	padOnes := make([][]byte, len(ones))
 	padTwos := make([][]byte, len(twos))
 
@@ -234,7 +234,7 @@ func PaddingRight(ones []*ethCommon.Address, twos []*ethCommon.Address) ([]byte,
 	return common.Flatten(padOnes), common.Flatten(padTwos)
 }
 
-func (s *Scheduler) Update(ones []*ethCommon.Address, twos []*ethCommon.Address) string {
+func (s *Scheduler) Update(ones []*evmCommon.Address, twos []*evmCommon.Address) string {
 	buffer := make([]byte, BUFFERSIZE)
 	c_log := (*C.char)(unsafe.Pointer(&buffer[0]))
 

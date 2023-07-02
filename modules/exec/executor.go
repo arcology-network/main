@@ -1,37 +1,34 @@
 package exec
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
-	ethtyp "github.com/arcology-network/3rd-party/eth/types"
 	cachedstorage "github.com/arcology-network/common-lib/cachedstorage"
-	cmncmn "github.com/arcology-network/common-lib/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/component-lib/storage"
-	ccurl "github.com/arcology-network/concurrenturl/v2"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
-	curstorage "github.com/arcology-network/concurrenturl/v2/storage"
-	"github.com/arcology-network/concurrenturl/v2/type/commutative"
-	evmcmn "github.com/arcology-network/evm/common"
+	ccurl "github.com/arcology-network/concurrenturl"
+	"github.com/arcology-network/concurrenturl/commutative"
+	"github.com/arcology-network/concurrenturl/indexer"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	ccdb "github.com/arcology-network/concurrenturl/storage"
+	evmCommon "github.com/arcology-network/evm/common"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
-	adaptor "github.com/arcology-network/vm-adaptor/evm"
 	"go.uber.org/zap"
+
+	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	evmTypes "github.com/arcology-network/evm/core/types"
+	ccapi "github.com/arcology-network/vm-adaptor/api"
+	eucommon "github.com/arcology-network/vm-adaptor/common"
+	"github.com/arcology-network/vm-adaptor/execution"
 )
 
 type ExecutorResponse struct {
-	Responses       []*cmntyp.ExecuteResponse
-	Uuid            uint64
-	SerialID        int
-	Total           int
-	Relation        map[ethcmn.Hash][]ethcmn.Hash
-	SpawnHashes     map[ethcmn.Hash]ethcmn.Hash
-	ContractAddress []ethcmn.Address
-	Txids           map[ethcmn.Hash]*exetyp.DefItem
+	Responses       []*types.ExecuteResponse
+	ContractAddress []evmCommon.Address
 	CallResults     [][]byte
 }
 
@@ -43,16 +40,16 @@ const (
 )
 
 type pendingTask struct {
-	precedings         []*ethcmn.Hash
-	baseOn             *urlcmn.DatastoreInterface
+	precedings         []*evmCommon.Hash
+	baseOn             *interfaces.Datastore
 	totalPrecedingSize int
 
-	sequence  *cmntyp.ExecutingSequence
+	sequence  *types.ExecutingSequence
 	timestamp *big.Int
 	debug     bool
 }
 
-func (ps *pendingTask) match(results []*cmntyp.EuResult) bool {
+func (ps *pendingTask) match(results []*types.EuResult) bool {
 	if len(ps.precedings) != len(results) {
 		return false
 	}
@@ -78,11 +75,12 @@ type Executor struct {
 
 	snapshotDict SnapshotDict
 	execParams   *exetyp.ExecutorParameter
-	eus          []ExecutionImpl
+	//eus          []ExecutionImpl
+	apis         []eucommon.EthApiRouter
 	taskCh       chan *exetyp.ExecMessagers
 	resultCh     chan *ExecutorResponse
 	genExecLog   bool
-	pendingTasks map[ethcmn.Hash][]*pendingTask
+	pendingTasks map[evmCommon.Hash][]*pendingTask
 	url          *ccurl.ConcurrentUrl
 	numTasks     int
 	requestId    uint64
@@ -93,7 +91,7 @@ func NewExecutor(concurrency int, groupId string) actor.IWorkerEx {
 		state:        execStateWaitDBCommit,
 		height:       math.MaxUint64,
 		snapshotDict: exetyp.NewLookup(),
-		eus:          make([]ExecutionImpl, concurrency),
+		apis:         make([]eucommon.EthApiRouter, concurrency),
 		taskCh:       make(chan *exetyp.ExecMessagers, concurrency),
 		resultCh:     make(chan *ExecutorResponse, concurrency),
 		url:          ccurl.NewConcurrentUrl(nil),
@@ -133,20 +131,25 @@ func (exec *Executor) Config(params map[string]interface{}) {
 
 func (exec *Executor) OnStart() {
 	// The following code were copied from exec v1.
-	config := exetyp.MainConfig()
+	// config := exetyp.MainConfig()
 	for i := 0; i < int(exec.Concurrency); i++ {
 		persistentDB := cachedstorage.NewDataStore()
-		platform := urlcmn.NewPlatform()
-		meta, _ := commutative.NewMeta(platform.Eth10Account())
-		persistentDB.Inject(platform.Eth10Account(), meta)
-		db := curstorage.NewTransientDB(persistentDB)
+		platform := ccurl.NewPlatform()
+		// meta, _ := commutative.NewMeta(platform.Eth10Account())
+		persistentDB.Inject(platform.Eth10Account(), commutative.NewPath())
+		db := ccdb.NewTransientDB(persistentDB)
 
 		url := ccurl.NewConcurrentUrl(db)
-		api := adaptor.NewAPIV2(db, url)
-		statedb := adaptor.NewStateDBV2(api, db, url)
+		// api := adaptor.NewAPIV2(db, url)
+		// statedb := adaptor.NewStateDBV2(api, db, url)
 
-		exec.eus[i] = &exetyp.ExecutionService{}
-		exec.eus[i].Init(adaptor.NewEUV2(config.ChainConfig, *config.VMConfig, config.Chain, statedb, api, db, url), url)
+		api := ccapi.NewAPI(url)
+		// statedb := eth.NewImplStateDB(api)
+
+		exec.apis[i] = api
+		// exec.eus[i] = &exetyp.ExecutionService{}
+		// exec.eus[i].Init(cceu.NewEU(config.ChainConfig, *config.VMConfig, statedb, api), url)
+
 	}
 	exec.startExec()
 }
@@ -155,15 +158,15 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	switch exec.state {
 	case execStateWaitDBCommit:
-		db := msg.Data.(*actor.CombinerElements).Get(actor.MsgApcHandle).Data.(*urlcmn.DatastoreInterface)
+		db := msg.Data.(*actor.CombinerElements).Get(actor.MsgApcHandle).Data.(*interfaces.Datastore)
 		exec.snapshotDict.Reset(db)
 		exec.height = msg.Height + 1
 		exec.state = execStateWaitBlockStart
 	case execStateWaitBlockStart:
 		combined := msg.Data.(*actor.CombinerElements)
-		coinbase := evmcmn.BytesToAddress(combined.Get(actor.MsgBlockStart).Data.(*actor.BlockStart).Coinbase.Bytes())
+		coinbase := evmCommon.BytesToAddress(combined.Get(actor.MsgBlockStart).Data.(*actor.BlockStart).Coinbase.Bytes())
 		exec.execParams = &exetyp.ExecutorParameter{
-			ParentInfo: combined.Get(actor.MsgParentInfo).Data.(*cmntyp.ParentInfo),
+			ParentInfo: combined.Get(actor.MsgParentInfo).Data.(*types.ParentInfo),
 			Coinbase:   &coinbase,
 			Height:     combined.Get(actor.MsgBlockStart).Height,
 		}
@@ -171,10 +174,10 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 	case execStateReady:
 		switch msg.Name {
 		case actor.MsgTxsToExecute:
-			request := msg.Data.(*cmntyp.ExecutorRequest)
+			request := msg.Data.(*types.ExecutorRequest)
 			exec.numTasks = len(request.Sequences)
 			exec.requestId = msg.Msgid
-			exec.pendingTasks = make(map[ethcmn.Hash][]*pendingTask)
+			exec.pendingTasks = make(map[evmCommon.Hash][]*pendingTask)
 			for i := range request.Sequences {
 				snapshot, precedings := exec.snapshotDict.Query(request.Precedings[i])
 				if len(precedings) == 0 {
@@ -206,18 +209,18 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 		}
 	case execStateProcessing:
 		data := msg.Data.([]interface{})
-		results := make([]*cmntyp.EuResult, len(data))
+		results := make([]*types.EuResult, len(data))
 		for i, d := range data {
-			results[i] = d.(*cmntyp.EuResult)
+			results[i] = d.(*types.EuResult)
 		}
 		for hash, pt := range exec.pendingTasks {
 			if pt[0].match(results) {
 				// The following code were copied from exec v1.
-				db := curstorage.NewTransientDB(*pt[0].baseOn)
+				db := ccdb.NewTransientDB(*pt[0].baseOn)
 				exec.url.Init(db)
 				txIds, transitions := storage.GetTransitions(results)
 				exec.url.Import(transitions)
-				exec.url.PostImport()
+				exec.url.Sort()
 				exec.url.Commit(txIds)
 				exec.snapshotDict.AddItem(hash, pt[0].totalPrecedingSize, &db)
 
@@ -259,9 +262,9 @@ func (exec *Executor) Height() uint64 {
 }
 
 func (exec *Executor) sendNewTask(
-	snapshot urlcmn.DatastoreInterface,
+	snapshot interfaces.Datastore,
 	timestamp *big.Int,
-	sequence *cmntyp.ExecutingSequence,
+	sequence *types.ExecutingSequence,
 	debug bool,
 ) {
 	//db := curstorage.NewTransientDB(snapshot)
@@ -269,7 +272,7 @@ func (exec *Executor) sendNewTask(
 	config.Coinbase = exec.execParams.Coinbase
 	config.BlockNumber = new(big.Int).SetUint64(exec.height)
 	config.Time = timestamp
-	config.ParentHash = evmcmn.BytesToHash(exec.execParams.ParentInfo.ParentHash.Bytes())
+	config.ParentHash = evmCommon.BytesToHash(exec.execParams.ParentInfo.ParentHash.Bytes())
 	task := &exetyp.ExecMessagers{
 		Sequence: sequence,
 		Snapshot: &snapshot,
@@ -287,23 +290,119 @@ func (exec *Executor) collectResults() {
 	exec.MsgBroker.Send(actor.MsgTxsExecuteResults, responses, exec.height, exec.requestId)
 }
 
+func toJobSequence(msgs []*types.StandardMessage) []*execution.StandardMessage {
+	nmsgs := make([]*execution.StandardMessage, len(msgs))
+	for i, msg := range msgs {
+		nmsgs[i] = &execution.StandardMessage{
+			TxHash: msg.TxHash,
+			Native: msg.Native,
+			Source: msg.Source,
+		}
+	}
+	return nmsgs
+}
+
 func (exec *Executor) startExec() {
 	for i := 0; i < int(exec.Concurrency); i++ {
 		index := i
 		go func(index int) {
 			for {
 				task := <-exec.taskCh
-				exec.eus[index].SetDB(task.Snapshot)
-				logid := exec.AddLog(log.LogLevel_Debug, "exec request", zap.Int("mgs", len(task.Sequence.Msgs)), zap.String("coinbase", fmt.Sprintf("%x", task.Config.Coinbase)), zap.Int("index", index))
-				interLog := exec.GetLogger(logid)
-				resp, err := exec.eus[index].Exec(task.Sequence, task.Config, interLog, exec.genExecLog)
-				if err != nil {
-					exec.AddLog(log.LogLevel_Error, "Exec err", zap.String("err", err.Error()))
-					continue
+				// exec.eus[index].SetDB(task.Snapshot)
+				// logid := exec.AddLog(log.LogLevel_Debug, "exec request", zap.Int("mgs", len(task.Sequence.Msgs)), zap.String("coinbase", fmt.Sprintf("%x", task.Config.Coinbase)), zap.Int("index", index))
+				// interLog := exec.GetLogger(logid)
+				// resp, err := exec.eus[index].Exec(task.Sequence, task.Config, interLog, exec.genExecLog)
+				// if err != nil {
+				// 	exec.AddLog(log.LogLevel_Error, "Exec err", zap.String("err", err.Error()))
+				// 	continue
+				// }
+				// exec.sendResult(resp, task, task.Debug)
+
+				job := execution.JobSequence{
+					ID:        uint64(0),
+					StdMsgs:   toJobSequence(task.Sequence.Msgs),
+					ApiRouter: exec.apis[i],
 				}
-				exec.sendResult(resp, task, task.Debug)
+
+				exec.sendResults(job.Run(task.Config, *task.Snapshot), task.Sequence.Txids, task.Debug)
 			}
 		}(index)
+	}
+}
+func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, debug bool) {
+	counter := len(results)
+	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))
+	sendingEuResults := make([]*types.EuResult, 0, counter)
+	sendingAccessRecords := make([]*types.TxAccessRecords, 0, counter)
+	sendingReceipts := make([]*evmTypes.Receipt, 0, counter)
+	contractAddress := []evmCommon.Address{}
+	nilAddress := evmCommon.Address{}
+	sendingCallResults := make([][]byte, 0, counter)
+	txsResults := make([]*types.ExecuteResponse, counter)
+	for i, result := range results {
+		univalues := indexer.Univalues(result.Transitions)
+		accesses := univalues.To(indexer.ITCAccess{})
+		transitions := univalues.To(indexer.ITCTransition{})
+
+		euresult := types.EuResult{}
+		euresult.H = string(result.TxHash[:])
+		euresult.GasUsed = result.Receipt.GasUsed
+		euresult.Status = result.Receipt.Status
+		euresult.ID = txids[i]
+		euresult.Transitions = univaluepk.UnivaluesEncode(transitions)
+		sendingEuResults[i] = &euresult
+
+		accessRecord := types.TxAccessRecords{}
+		accessRecord.Hash = euresult.H
+		accessRecord.ID = txids[i]
+		accessRecord.Accesses = univaluepk.UnivaluesEncode(accesses)
+		sendingAccessRecords[i] = &accessRecord
+
+		sendingReceipts[i] = result.Receipt
+
+		if result.Receipt.ContractAddress != nilAddress {
+			contractAddress = append(contractAddress, result.Receipt.ContractAddress)
+		}
+
+		sendingCallResults[i] = result.EvmResult.ReturnData
+
+		txsResults[i] = &types.ExecuteResponse{
+			Hash:    evmCommon.BytesToHash([]byte(euresult.H)),
+			Status:  euresult.Status,
+			GasUsed: euresult.GasUsed,
+		}
+	}
+	//-----------------------------start sending ------------------------------
+	if !debug {
+		euresults := types.Euresults(sendingEuResults)
+		exec.MsgBroker.Send(actor.MsgEuResults, &euresults)
+		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgEuResults", zap.Int("euresults", len(euresults)))
+	}
+	responses := ExecutorResponse{
+		Responses:       txsResults,
+		ContractAddress: contractAddress,
+	}
+	if debug {
+		responses.CallResults = sendingCallResults
+	} else {
+		responses.CallResults = [][]byte{}
+	}
+	exec.resultCh <- &responses
+
+	if !debug {
+		tarss := types.TxAccessRecordSet(sendingAccessRecords)
+		exec.MsgBroker.Send(actor.MsgTxAccessRecords, &tarss)
+		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgTxAccessRecords", zap.Int("MsgTxAccessRecords", len(tarss)))
+	}
+	if debug {
+		return
+	}
+
+	if counter > 0 {
+		exec.MsgBroker.Send(actor.MsgReceipts, &sendingReceipts)
+		receiptHashList := exec.toReceiptsHash(&sendingReceipts)
+		exec.MsgBroker.Send(actor.MsgReceiptHashList, receiptHashList)
+		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgReceiptHashList", zap.Int("receiptHashList", len(receiptHashList.TxHashList)))
 	}
 }
 
@@ -313,45 +412,45 @@ func (exec *Executor) sendResult(response *exetyp.ExecutionResponse, messages *e
 	counter := len(response.EuResults)
 	if counter > 0 {
 		if !debug {
-			euresults := cmntyp.Euresults(response.EuResults)
+			euresults := types.Euresults(response.EuResults)
 			exec.MsgBroker.Send(actor.MsgEuResults, &euresults)
 			exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgEuResults", zap.Int("euresults", len(euresults)))
 		}
-		txsResults := make([]*cmntyp.ExecuteResponse, counter)
+		txsResults := make([]*types.ExecuteResponse, counter)
 
 		worker := func(start, end, idx int, args ...interface{}) {
-			results := args[0].([]interface{})[0].([]*cmntyp.EuResult)
-			responses := args[0].([]interface{})[1].([]*cmntyp.ExecuteResponse)
+			results := args[0].([]interface{})[0].([]*types.EuResult)
+			responses := args[0].([]interface{})[1].([]*types.ExecuteResponse)
 
 			for i := start; i < end; i++ {
 				result := results[i]
-				var df *cmntyp.DeferCall
-				if result.DC != nil {
-					df = &cmntyp.DeferCall{
-						DeferID:         result.DC.DeferID,
-						ContractAddress: cmntyp.Address(result.DC.ContractAddress),
-						Signature:       result.DC.Signature,
-					}
-				}
-				responses[i] = &cmntyp.ExecuteResponse{
-					DfCall:  df,
-					Hash:    ethcmn.BytesToHash([]byte(result.H)),
+				// var df *types.DeferCall
+				// if result.DC != nil {
+				// 	df = &types.DeferCall{
+				// 		DeferID:         result.DC.DeferID,
+				// 		ContractAddress: types.Address(result.DC.ContractAddress),
+				// 		Signature:       result.DC.Signature,
+				// 	}
+				// }
+				responses[i] = &types.ExecuteResponse{
+					// DfCall:  df,
+					Hash:    evmCommon.BytesToHash([]byte(result.H)),
 					Status:  result.Status,
 					GasUsed: result.GasUsed,
 				}
 			}
 		}
-		cmncmn.ParallelWorker(len(response.EuResults), exec.Concurrency, worker, response.EuResults, txsResults)
+		common.ParallelWorker(len(response.EuResults), exec.Concurrency, worker, response.EuResults, txsResults)
 
 		responses := ExecutorResponse{
-			Responses:       txsResults,
-			Uuid:            messages.Uuid,
-			Total:           messages.Total,
-			SerialID:        messages.SerialID,
-			Relation:        response.Relation,
-			SpawnHashes:     response.SpawnHashes,
+			Responses: txsResults,
+			// Uuid:      messages.Uuid,
+			// Total:     messages.Total,
+			// SerialID:  messages.SerialID,
+			// Relation:        response.Relation,
+			// SpawnHashes:     response.SpawnHashes,
 			ContractAddress: response.ContractAddress,
-			Txids:           response.Txids,
+			// Txids:           response.Txids,
 		}
 		if debug {
 			responses.CallResults = response.CallResults
@@ -362,7 +461,7 @@ func (exec *Executor) sendResult(response *exetyp.ExecutionResponse, messages *e
 		exec.resultCh <- &responses
 
 		if !debug {
-			tarss := cmntyp.TxAccessRecordSet(response.AccessRecords)
+			tarss := types.TxAccessRecordSet(response.AccessRecords)
 			exec.MsgBroker.Send(actor.MsgTxAccessRecords, &tarss)
 			exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgTxAccessRecords", zap.Int("MsgTxAccessRecords", len(tarss)))
 		}
@@ -387,7 +486,7 @@ func (exec *Executor) sendResult(response *exetyp.ExecutionResponse, messages *e
 	exec.AddLog(log.LogLevel_Info, "send receipt ", zap.Int("nums", counter))
 }
 
-func (e *Executor) toReceiptsHash(receipts *[]*ethtyp.Receipt) *cmntyp.ReceiptHashList {
+func (e *Executor) toReceiptsHash(receipts *[]*evmTypes.Receipt) *types.ReceiptHashList {
 	// The following code were copied from exec v1.
 	rcptLength := 0
 	if receipts != nil {
@@ -395,28 +494,28 @@ func (e *Executor) toReceiptsHash(receipts *[]*ethtyp.Receipt) *cmntyp.ReceiptHa
 	}
 
 	if rcptLength == 0 {
-		return &cmntyp.ReceiptHashList{}
+		return &types.ReceiptHashList{}
 	}
 
-	receiptHashList := make([]ethcmn.Hash, rcptLength)
-	txHashList := make([]ethcmn.Hash, rcptLength)
+	receiptHashList := make([]evmCommon.Hash, rcptLength)
+	txHashList := make([]evmCommon.Hash, rcptLength)
 	gasUsedList := make([]uint64, rcptLength)
 	worker := func(start, end, idx int, args ...interface{}) {
-		receipts := args[0].([]interface{})[0].([]*ethtyp.Receipt)
-		receiptHashList := args[0].([]interface{})[1].([]ethcmn.Hash)
-		txHashList := args[0].([]interface{})[2].([]ethcmn.Hash)
+		receipts := args[0].([]interface{})[0].([]*evmTypes.Receipt)
+		receiptHashList := args[0].([]interface{})[1].([]evmCommon.Hash)
+		txHashList := args[0].([]interface{})[2].([]evmCommon.Hash)
 		gasUsedList := args[0].([]interface{})[3].([]uint64)
 
 		for i := range receipts[start:end] {
 			idx := i + start
 			receipt := receipts[idx]
 			txHashList[idx] = receipt.TxHash
-			receiptHashList[idx] = ethcmn.RlpHash(receipt)
+			receiptHashList[idx] = types.RlpHash(receipt)
 			gasUsedList[idx] = receipt.GasUsed
 		}
 	}
-	cmncmn.ParallelWorker(len(*receipts), e.Concurrency, worker, *receipts, receiptHashList, txHashList, gasUsedList)
-	return &cmntyp.ReceiptHashList{
+	common.ParallelWorker(len(*receipts), e.Concurrency, worker, *receipts, receiptHashList, txHashList, gasUsedList)
+	return &types.ReceiptHashList{
 		TxHashList:      txHashList,
 		ReceiptHashList: receiptHashList,
 		GasUsedList:     gasUsedList,

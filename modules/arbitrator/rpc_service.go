@@ -7,11 +7,11 @@ import (
 	"sync"
 	"time"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	ctypes "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	kafkalib "github.com/arcology-network/component-lib/kafka/lib"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/modules/arbitrator/accumulator"
 	arbitrator "github.com/arcology-network/main/modules/arbitrator/impl-arbitrator"
 	"github.com/arcology-network/main/modules/arbitrator/types"
@@ -76,7 +76,7 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	lstMessage := request.CopyHeader()
 	rs.ChangeEnvironment(lstMessage)
 	params := request.Data.(*ctypes.ArbitratorRequest)
-	list := []*ethCommon.Hash{}
+	list := []*evmCommon.Hash{}
 	for _, rows := range params.TxsListGroup {
 		for _, element := range rows {
 			list = append(list, element.TxHash)
@@ -147,13 +147,13 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	return nil
 }
 
-func detectConflict(arbitrator *arbitrator.ArbitratorImpl, txsListGroup [][]*ctypes.TxElement, euResults *[]*types.ProcessedEuResult, inlog *actor.WorkerThreadLogger) ([]*ethCommon.Hash, []uint32, []uint32) {
+func detectConflict(arbitrator *arbitrator.ArbitratorImpl, txsListGroup [][]*ctypes.TxElement, euResults *[]*types.ProcessedEuResult, inlog *actor.WorkerThreadLogger) ([]*evmCommon.Hash, []uint32, []uint32) {
 	timeDetails := make([]time.Duration, 10)
 	// Make the results indexable.
 	t := time.Now()
-	euDict := make(map[ethCommon.Hash]*types.ProcessedEuResult, len(*euResults))
+	euDict := make(map[evmCommon.Hash]*types.ProcessedEuResult, len(*euResults))
 	for _, r := range *euResults {
-		euDict[ethCommon.BytesToHash([]byte(r.Hash))] = r
+		euDict[evmCommon.BytesToHash([]byte(r.Hash))] = r
 	}
 	timeDetails[0] = time.Since(t)
 	// Prepare arguments for DetectConflict.
@@ -197,7 +197,7 @@ func detectConflict(arbitrator *arbitrator.ArbitratorImpl, txsListGroup [][]*cty
 	timeDetails[3] = time.Since(t)
 	// Add conflicted groups into conflict list.
 	t = time.Now()
-	var conflictedList []*ethCommon.Hash
+	var conflictedList []*evmCommon.Hash
 	for id := range uniqueConflicts {
 		for _, e := range txsListGroup[id] {
 			conflictedList = append(conflictedList, e.TxHash)
@@ -237,12 +237,12 @@ func detectConflict(arbitrator *arbitrator.ArbitratorImpl, txsListGroup [][]*cty
 	timeDetails[7] = time.Since(t)
 	// Make results indexable.
 	t = time.Now()
-	conflictDict := make(map[ethCommon.Hash]struct{})
+	conflictDict := make(map[evmCommon.Hash]struct{})
 	for i, conflict := range results {
 		if !conflict {
 			continue
 		}
-		conflictDict[ethCommon.BytesToHash([]byte(txs[i].Hash))] = struct{}{}
+		conflictDict[evmCommon.BytesToHash([]byte(txs[i].Hash))] = struct{}{}
 	}
 	timeDetails[8] = time.Since(t)
 	// Add conflicted groups into conflict list.

@@ -5,8 +5,7 @@ import (
 	"sync"
 	"time"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
+	evmCommon "github.com/arcology-network/evm/common"
 
 	"github.com/arcology-network/component-lib/ethrpc"
 	eth "github.com/arcology-network/evm"
@@ -43,7 +42,7 @@ func (f *Filter) getLogs() []*ethtyp.Log {
 	f.Logs = nil
 	return logs
 }
-func (f *Filter) append(height uint64, logs []*ethtyp.Log, blockhash ethCommon.Hash) {
+func (f *Filter) append(height uint64, logs []*ethtyp.Log, blockhash evmCommon.Hash) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
@@ -99,7 +98,7 @@ func (fs *Filters) SetTimeout(timeout time.Duration) {
 	go fs.timeoutLoop(timeout)
 }
 
-func (fs *Filters) OnResultsArrived(height uint64, receipts []*ethTypes.Receipt, blockhash ethCommon.Hash) {
+func (fs *Filters) OnResultsArrived(height uint64, receipts []*ethtyp.Receipt, blockhash evmCommon.Hash) {
 	logs := ethrpc.ToLogs(receipts)
 	for _, f := range fs.filters {
 		go f.append(height, logs, blockhash)

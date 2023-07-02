@@ -6,8 +6,8 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
-	ccurlTypes "github.com/arcology-network/concurrenturl/v2/type"
-	commutative "github.com/arcology-network/concurrenturl/v2/type/commutative"
+	commutative "github.com/arcology-network/concurrenturl/commutative"
+	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 )
 
 type kafka struct {
@@ -48,7 +48,7 @@ func (c *kafka) OnMessageArrived(msgs []*actor.Message) error {
 				if data != nil {
 					for i := range *data {
 						transitions := (*data)[i].Transitions
-						transitionData := ccurlTypes.Univalues{}.DecodeV2(transitions, func() interface{} { return &ccurlTypes.Univalue{} }, nil)
+						transitionData := univaluepk.UnivaluesDecode(transitions, func() interface{} { return &univaluepk.Univalue{} }, nil)
 						size := 0
 
 						for j := range transitionData {
@@ -56,7 +56,7 @@ func (c *kafka) OnMessageArrived(msgs []*actor.Message) error {
 							if strings.Contains(key, c.queryKey) {
 								size = size + 1
 								total = total + 1
-								nonce := transitionData[j].Value().(*commutative.Int64).GetDelta().(int64)
+								nonce := transitionData[j].Value().(*commutative.Uint64).Delta().(uint64)
 
 								if nonce > 1 {
 									fmt.Printf("=====height=%v======h=%x   %v\n", v.Height, []byte((*data)[i].H), nonce)

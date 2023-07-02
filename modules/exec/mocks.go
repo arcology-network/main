@@ -1,14 +1,14 @@
 package exec
 
 import (
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
-	ethtyp "github.com/arcology-network/3rd-party/eth/types"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
-	ccurl "github.com/arcology-network/concurrenturl/v2"
-	urlcmn "github.com/arcology-network/concurrenturl/v2/common"
+	ccurl "github.com/arcology-network/concurrenturl"
+	"github.com/arcology-network/concurrenturl/interfaces"
+	evmCommon "github.com/arcology-network/evm/common"
+	ethTypes "github.com/arcology-network/evm/core/types"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
-	adaptor "github.com/arcology-network/vm-adaptor/evm"
+	adaptor "github.com/arcology-network/vm-adaptor"
 )
 
 type mockWorker struct {
@@ -51,8 +51,8 @@ func (m *mockWorker) OnMessageArrived(msgs []*actor.Message) error {
 		m.MsgBroker.Send(
 			actor.MsgPrecedingsEuresult,
 			[]interface{}{
-				&cmntyp.EuResult{
-					H: string(ethcmn.BytesToHash([]byte{1}).Bytes()),
+				&types.EuResult{
+					H: string(evmCommon.BytesToHash([]byte{1}).Bytes()),
 				},
 			},
 			msg.Height,
@@ -62,17 +62,17 @@ func (m *mockWorker) OnMessageArrived(msgs []*actor.Message) error {
 }
 
 type mockSnapshotDict struct {
-	base *urlcmn.DatastoreInterface
+	base *interfaces.Datastore
 }
 
-func (m *mockSnapshotDict) Reset(snapshot *urlcmn.DatastoreInterface) {
+func (m *mockSnapshotDict) Reset(snapshot *interfaces.Datastore) {
 	m.base = snapshot
 }
 
-func (m *mockSnapshotDict) AddItem(precedingHash ethcmn.Hash, size int, snapshot *urlcmn.DatastoreInterface) {
+func (m *mockSnapshotDict) AddItem(precedingHash evmCommon.Hash, size int, snapshot *interfaces.Datastore) {
 }
 
-func (m *mockSnapshotDict) Query(precedings []*ethcmn.Hash) (*urlcmn.DatastoreInterface, []*ethcmn.Hash) {
+func (m *mockSnapshotDict) Query(precedings []*evmCommon.Hash) (*interfaces.Datastore, []*evmCommon.Hash) {
 	if len(precedings) == 0 {
 		return m.base, nil
 	} else {
@@ -83,21 +83,21 @@ func (m *mockSnapshotDict) Query(precedings []*ethcmn.Hash) (*urlcmn.DatastoreIn
 type mockExecutionImpl struct {
 }
 
-func (m *mockExecutionImpl) Init(eu *adaptor.EUV2, url *ccurl.ConcurrentUrl) {}
+func (m *mockExecutionImpl) Init(eu *adaptor.EU, url *ccurl.ConcurrentUrl) {}
 
-func (m *mockExecutionImpl) SetDB(db *urlcmn.DatastoreInterface) {}
+func (m *mockExecutionImpl) SetDB(db *interfaces.Datastore) {}
 
 func (m *mockExecutionImpl) Exec(
-	sequence *cmntyp.ExecutingSequence,
+	sequence *types.ExecutingSequence,
 	config *adaptor.Config,
 	logger *actor.WorkerThreadLogger,
 	gatherExeclog bool,
 ) (*exetyp.ExecutionResponse, error) {
 	return &exetyp.ExecutionResponse{
-		EuResults: []*cmntyp.EuResult{
+		EuResults: []*types.EuResult{
 			{},
 		},
-		Receipts: []*ethtyp.Receipt{
+		Receipts: []*ethTypes.Receipt{
 			{},
 		},
 		ExecutingLogs: []string{""},

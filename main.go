@@ -3,8 +3,8 @@ package main
 import (
 	"os"
 
-	"github.com/arcology-network/3rd-party/tm/cli"
 	"github.com/arcology-network/consensus-engine/cmd/tendermint/commands"
+	"github.com/arcology-network/consensus-engine/libs/cli"
 	"github.com/arcology-network/main/boot"
 	"github.com/arcology-network/main/modules/consensus"
 	"github.com/spf13/cobra"

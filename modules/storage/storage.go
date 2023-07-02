@@ -9,9 +9,6 @@ import (
 	"sync"
 	"time"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
-	ethRlp "github.com/arcology-network/3rd-party/eth/rlp"
-	ethTypes "github.com/arcology-network/3rd-party/eth/types"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
@@ -21,7 +18,9 @@ import (
 	evm "github.com/arcology-network/evm"
 	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/evm/common/hexutil"
+	"github.com/arcology-network/evm/core"
 	evmTypes "github.com/arcology-network/evm/core/types"
+	evmrlp "github.com/arcology-network/evm/rlp"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -102,10 +101,10 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 	//var statedatas *storage.UrlUpdate
 	result := ""
 	height := uint64(0)
-	var receipts []*ethTypes.Receipt
+	var receipts []*evmTypes.Receipt
 	var block *types.MonacoBlock
 	var exectime *types.StatisticalInformation
-	spawnedRelations := []*types.SpawnedRelation{}
+	// spawnedRelations := []*types.SpawnedRelation{}
 	inclusive := &types.InclusiveList{}
 	var na int
 
@@ -129,15 +128,15 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 			}, &na)
 		case actor.MsgSelectedReceipts:
 			for _, item := range v.Data.([]interface{}) {
-				receipts = append(receipts, item.(*ethTypes.Receipt))
+				receipts = append(receipts, item.(*evmTypes.Receipt))
 			}
 		case actor.MsgPendingBlock:
 			block = v.Data.(*types.MonacoBlock)
 			height = v.Height
 		case actor.MsgExecTime:
 			exectime = v.Data.(*types.StatisticalInformation)
-		case actor.MsgSpawnedRelations:
-			spawnedRelations = v.Data.([]*types.SpawnedRelation)
+		// case actor.MsgSpawnedRelations:
+		// 	spawnedRelations = v.Data.([]*types.SpawnedRelation)
 		case actor.MsgConflictInclusive:
 			inclusive = v.Data.(*types.InclusiveList)
 		}
@@ -162,7 +161,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 			s.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>> block save", zap.Duration("time", time.Since(t0)))
 		}
 
-		mapReceipts := make(map[ethCommon.Hash]*ethTypes.Receipt, len(receipts))
+		mapReceipts := make(map[evmCommon.Hash]*evmTypes.Receipt, len(receipts))
 		for _, receipt := range receipts {
 			mapReceipts[receipt.TxHash] = receipt
 		}
@@ -171,12 +170,12 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		s.scanCache.BlockReceived(block, blockHash, mapReceipts)
 
 		t0 := time.Now()
-		relations := map[ethCommon.Hash]ethCommon.Hash{}
-		for _, relation := range spawnedRelations {
-			relations[relation.Txhash] = relation.SpawnedTxHash
-		}
+		// relations := map[evmCommon.Hash]evmCommon.Hash{}
+		// for _, relation := range spawnedRelations {
+		// 	relations[relation.Txhash] = relation.SpawnedTxHash
+		// }
 
-		conflictTxs := map[ethCommon.Hash]int{}
+		conflictTxs := map[evmCommon.Hash]int{}
 		if inclusive != nil {
 			for i, hash := range inclusive.HashList {
 				if !inclusive.Successful[i] {
@@ -190,9 +189,9 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		worker := func(start, end int, idx int, args ...interface{}) {
 			for i := start; i < end; i++ {
 				txhash := receipts[i].TxHash
-				if spawnedHash, ok := relations[txhash]; ok {
-					receipts[i].SpawnedTxHash = spawnedHash
-				}
+				// if spawnedHash, ok := relations[txhash]; ok {
+				// 	receipts[i].SpawnedTxHash = spawnedHash
+				// }
 
 				if _, ok := conflictTxs[txhash]; ok {
 					receipts[i].Status = 0
@@ -203,7 +202,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 					failed = failed + 1
 				}
 
-				receipts[i].BlockHash = ethCommon.BytesToHash(blockHash)
+				receipts[i].BlockHash = evmCommon.BytesToHash(blockHash)
 				receipts[i].BlockNumber = big.NewInt(int64(block.Height))
 				receipts[i].TransactionIndex = uint(i)
 
@@ -303,8 +302,8 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		height := 0
 		if len(block.Headers) > 0 {
 			data := block.Headers[0]
-			var header ethTypes.Header
-			err := ethRlp.DecodeBytes(data[1:], &header)
+			var header evmTypes.Header
+			err := evmrlp.DecodeBytes(data[1:], &header)
 
 			if err != nil {
 				rs.AddLog(log.LogLevel_Error, "block header decode err", zap.String("err", err.Error()))
@@ -313,7 +312,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			coinbase = header.Coinbase.String()
 			gasUsed = big.NewInt(int64(header.GasUsed))
 			hash = fmt.Sprintf("%x", header.Hash())
-			timestamp = int(header.Time.Int64())
+			timestamp = int(header.Time)
 			height = int(block.Height)
 		}
 
@@ -335,7 +334,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 
 	case types.QueryType_Container:
 		request := request.Data.(types.RequestContainer)
-		key := string(ethCommon.Hex2Bytes(request.Key))
+		key := string(evmCommon.Hex2Bytes(request.Key))
 		data := []byte{}
 		var containerType int
 		switch request.Style {
@@ -361,27 +360,28 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		}
 		hashes := requestReceipt.Hashes
 
-		receipts := make([]*types.Receipt, 0, len(hashes))
+		receipts := make([]*types.QueryReceipt, 0, len(hashes))
 		for _, hash := range hashes {
-			txhash := ethCommon.HexToHash(hash)
+			txhash := evmCommon.HexToHash(hash)
 			txhashstr := string(txhash.Bytes())
 			var position *mstypes.Position
 			intf.Router.Call("indexerstore", "GetPosition", &txhashstr, &position)
 			if position == nil {
 				continue
 			}
-			var receipt *ethTypes.Receipt
+			var receipt *evmTypes.Receipt
 			intf.Router.Call("receiptstore", "Get", position, &receipt)
 			if receipt == nil {
 				continue
 			}
-			logs := make([]*types.Log, len(receipt.Logs))
+
+			logs := make([]*types.QueryLog, len(receipt.Logs))
 			for j, log := range receipt.Logs {
 				topics := make([]string, len(log.Topics))
 				for k, topic := range log.Topics {
 					topics[k] = fmt.Sprintf("%x", topic.Bytes())
 				}
-				logs[j] = &types.Log{
+				logs[j] = &types.QueryLog{
 					Address:     fmt.Sprintf("%x", log.Address.Bytes()),
 					Topics:      topics,
 					Data:        fmt.Sprintf("%x", log.Data),
@@ -393,13 +393,13 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 				}
 			}
 
-			receiptNew := &types.Receipt{
+			receiptNew := &types.QueryReceipt{
 				Status:          int(receipt.Status),
 				ContractAddress: fmt.Sprintf("%x", receipt.ContractAddress),
 				GasUsed:         big.NewInt(int64(receipt.GasUsed)),
 				Logs:            logs,
 				Height:          int(receipt.BlockNumber.Int64()),
-				SpawnedTxHash:   fmt.Sprintf("%x", receipt.SpawnedTxHash),
+				// SpawnedTxHash:   fmt.Sprintf("%x", receipt.SpawnedTxHash),
 			}
 			if requestReceipt.ExecutingDebugLogs {
 				intf.Router.Call("debugstore", "GetExecLog", &txhash, &receiptNew.ExecutingLogs)
@@ -453,46 +453,46 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			response.Data = nil
 			return errors.New("receipt not found")
 		}
-		var receipt *ethTypes.Receipt
+		var receipt *evmTypes.Receipt
 		intf.Router.Call("receiptstore", "Get", position, &receipt)
 		if receipt == nil {
 			response.Data = nil
 			return errors.New("receipt not found")
 		}
 
-		receiptRet := evmTypes.Receipt{
-			Type:              receipt.Type,
-			PostState:         receipt.PostState,
-			Status:            receipt.Status,
-			CumulativeGasUsed: receipt.CumulativeGasUsed,
-			Bloom:             evmTypes.Bloom(receipt.Bloom),
-			TxHash:            evmCommon.Hash(receipt.TxHash),
-			ContractAddress:   evmCommon.Address(receipt.ContractAddress),
-			GasUsed:           receipt.GasUsed,
-			BlockHash:         evmCommon.Hash(receipt.BlockHash),
-			BlockNumber:       receipt.BlockNumber,
-			TransactionIndex:  receipt.TransactionIndex,
-		}
-		logs := make([]*evmTypes.Log, len(receipt.Logs))
-		for i, log := range receipt.Logs {
-			topics := make([]evmCommon.Hash, len(log.Topics))
-			for j, topic := range log.Topics {
-				topics[j] = evmCommon.BytesToHash(topic.Bytes())
-			}
-			logs[i] = &evmTypes.Log{
-				Address:     evmCommon.BytesToAddress(log.Address.Bytes()),
-				Topics:      topics,
-				Data:        log.Data,
-				BlockNumber: log.BlockNumber,
-				TxHash:      evmCommon.BytesToHash(log.TxHash.Bytes()),
-				TxIndex:     log.TxIndex,
-				BlockHash:   evmCommon.BytesToHash(log.BlockHash.Bytes()),
-				Index:       log.Index,
-				Removed:     log.Removed,
-			}
-		}
-		receiptRet.Logs = logs
-		response.Data = &receiptRet
+		// receiptRet := evmTypes.Receipt{
+		// 	Type:              receipt.Type,
+		// 	PostState:         receipt.PostState,
+		// 	Status:            receipt.Status,
+		// 	CumulativeGasUsed: receipt.CumulativeGasUsed,
+		// 	Bloom:             evmTypes.Bloom(receipt.Bloom),
+		// 	TxHash:            evmCommon.Hash(receipt.TxHash),
+		// 	ContractAddress:   evmCommon.Address(receipt.ContractAddress),
+		// 	GasUsed:           receipt.GasUsed,
+		// 	BlockHash:         evmCommon.Hash(receipt.BlockHash),
+		// 	BlockNumber:       receipt.BlockNumber,
+		// 	TransactionIndex:  receipt.TransactionIndex,
+		// }
+		// logs := make([]*evmTypes.Log, len(receipt.Logs))
+		// for i, log := range receipt.Logs {
+		// 	topics := make([]evmCommon.Hash, len(log.Topics))
+		// 	for j, topic := range log.Topics {
+		// 		topics[j] = evmCommon.BytesToHash(topic.Bytes())
+		// 	}
+		// 	logs[i] = &evmTypes.Log{
+		// 		Address:     evmCommon.BytesToAddress(log.Address.Bytes()),
+		// 		Topics:      topics,
+		// 		Data:        log.Data,
+		// 		BlockNumber: log.BlockNumber,
+		// 		TxHash:      evmCommon.BytesToHash(log.TxHash.Bytes()),
+		// 		TxIndex:     log.TxIndex,
+		// 		BlockHash:   evmCommon.BytesToHash(log.BlockHash.Bytes()),
+		// 		Index:       log.Index,
+		// 		Removed:     log.Removed,
+		// 	}
+		// }
+		// receiptRet.Logs = logs
+		response.Data = receipt
 	case types.QueryType_Transaction:
 		hash := request.Data.(evmCommon.Hash)
 		txhashstr := string(hash.Bytes())
@@ -562,16 +562,16 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 	return nil
 }
 func (rs *Storage) getTransaction(height uint64, idx int) (*ethrpc.RPCTransaction, error) {
-	var receipt *ethTypes.Receipt
+	var receipt *evmTypes.Receipt
 	position := mstypes.Position{
 		Height:     height,
 		IdxInBlock: idx,
 	}
 	intf.Router.Call("receiptstore", "Get", &position, &receipt)
-	var tx *ethTypes.Transaction
+	var tx *evmTypes.Transaction
 	intf.Router.Call("blockstore", "GetTransaction", &position, &tx)
 
-	msg, err := tx.AsMessage(ethTypes.NewEIP155Signer(rs.chainID))
+	msg, err := core.TransactionToMessage(tx, evmTypes.NewEIP155Signer(rs.chainID), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -584,13 +584,13 @@ func (rs *Storage) getTransaction(height uint64, idx int) (*ethrpc.RPCTransactio
 		TransactionIndex: &transactionindex,
 
 		Type:     hexutil.Uint64(receipt.Type),
-		From:     evmCommon.Address(msg.From()),
+		From:     evmCommon.Address(msg.From),
 		Gas:      hexutil.Uint64(receipt.GasUsed),
 		GasPrice: (*hexutil.Big)(tx.GasPrice()),
 		Hash:     evmCommon.Hash(receipt.TxHash),
 		Input:    hexutil.Bytes(tx.Data()),
 		Nonce:    hexutil.Uint64(tx.Nonce()),
-		To:       (*evmCommon.Address)(msg.To()),
+		To:       (*evmCommon.Address)(msg.To),
 		Value:    (*hexutil.Big)(tx.Value()),
 		V:        (*hexutil.Big)(v),
 		R:        (*hexutil.Big)(r),
@@ -630,8 +630,8 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool) (*ethrpc.RPCBlock, er
 			continue
 		}
 
-		ethheader := ethTypes.Header{}
-		err := ethRlp.DecodeBytes(block.Headers[i][1:], &ethheader)
+		ethheader := evmTypes.Header{}
+		err := evmrlp.DecodeBytes(block.Headers[i][1:], &ethheader)
 		if err != nil {
 			rs.AddLog(log.LogLevel_Error, "block header decode err", zap.String("err", err.Error()))
 			return nil, err
@@ -639,7 +639,7 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool) (*ethrpc.RPCBlock, er
 		header = evmTypes.Header{
 			ParentHash:  evmCommon.Hash(ethheader.ParentHash),
 			Number:      ethheader.Number,
-			Time:        ethheader.Time.Uint64(),
+			Time:        ethheader.Time,
 			Difficulty:  ethheader.Difficulty,
 			Coinbase:    evmCommon.Address(ethheader.Coinbase),
 			Root:        evmCommon.Hash(ethheader.Root),
@@ -658,7 +658,7 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool) (*ethrpc.RPCBlock, er
 	if fulltx {
 		transactions := make([]interface{}, len(hashstr))
 		for i := range hashstr {
-			var tx *ethTypes.Transaction
+			var tx *evmTypes.Transaction
 			intf.Router.Call("blockstore", "GetTxByHash", &mstypes.Position{
 				Height:     block.Height,
 				IdxInBlock: i,

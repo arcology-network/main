@@ -6,12 +6,12 @@ import (
 	"testing"
 	"time"
 
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/mock/kafka"
 	"github.com/arcology-network/component-lib/mock/rpc"
+	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/config"
 )
 
@@ -34,12 +34,12 @@ func TestEshingSvc(t *testing.T) {
 
 	broker.Send(actor.MsgBlockCompleted, actor.MsgBlockCompleted_Success)
 
-	h1 := ethcmn.BytesToHash([]byte("h1"))
-	h2 := ethcmn.BytesToHash([]byte("h2"))
-	broker.Send(actor.MsgEuResults, &cmntyp.Euresults{{H: string(h1.Bytes())}}, 1)
-	broker.Send(actor.MsgEuResults, &cmntyp.Euresults{{H: string(h2.Bytes())}}, 1)
-	broker.Send(actor.MsgInclusive, &cmntyp.InclusiveList{
-		HashList:   []*ethcmn.Hash{&h1, &h2},
+	h1 := evmCommon.BytesToHash([]byte("h1"))
+	h2 := evmCommon.BytesToHash([]byte("h2"))
+	broker.Send(actor.MsgEuResults, &types.Euresults{{H: string(h1.Bytes())}}, 1)
+	broker.Send(actor.MsgEuResults, &types.Euresults{{H: string(h2.Bytes())}}, 1)
+	broker.Send(actor.MsgInclusive, &types.InclusiveList{
+		HashList:   []*evmCommon.Hash{&h1, &h2},
 		Successful: []bool{true, true},
 	}, 1)
 

@@ -3,9 +3,9 @@ package types
 import (
 	"fmt"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/codec"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
 type Position struct {
@@ -97,7 +97,7 @@ func (indexer *Indexer) QueryPosition(hash string) *Position {
 }
 
 func (indexer *Indexer) Add(height uint64, keys []string, isSave bool) {
-	hashs := make([]byte, len(keys)*ethCommon.HashLength)
+	hashs := make([]byte, len(keys)*evmCommon.HashLength)
 	positions := make([]interface{}, len(keys))
 	datas := make([][]byte, len(keys))
 	for i, _ := range keys {
@@ -110,7 +110,7 @@ func (indexer *Indexer) Add(height uint64, keys []string, isSave bool) {
 			datas[i] = p.Encode()
 		}
 
-		copy(hashs[i*ethCommon.HashLength:], []byte(keys[i]))
+		copy(hashs[i*evmCommon.HashLength:], []byte(keys[i]))
 	}
 	indexer.Caches.Add(height, keys, positions)
 
@@ -133,10 +133,10 @@ func (indexer *Indexer) GetBlockHashesByHeightFromDb(height uint64) []string {
 		return []string{}
 	}
 
-	counter := len(datas) / ethCommon.HashLength
+	counter := len(datas) / evmCommon.HashLength
 	hashes := make([]string, counter)
 	for i := range hashes {
-		data := datas[i*ethCommon.HashLength : (i+1)*ethCommon.HashLength]
+		data := datas[i*evmCommon.HashLength : (i+1)*evmCommon.HashLength]
 		hashes[i] = string(data)
 	}
 	return hashes

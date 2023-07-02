@@ -1,15 +1,15 @@
 package storage
 
 import (
-	ethcmn "github.com/arcology-network/3rd-party/eth/common"
-	cmncmn "github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/mempool"
 	cmnmkl "github.com/arcology-network/common-lib/merkle"
 	"github.com/arcology-network/common-lib/mhasher"
-	urltyp "github.com/arcology-network/concurrenturl/v2/type"
+	"github.com/arcology-network/concurrenturl/indexer"
+	evmCommon "github.com/arcology-network/evm/common"
 )
 
-func calcRootHash(merkle *urltyp.AccountMerkle, lastRoot ethcmn.Hash, paths []string, encodedValues [][]byte) ethcmn.Hash {
+func calcRootHash(merkle *indexer.AccountMerkle, lastRoot evmCommon.Hash, paths []string, encodedValues [][]byte) evmCommon.Hash {
 	merkle.Build(paths, encodedValues)
 
 	merkles := merkle.GetMerkles()
@@ -34,12 +34,12 @@ func calcRootHash(merkle *urltyp.AccountMerkle, lastRoot ethcmn.Hash, paths []st
 			}
 		}
 	}
-	cmncmn.ParallelWorker(len(sortedKeys), 6, worker)
+	common.ParallelWorker(len(sortedKeys), 6, worker)
 
 	all := cmnmkl.NewMerkle(len(rootDatas), cmnmkl.Sha256)
 	nodePool := mempool.NewMempool("nodes", func() interface{} {
 		return cmnmkl.NewNode()
 	})
 	all.Init(rootDatas, nodePool)
-	return ethcmn.BytesToHash(all.GetRoot())
+	return evmCommon.BytesToHash(all.GetRoot())
 }

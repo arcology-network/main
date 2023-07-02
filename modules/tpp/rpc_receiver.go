@@ -4,11 +4,11 @@ import (
 	"context"
 	"sync"
 
-	ethCommon "github.com/arcology-network/3rd-party/eth/common"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
+	evmCommon "github.com/arcology-network/evm/common"
 	tppTypes "github.com/arcology-network/main/modules/tpp/types"
 )
 
@@ -64,7 +64,7 @@ func (rr *RpcReceiver) ReceivedTransactionFromRpc(ctx context.Context, args *typ
 	pack := tppTypes.CheckingTxsPack{
 		Txs:        checks,
 		Src:        args.Src,
-		TxHashChan: make(chan ethCommon.Hash, 1),
+		TxHashChan: make(chan evmCommon.Hash, 1),
 	}
 	rr.MsgBroker.Send(actor.MsgCheckingTxs, &pack)
 

@@ -10,7 +10,7 @@ import (
 	"github.com/arcology-network/evm/core/types"
 	"github.com/arcology-network/evm/core/vm"
 	"github.com/arcology-network/evm/params"
-	adaptor "github.com/arcology-network/vm-adaptor/evm"
+	adaptor "github.com/arcology-network/vm-adaptor"
 )
 
 // fakeChain implements the ChainContext interface.
