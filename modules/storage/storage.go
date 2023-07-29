@@ -66,7 +66,7 @@ func (s *Storage) Inputs() ([]string, bool) {
 		actor.MsgSelectedReceipts,
 		actor.MsgPendingBlock,
 		actor.MsgExecTime,
-		actor.MsgSpawnedRelations,
+		// actor.MsgSpawnedRelations,
 		actor.MsgConflictInclusive,
 	}, true
 }
@@ -135,8 +135,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 			height = v.Height
 		case actor.MsgExecTime:
 			exectime = v.Data.(*types.StatisticalInformation)
-		// case actor.MsgSpawnedRelations:
-		// 	spawnedRelations = v.Data.([]*types.SpawnedRelation)
+
 		case actor.MsgConflictInclusive:
 			inclusive = v.Data.(*types.InclusiveList)
 		}
@@ -144,16 +143,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 
 	if actor.MsgBlockCompleted_Success == result {
 		savet := time.Now()
-		s.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>> storage start gather info", zap.Uint64("blockNo", height))
-
-		// if statedatas != nil {
-		// 	t := time.Now()
-		// 	intf.Router.Call("urlstore", "Save", &UrlSaveRequest{
-		// 		Keys:          statedatas.Keys,
-		// 		EncodedValues: statedatas.EncodedValues,
-		// 	}, &na)
-		// 	s.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>> url commit", zap.Duration("time", time.Since(t)), zap.Int("paths", len(statedatas.Keys)))
-		// }
+		s.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>> storage start gather info", zap.Uint64("blockNo", height), zap.Int("receiptsSize", len(receipts)))
 
 		if block != nil && block.Height > 0 {
 			t0 := time.Now()
@@ -170,10 +160,6 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		s.scanCache.BlockReceived(block, blockHash, mapReceipts)
 
 		t0 := time.Now()
-		// relations := map[evmCommon.Hash]evmCommon.Hash{}
-		// for _, relation := range spawnedRelations {
-		// 	relations[relation.Txhash] = relation.SpawnedTxHash
-		// }
 
 		conflictTxs := map[evmCommon.Hash]int{}
 		if inclusive != nil {
@@ -189,9 +175,6 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		worker := func(start, end int, idx int, args ...interface{}) {
 			for i := start; i < end; i++ {
 				txhash := receipts[i].TxHash
-				// if spawnedHash, ok := relations[txhash]; ok {
-				// 	receipts[i].SpawnedTxHash = spawnedHash
-				// }
 
 				if _, ok := conflictTxs[txhash]; ok {
 					receipts[i].Status = 0
@@ -333,24 +316,24 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		response.Data = queryBlock
 
 	case types.QueryType_Container:
-		request := request.Data.(types.RequestContainer)
-		key := string(evmCommon.Hex2Bytes(request.Key))
+		// request := request.Data.(types.RequestContainer)
+		// key := string(evmCommon.Hex2Bytes(request.Key))
 		data := []byte{}
-		var containerType int
-		switch request.Style {
-		case types.ConcurrentLibStyle_Array:
-			containerType = ContainerTypeArray
-		case types.ConcurrentLibStyle_Map:
-			containerType = ContainerTypeMap
-		case types.ConcurrentLibStyle_Queue:
-			containerType = ContainerTypeQueue
-		}
-		intf.Router.Call("urlstore", "GetContainerElem", &UrlContainerGetRequest{
-			Address:       request.Address,
-			Id:            request.Id,
-			ContainerType: containerType,
-			Key:           key,
-		}, &data)
+		// var containerType int
+		// switch request.Style {
+		// case types.ConcurrentLibStyle_Array:
+		// 	containerType = ContainerTypeArray
+		// case types.ConcurrentLibStyle_Map:
+		// 	containerType = ContainerTypeMap
+		// case types.ConcurrentLibStyle_Queue:
+		// 	containerType = ContainerTypeQueue
+		// }
+		// intf.Router.Call("urlstore", "GetContainerElem", &UrlContainerGetRequest{
+		// 	Address:       request.Address,
+		// 	Id:            request.Id,
+		// 	ContainerType: containerType,
+		// 	Key:           key,
+		// }, &data)
 		response.Data = data
 	case types.QueryType_Receipt:
 		start := time.Now()
@@ -375,13 +358,13 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 				continue
 			}
 
-			logs := make([]*types.QueryLog, len(receipt.Logs))
+			logs := make([]*types.Log, len(receipt.Logs))
 			for j, log := range receipt.Logs {
 				topics := make([]string, len(log.Topics))
 				for k, topic := range log.Topics {
 					topics[k] = fmt.Sprintf("%x", topic.Bytes())
 				}
-				logs[j] = &types.QueryLog{
+				logs[j] = &types.Log{
 					Address:     fmt.Sprintf("%x", log.Address.Bytes()),
 					Topics:      topics,
 					Data:        fmt.Sprintf("%x", log.Data),
@@ -399,11 +382,8 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 				GasUsed:         big.NewInt(int64(receipt.GasUsed)),
 				Logs:            logs,
 				Height:          int(receipt.BlockNumber.Int64()),
-				// SpawnedTxHash:   fmt.Sprintf("%x", receipt.SpawnedTxHash),
 			}
-			if requestReceipt.ExecutingDebugLogs {
-				intf.Router.Call("debugstore", "GetExecLog", &txhash, &receiptNew.ExecutingLogs)
-			}
+
 			receipts = append(receipts, receiptNew)
 
 		}
@@ -460,38 +440,6 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			return errors.New("receipt not found")
 		}
 
-		// receiptRet := evmTypes.Receipt{
-		// 	Type:              receipt.Type,
-		// 	PostState:         receipt.PostState,
-		// 	Status:            receipt.Status,
-		// 	CumulativeGasUsed: receipt.CumulativeGasUsed,
-		// 	Bloom:             evmTypes.Bloom(receipt.Bloom),
-		// 	TxHash:            evmCommon.Hash(receipt.TxHash),
-		// 	ContractAddress:   evmCommon.Address(receipt.ContractAddress),
-		// 	GasUsed:           receipt.GasUsed,
-		// 	BlockHash:         evmCommon.Hash(receipt.BlockHash),
-		// 	BlockNumber:       receipt.BlockNumber,
-		// 	TransactionIndex:  receipt.TransactionIndex,
-		// }
-		// logs := make([]*evmTypes.Log, len(receipt.Logs))
-		// for i, log := range receipt.Logs {
-		// 	topics := make([]evmCommon.Hash, len(log.Topics))
-		// 	for j, topic := range log.Topics {
-		// 		topics[j] = evmCommon.BytesToHash(topic.Bytes())
-		// 	}
-		// 	logs[i] = &evmTypes.Log{
-		// 		Address:     evmCommon.BytesToAddress(log.Address.Bytes()),
-		// 		Topics:      topics,
-		// 		Data:        log.Data,
-		// 		BlockNumber: log.BlockNumber,
-		// 		TxHash:      evmCommon.BytesToHash(log.TxHash.Bytes()),
-		// 		TxIndex:     log.TxIndex,
-		// 		BlockHash:   evmCommon.BytesToHash(log.BlockHash.Bytes()),
-		// 		Index:       log.Index,
-		// 		Removed:     log.Removed,
-		// 	}
-		// }
-		// receiptRet.Logs = logs
 		response.Data = receipt
 	case types.QueryType_Transaction:
 		hash := request.Data.(evmCommon.Hash)

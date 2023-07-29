@@ -8,7 +8,7 @@ import (
 	evmCommon "github.com/arcology-network/evm/common"
 	ethTypes "github.com/arcology-network/evm/core/types"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
-	adaptor "github.com/arcology-network/vm-adaptor"
+	adaptor "github.com/arcology-network/vm-adaptor/execution"
 )
 
 type mockWorker struct {

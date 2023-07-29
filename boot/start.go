@@ -2,17 +2,15 @@ package boot
 
 import (
 	"net/http"
-	"os"
 
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
+	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/component-lib/streamer"
-	tmlog "github.com/arcology-network/consensus-engine/libs/log"
-	tmos "github.com/arcology-network/consensus-engine/libs/os"
 	"github.com/arcology-network/main/config"
 )
 
@@ -50,10 +48,7 @@ func startCmd(cmd *cobra.Command, args []string) error {
 	http.Handle("/streamer", promhttp.Handler())
 	go http.ListenAndServe(appConfig.Settings.PrometheusListenAddr, nil)
 
-	logger := tmlog.NewTMLogger(tmlog.NewSyncWriter(os.Stdout))
-
-	tmos.TrapSignal(logger, func() {
-	})
+	common.TrapSignal(func() {})
 
 	return nil
 }

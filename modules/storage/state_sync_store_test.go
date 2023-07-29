@@ -65,5 +65,5 @@ func TestSetGetSyncPoint(t *testing.T) {
 }
 
 func TestFormatQueryCriteria(t *testing.T) {
-	t.Log(fmt.Sprintf("%s%02x", urlRoot, []byte{byte(1)}))
+	t.Log(fmt.Sprintf("%s%02x", RootPrefix, []byte{byte(1)}))
 }

@@ -65,6 +65,10 @@ func (arb *ArbitratorImpl) Insert(groups []*types.ProcessedEuResult) ([]time.Dur
 		arb.Composite = append(arb.Composite, per.Composite...)
 	}
 
+	if len(arb.Txs) == 0 {
+		return []time.Duration{}, 0
+	}
+
 	/**************************************************************************************************/
 	//filename := "testdata"
 	// common.AppendToFile(filename, "=============================================")

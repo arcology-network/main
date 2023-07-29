@@ -10,11 +10,11 @@ import (
 	cstore "github.com/arcology-network/common-lib/cachedstorage"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	ccurl "github.com/arcology-network/concurrenturl"
+	concurrenturlcommon "github.com/arcology-network/concurrenturl/common"
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	evmCommon "github.com/arcology-network/evm/common"
-	evmcmn "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/evm/core"
 	ccapi "github.com/arcology-network/vm-adaptor/api"
 	"github.com/arcology-network/vm-adaptor/eth"
@@ -253,9 +253,7 @@ func initdb(path string) (interfaces.Datastore, *cstore.ParaBadgerDB) {
 		},
 	)
 
-	platform := ccurl.NewPlatform()
-	// meta, _ := commutative.NewMeta(platform.Eth10Account())
-	db.Inject(platform.Eth10Account(), commutative.NewPath())
+	db.Inject(concurrenturlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
 	return db, badger
 }
 
@@ -265,10 +263,9 @@ func initAccounts(db interfaces.Datastore, from, to int) {
 	api := ccapi.NewAPI(url)
 	stateDB := eth.NewImplStateDB(api)
 
-	// stateDB := adaptor.NewStateDBV2(nil, db, url)
-	stateDB.PrepareFormer(evmcmn.Hash{}, evmcmn.Hash{}, 0)
+	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := from; i < to; i++ {
-		address := evmcmn.BytesToAddress([]byte{byte(i / 256), byte(i % 256)})
+		address := evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)})
 		stateDB.CreateAccount(address)
 		stateDB.SetBalance(address, new(big.Int).SetUint64(100))
 		stateDB.SetNonce(address, 0)
@@ -286,9 +283,9 @@ func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardMessage) {
 	// stateDB := adaptor.NewStateDBV2(nil, db, url)
 	api := ccapi.NewAPI(url)
 	stateDB := eth.NewImplStateDB(api)
-	stateDB.PrepareFormer(evmcmn.Hash{}, evmcmn.Hash{}, 0)
+	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := range txs {
-		address := evmcmn.BytesToAddress(txs[i].Native.From.Bytes())
+		address := evmCommon.BytesToAddress(txs[i].Native.From.Bytes())
 		stateDB.SetNonce(address, 0)
 	}
 	_, transitions := url.ExportAll()

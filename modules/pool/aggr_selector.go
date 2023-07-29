@@ -157,9 +157,10 @@ func (a *AggrSelector) send(reaped []*types.StandardMessage, isProposer bool, he
 		for i := range txs {
 			txs[i] = reaped[i].TxRawData
 		}
-		a.MsgBroker.Send(actor.MsgMessagersReaped, types.SendingStandardMessages{
-			Data: types.StandardMessages(reaped).EncodeToBytes(),
-		}, height)
+		// a.MsgBroker.Send(actor.MsgMessagersReaped, types.SendingStandardMessages{
+		// 	Data: types.StandardMessages(reaped).EncodeToBytes(),
+		// }, height)
+		a.MsgBroker.Send(actor.MsgMessagersReaped, reaped, height)
 		a.CheckPoint("send messagersReaped")
 		a.MsgBroker.Send(actor.MsgSelectedTx, types.Txs{Data: txs}, height)
 		a.CheckPoint("send selectedtx")

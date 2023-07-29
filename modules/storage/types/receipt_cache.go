@@ -64,7 +64,7 @@ func (rc *ReceiptCaches) Save(height uint64, receipts []*evmTypes.Receipt) ([]st
 	keys := make([]string, len(receipts))
 	worker := func(start, end int, idx int, args ...interface{}) {
 		for i := start; i < end; i++ {
-			receiptRaw, err := common.GobEncode(*receipts[i])
+			receiptRaw, err := common.GobEncode(receipts[i])
 			if err != nil {
 				continue
 			}

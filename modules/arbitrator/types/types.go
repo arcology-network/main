@@ -3,6 +3,7 @@ package types
 import (
 	"math/big"
 
+	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/mempool"
 	ctypes "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/concurrenturl/commutative"
@@ -52,14 +53,14 @@ func Process(ars *ctypes.TxAccessRecords, perPool, uniPool *mempool.Mempool) *Pr
 		per.Composite = append(per.Composite, true) //univalue.Composite())
 		switch v := univalue.Value().(type) {
 		case *commutative.U256:
-			if v.Delta().(*uint256.Int).ToBig().Sign() >= 0 {
+			if (*uint256.Int)(v.Delta().(*codec.Uint256)).ToBig().Sign() >= 0 {
 				continue
 			}
 			per.Transitions = append(per.Transitions, &BalanceTransition{
 				Path:   *univalue.GetPath(),
 				Tx:     univalue.GetTx(),
-				Origin: v.Value().(*uint256.Int).ToBig(),
-				Delta:  v.Delta().(*uint256.Int).ToBig(),
+				Origin: (*uint256.Int)(v.Value().(*codec.Uint256)).ToBig(),
+				Delta:  (*uint256.Int)(v.Delta().(*codec.Uint256)).ToBig(),
 			})
 		}
 	}

@@ -7,7 +7,7 @@ import (
 	"github.com/arcology-network/concurrenturl/interfaces"
 	evmCommon "github.com/arcology-network/evm/common"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
-	adaptor "github.com/arcology-network/vm-adaptor"
+	adaptor "github.com/arcology-network/vm-adaptor/execution"
 )
 
 type SnapshotDict interface {

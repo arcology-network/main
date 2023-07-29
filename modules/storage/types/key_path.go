@@ -1,31 +1,33 @@
 package types
 
 import (
-	"encoding/hex"
-	"fmt"
 	"strings"
 
-	"github.com/arcology-network/concurrenturl"
+	evmcommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/vm-adaptor/eth"
 )
 
 const (
 	nthread = 4
 )
 
-var BASE_URL string
+var connector *eth.EthCCurlConnector
 
 func init() {
-	BASE_URL = concurrenturl.NewPlatform().Eth10()
+	connector = &eth.EthCCurlConnector{}
 }
 
 func getBalancePath(addr string) string {
-	return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Balance)
+	return connector.BalancePath(evmcommon.HexToAddress(addr))
+	//return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Balance)
 }
 func getNoncePath(addr string) string {
-	return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Nonce)
+	return connector.NoncePath(evmcommon.HexToAddress(addr))
+	// return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Nonce)
 }
 func getCodePath(addr string) string {
-	return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Code)
+	return connector.CodePath(evmcommon.HexToAddress(addr))
+	// return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Code)
 }
 
 func getStorageKeyPath(addr, key string) string {
@@ -33,22 +35,7 @@ func getStorageKeyPath(addr, key string) string {
 	if !strings.HasPrefix(key, "0x") {
 		key = "0x" + key
 	}
-	return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Native) + key
-}
 
-func getContainerValuePath(addr, id string, key interface{}) string {
-	// paths, _, _ := concurrenturl.NewPlatform().Builtin(BASE_URL, addr)
-	return fmt.Sprintf("%s%v", concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Container)+id+"/", key)
-}
-func getContainerStoredKey(key []byte) string {
-	return "$" + hex.EncodeToString(key)
-}
-func getContainerArrayPath(addr, id string, idx int) string {
-	return getContainerValuePath(addr, id, idx)
-}
-func getContainerMapPath(addr, id string, key []byte) string {
-	return getContainerValuePath(addr, id, getContainerStoredKey(key))
-}
-func getContainerQueuePath(addr, id string, key []byte) string {
-	return getContainerValuePath(addr, id, getContainerStoredKey(key))
+	return connector.StorageRootPath(evmcommon.HexToAddress(addr)) + key
+	// return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Native) + key
 }

@@ -19,6 +19,7 @@ import (
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	"go.uber.org/zap"
 
+	concurrenturlcommon "github.com/arcology-network/concurrenturl/common"
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 	evmTypes "github.com/arcology-network/evm/core/types"
 	ccapi "github.com/arcology-network/vm-adaptor/api"
@@ -130,25 +131,16 @@ func (exec *Executor) Config(params map[string]interface{}) {
 }
 
 func (exec *Executor) OnStart() {
-	// The following code were copied from exec v1.
-	// config := exetyp.MainConfig()
 	for i := 0; i < int(exec.Concurrency); i++ {
 		persistentDB := cachedstorage.NewDataStore()
-		platform := ccurl.NewPlatform()
-		// meta, _ := commutative.NewMeta(platform.Eth10Account())
-		persistentDB.Inject(platform.Eth10Account(), commutative.NewPath())
+		persistentDB.Inject(concurrenturlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
 		db := ccdb.NewTransientDB(persistentDB)
 
 		url := ccurl.NewConcurrentUrl(db)
-		// api := adaptor.NewAPIV2(db, url)
-		// statedb := adaptor.NewStateDBV2(api, db, url)
 
 		api := ccapi.NewAPI(url)
-		// statedb := eth.NewImplStateDB(api)
 
 		exec.apis[i] = api
-		// exec.eus[i] = &exetyp.ExecutionService{}
-		// exec.eus[i].Init(cceu.NewEU(config.ChainConfig, *config.VMConfig, statedb, api), url)
 
 	}
 	exec.startExec()
@@ -308,20 +300,11 @@ func (exec *Executor) startExec() {
 		go func(index int) {
 			for {
 				task := <-exec.taskCh
-				// exec.eus[index].SetDB(task.Snapshot)
-				// logid := exec.AddLog(log.LogLevel_Debug, "exec request", zap.Int("mgs", len(task.Sequence.Msgs)), zap.String("coinbase", fmt.Sprintf("%x", task.Config.Coinbase)), zap.Int("index", index))
-				// interLog := exec.GetLogger(logid)
-				// resp, err := exec.eus[index].Exec(task.Sequence, task.Config, interLog, exec.genExecLog)
-				// if err != nil {
-				// 	exec.AddLog(log.LogLevel_Error, "Exec err", zap.String("err", err.Error()))
-				// 	continue
-				// }
-				// exec.sendResult(resp, task, task.Debug)
 
 				job := execution.JobSequence{
 					ID:        uint64(0),
 					StdMsgs:   toJobSequence(task.Sequence.Msgs),
-					ApiRouter: exec.apis[i],
+					ApiRouter: exec.apis[index],
 				}
 
 				exec.sendResults(job.Run(task.Config, *task.Snapshot), task.Sequence.Txids, task.Debug)
@@ -332,17 +315,16 @@ func (exec *Executor) startExec() {
 func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, debug bool) {
 	counter := len(results)
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))
-	sendingEuResults := make([]*types.EuResult, 0, counter)
-	sendingAccessRecords := make([]*types.TxAccessRecords, 0, counter)
-	sendingReceipts := make([]*evmTypes.Receipt, 0, counter)
+	sendingEuResults := make([]*types.EuResult, counter)
+	sendingAccessRecords := make([]*types.TxAccessRecords, counter)
+	sendingReceipts := make([]*evmTypes.Receipt, counter)
 	contractAddress := []evmCommon.Address{}
 	nilAddress := evmCommon.Address{}
-	sendingCallResults := make([][]byte, 0, counter)
+	sendingCallResults := make([][]byte, counter)
 	txsResults := make([]*types.ExecuteResponse, counter)
 	for i, result := range results {
-		univalues := indexer.Univalues(result.Transitions)
-		accesses := univalues.To(indexer.ITCAccess{})
-		transitions := univalues.To(indexer.ITCTransition{})
+		accesses := indexer.Univalues(common.Clone(result.Transitions)).To(indexer.ITCAccess{})
+		transitions := indexer.Univalues(common.Clone(result.Transitions)).To(indexer.ITCTransition{})
 
 		euresult := types.EuResult{}
 		euresult.H = string(result.TxHash[:])
@@ -404,86 +386,6 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		exec.MsgBroker.Send(actor.MsgReceiptHashList, receiptHashList)
 		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgReceiptHashList", zap.Int("receiptHashList", len(receiptHashList.TxHashList)))
 	}
-}
-
-func (exec *Executor) sendResult(response *exetyp.ExecutionResponse, messages *exetyp.ExecMessagers, debug bool) {
-	// The following code were copied from exec v1.
-	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug))
-	counter := len(response.EuResults)
-	if counter > 0 {
-		if !debug {
-			euresults := types.Euresults(response.EuResults)
-			exec.MsgBroker.Send(actor.MsgEuResults, &euresults)
-			exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgEuResults", zap.Int("euresults", len(euresults)))
-		}
-		txsResults := make([]*types.ExecuteResponse, counter)
-
-		worker := func(start, end, idx int, args ...interface{}) {
-			results := args[0].([]interface{})[0].([]*types.EuResult)
-			responses := args[0].([]interface{})[1].([]*types.ExecuteResponse)
-
-			for i := start; i < end; i++ {
-				result := results[i]
-				// var df *types.DeferCall
-				// if result.DC != nil {
-				// 	df = &types.DeferCall{
-				// 		DeferID:         result.DC.DeferID,
-				// 		ContractAddress: types.Address(result.DC.ContractAddress),
-				// 		Signature:       result.DC.Signature,
-				// 	}
-				// }
-				responses[i] = &types.ExecuteResponse{
-					// DfCall:  df,
-					Hash:    evmCommon.BytesToHash([]byte(result.H)),
-					Status:  result.Status,
-					GasUsed: result.GasUsed,
-				}
-			}
-		}
-		common.ParallelWorker(len(response.EuResults), exec.Concurrency, worker, response.EuResults, txsResults)
-
-		responses := ExecutorResponse{
-			Responses: txsResults,
-			// Uuid:      messages.Uuid,
-			// Total:     messages.Total,
-			// SerialID:  messages.SerialID,
-			// Relation:        response.Relation,
-			// SpawnHashes:     response.SpawnHashes,
-			ContractAddress: response.ContractAddress,
-			// Txids:           response.Txids,
-		}
-		if debug {
-			responses.CallResults = response.CallResults
-		} else {
-			responses.CallResults = [][]byte{}
-		}
-		// exec.MsgBroker.Send(actor.MsgTxsExecuteResults, &responses)
-		exec.resultCh <- &responses
-
-		if !debug {
-			tarss := types.TxAccessRecordSet(response.AccessRecords)
-			exec.MsgBroker.Send(actor.MsgTxAccessRecords, &tarss)
-			exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgTxAccessRecords", zap.Int("MsgTxAccessRecords", len(tarss)))
-		}
-	}
-
-	if !debug && len(response.ExecutingLogs) > 0 {
-		exec.MsgBroker.Send(actor.MsgExecutingLogs, response.ExecutingLogs)
-		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult ExecutingLogs", zap.Int("ExecutingLogs", len(response.ExecutingLogs)))
-	}
-
-	if debug {
-		return
-	}
-	exec.AddLog(log.LogLevel_Info, "send rws", zap.Int("nums", counter))
-	counter = len(response.Receipts)
-	if counter > 0 {
-		exec.MsgBroker.Send(actor.MsgReceipts, &response.Receipts)
-		receiptHashList := exec.toReceiptsHash(&response.Receipts)
-		exec.MsgBroker.Send(actor.MsgReceiptHashList, receiptHashList)
-		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgReceiptHashList", zap.Int("receiptHashList", len(receiptHashList.TxHashList)))
-	}
-	exec.AddLog(log.LogLevel_Info, "send receipt ", zap.Int("nums", counter))
 }
 
 func (e *Executor) toReceiptsHash(receipts *[]*evmTypes.Receipt) *types.ReceiptHashList {

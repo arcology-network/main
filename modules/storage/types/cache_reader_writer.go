@@ -44,27 +44,3 @@ func GetStorage(ds interfaces.Datastore, addr, key string) ([]byte, error) {
 	}
 	return obj.(*noncommutative.Bytes).Value().([]byte), nil
 }
-
-func GetContainerArray(ds interfaces.Datastore, addr, id string, idx int) ([]byte, error) {
-	obj, err := ds.Retrive(getContainerArrayPath(addr, id, idx))
-	if err != nil {
-		return []byte{}, err
-	}
-	return obj.(*noncommutative.Bytes).Value().([]byte), nil
-}
-
-func GetContainerMap(ds interfaces.Datastore, addr, id string, key []byte) ([]byte, error) {
-	obj, err := ds.Retrive(getContainerMapPath(addr, id, key))
-	if err != nil {
-		return []byte{}, err
-	}
-	return obj.(*noncommutative.Bytes).Value().([]byte), nil
-}
-
-func GetContainerQueue(ds interfaces.Datastore, addr, id string, key []byte) ([]byte, error) {
-	obj, err := ds.Retrive(getContainerQueuePath(addr, id, key))
-	if err != nil {
-		return []byte{}, err
-	}
-	return obj.(*noncommutative.Bytes).Value().([]byte), nil
-}

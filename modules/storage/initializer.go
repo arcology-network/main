@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	cstore "github.com/arcology-network/common-lib/cachedstorage"
+	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/transactional"
 	types "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
@@ -103,8 +104,6 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			nil,
 			cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
 			cstore.NewParaBadgerDB(i.storage_url_path, ccurl.Eth10AccountShard),
-			// func(v interface{}) []byte { return urltyp.ToBytes(v) },
-			// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
 			func(v interface{}) []byte {
 				return ccdb.Codec{}.Encode(v)
 			},
@@ -113,9 +112,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			},
 		)
 
-		platform := ccurl.NewPlatform()
-		// meta, _ := commutative.NewMeta(platform.Eth10Account())
-		db.Inject(platform.Eth10Account(), commutative.NewPath())
+		db.Inject(RootPrefix, commutative.NewPath())
 
 		// Register recover function.
 		transactional.RegisterRecoverFunc("urlupdate", func(_ interface{}, bs []byte) error {
@@ -194,17 +191,10 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 
 func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Hash) {
 	accounts := i.loadGenesisAccounts()
-	// filedb, err := cstore.NewFileDB(i.storage_url_path, uint32(i.storage_url_shards), uint8(i.storage_url_depts))
-	// if err != nil {
-	// 	panic("create filedb err!:" + err.Error())
-	// }
 	db := cstore.NewDataStore(
 		nil,
 		cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
-		// stypes.NewMemoryDB(),
 		cstore.NewParaBadgerDB(i.storage_url_path, ccurl.Eth10AccountShard),
-		// func(v interface{}) []byte { return urltyp.ToBytes(v) },
-		// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
 		func(v interface{}) []byte {
 			return ccdb.Codec{}.Encode(v)
 		},
@@ -213,13 +203,11 @@ func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Has
 		},
 	)
 
-	platform := ccurl.NewPlatform()
-	// meta, _ := commutative.NewMeta(platform.Eth10Account())
-	db.Inject(platform.Eth10Account(), commutative.NewPath())
+	db.Inject(RootPrefix, commutative.NewPath())
 
 	transitions := i.generateTransitions(db, accounts)
 	url := ccurl.NewConcurrentUrl(db)
-	url.Import(transitions)
+	url.Import(common.Clone(transitions))
 	url.Sort()
 	url.Finalize([]uint32{0})
 	keys, values := url.KVs()
@@ -235,7 +223,7 @@ func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Has
 	}
 
 	merkle := indexer.NewAccountMerkle(ccurl.NewPlatform())
-	merkle.Import(transitions)
+	merkle.Import(common.Clone(transitions))
 	rootHash := calcRootHash(merkle, evmCommon.Hash{}, keys, encodedValues)
 	url.WriteToDbBuffer()
 	url.SaveToDB()
@@ -302,13 +290,12 @@ func getTransitions(db interfaces.Datastore, addresses []evmCommon.Address, acco
 	url := ccurl.NewConcurrentUrl(db)
 	api := ccapi.NewAPI(url)
 	stateDB := eth.NewImplStateDB(api)
-	// stateDB := adaptor.NewStateDBV2(nil, db, url)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i, addr := range addresses {
 		address := evmCommon.BytesToAddress(addr.Bytes())
 		stateDB.CreateAccount(address)
 		stateDB.SetBalance(address, accounts[i].Balance)
-		//stateDB.SetNonce(address, accounts[i].Nonce)
+		stateDB.SetNonce(address, uint64(1))
 	}
 	_, transitions := url.ExportAll()
 

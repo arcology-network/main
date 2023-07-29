@@ -66,25 +66,9 @@ func (b *batch) process(execTree *execTree) *batch {
 			b.context.batch,
 		)
 
-	// Update context's status.
-	// for hash, spawned := range txHash2Spawned {
-	// 	b.context.spawnedRelations = append(b.context.spawnedRelations, &cmntyp.SpawnedRelation{
-	// 		Txhash:        hash,
-	// 		SpawnedTxHash: spawned,
-	// 	})
-	// }
-	// for _, hashes := range seqId2Hashes {
-	// 	executed = append(executed, common.ToReferencedSlice(hashes)...)
-	// }
 	b.context.executed = append(b.context.executed, executed...)
 	b.context.executedHash = common.CalculateHash(b.context.executed)
-	execTree.updateSequentialBranches(b.createsequenceId2Hashes())
 	b.context.newContracts = append(b.context.newContracts, newContracts...)
-	// for hash, id := range deferHash2Id {
-	// 	b.context.txHash2IdBiMap.Add(hash, id)
-	// }
-	// common.MergeMaps(b.context.txHash2Callee, deferHash2Callee)
-
 	// Find conflictions.
 	arbitrateParam := b.makeArbitrateParam(responses, execTree)
 	conflictedHashes, cpLeft, cpRight := b.context.arbitrator.Do(
@@ -110,30 +94,13 @@ func (b *batch) process(execTree *execTree) *batch {
 	execTree.deleteBranches(deletedDict)
 	common.MergeMaps(b.context.deletedDict, deletedDict)
 
-	// Construct defer calls.
-	// deferId2Responses := make(map[string][]*cmntyp.ExecuteResponse)
-	// for _, resp := range responses {
-	// 	if resp.DfCall == nil || resp.Status == evmTypes.ReceiptStatusFailed {
-	// 		continue
-	// 	}
-
-	// 	if _, ok := deletedDict[resp.Hash]; ok {
-	// 		continue
-	// 	}
-
-	// 	deferId := string(resp.DfCall.ContractAddress) + resp.DfCall.DeferID
-	// 	deferId2Responses[deferId] = append(deferId2Responses[deferId], resp)
-	// }
-	// if len(deferId2Responses) != 0 {
-	// 	return b.createDeferBatch(deferId2Responses, execTree)
-	// }
 	return nil
 }
 func (b *batch) createsequenceId2Hashes() map[evmCommon.Hash][]evmCommon.Hash {
 	seq2lst := make(map[evmCommon.Hash][]evmCommon.Hash, len(b.sequences))
 
 	for _, seq := range b.sequences {
-		lst := make([]evmCommon.Hash, len(seq.Msgs))
+		lst := make([]evmCommon.Hash, 0, len(seq.Msgs))
 		for _, msg := range seq.Msgs {
 			if msg.Native.To != nil {
 				b.context.txHash2Callee[msg.TxHash] = *msg.Native.To
@@ -187,18 +154,6 @@ func (b *batch) makeArbitrateParam(
 	responses map[evmCommon.Hash]*cmntyp.ExecuteResponse,
 	execTree *execTree,
 ) [][][]*cmntyp.TxElement {
-	// Aggregate defer calls.
-	// deferId2Responses := make(map[string][]*cmntyp.ExecuteResponse)
-	// for _, resp := range responses {
-	// 	b.context.txHash2Gas[resp.Hash] = resp.GasUsed
-
-	// 	if resp.Status == evmTypes.ReceiptStatusFailed {
-	// 		continue
-	// 	}
-	// 	// A unique defer id is composed of contract address and defer id.
-	// 	deferId := string(resp.DfCall.ContractAddress) + resp.DfCall.DeferID
-	// 	deferId2Responses[deferId] = append(deferId2Responses[deferId], resp)
-	// }
 
 	var arbitrateParam [][][]*cmntyp.TxElement
 	// if len(deferId2Responses) == 0 {
@@ -221,27 +176,6 @@ func (b *batch) makeArbitrateParam(
 		}
 		arbitrateParam = [][][]*cmntyp.TxElement{groups}
 	}
-	// } else {
-	// 	// Do arbitration in each defer group.
-	// 	for _, responses := range deferId2Responses {
-	// 		if len(responses) == 1 {
-	// 			// If the group include 1 tx only, then no need to do arbitration.
-	// 			continue
-	// 		}
-
-	// 		groups := make([][]*cmntyp.TxElement, len(responses))
-	// 		for i := range responses {
-	// 			groups[i] = []*cmntyp.TxElement{
-	// 				{
-	// 					TxHash:  &responses[i].Hash,
-	// 					Batchid: 0,
-	// 					Txid:    b.context.txHash2IdBiMap.Get(responses[i].Hash),
-	// 				},
-	// 			}
-	// 		}
-	// 		arbitrateParam = append(arbitrateParam, groups)
-	// 	}
-	// }
 
 	(&schtyp.GasCache{DictionaryHash: b.context.txHash2Gas}).CostCalculateSort(&arbitrateParam)
 	return arbitrateParam
@@ -286,53 +220,3 @@ func (b *batch) backtraceConflictionPairs(execTree *execTree, originL, originR [
 	}
 	return resL, resR
 }
-
-// func (b *batch) createDeferBatch(
-// 	deferId2Responses map[string][]*cmntyp.ExecuteResponse,
-// 	execTree *execTree,
-// ) *batch {
-// 	sequences := make([]*cmntyp.ExecutingSequence, 0, len(deferId2Responses))
-// 	msgsToExec := make(map[evmCommon.Hash]*schtyp.Message)
-// 	for _, responses := range deferId2Responses {
-// 		hashBytes := make([][]byte, len(responses))
-// 		precedings := make([]*evmCommon.Hash, len(responses))
-// 		maxTxId := uint32(0)
-// 		for i, resp := range responses {
-// 			hashBytes[i] = resp.Hash.Bytes()
-// 			precedings[i] = &resp.Hash
-
-// 			txId := b.context.txHash2IdBiMap.Get(resp.Hash)
-// 			if txId > maxTxId {
-// 				maxTxId = txId
-// 			}
-// 		}
-
-// 		sortedBytes, _ := mhasher.SortBytes(hashBytes)
-// 		spawnedHash := sha256.Sum256(common.Flatten(sortedBytes))
-// 		for _, preceding := range precedings {
-// 			b.context.spawnedRelations = append(b.context.spawnedRelations, &cmntyp.SpawnedRelation{
-// 				Txhash:        *preceding,
-// 				SpawnedTxHash: spawnedHash,
-// 			})
-// 		}
-
-// 		stdMsg := cmntyp.MakeMessageWithDefCall(responses[0].DfCall, spawnedHash, 0)
-// 		seq := cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{stdMsg}, false)
-// 		seq.Txids = []uint32{maxTxId + 1}
-// 		sequences = append(sequences, seq)
-// 		msgsToExec[seq.SequenceId] = &schtyp.Message{
-// 			Message:          stdMsg,
-// 			IsSpawned:        true,
-// 			DirectPrecedings: &precedings,
-// 		}
-
-// 		b.context.txHash2IdBiMap.Add(spawnedHash, seq.Txids[0])
-// 		execTree.mergeBranches(precedings, stdMsg.TxHash, seq.SequenceId)
-// 	}
-
-// 	return &batch{
-// 		context:    b.context,
-// 		sequences:  sequences,
-// 		msgsToExec: msgsToExec,
-// 	}
-// }

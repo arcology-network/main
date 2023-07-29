@@ -114,9 +114,8 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 			schd.context.timestamp = msg.Data.(*actor.BlockStart).Timestamp
 		case actor.MsgMessagersReaped:
 			schd.CheckPoint("received messagersReaped")
-			ssm := msg.Data.(types.SendingStandardMessages)
-			stdMsgs = ssm.ToMessages()
 
+			stdMsgs = msg.Data.([]*types.StandardMessage)
 			fmt.Printf("start new schedule height:%v\n", msg.Height)
 		}
 	}

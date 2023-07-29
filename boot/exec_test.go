@@ -15,7 +15,8 @@ import (
 	evmtypes "github.com/arcology-network/evm/core/types"
 	"github.com/arcology-network/evm/core/vm"
 	"github.com/arcology-network/evm/params"
-	adaptor "github.com/arcology-network/vm-adaptor"
+
+	adaptor "github.com/arcology-network/vm-adaptor/execution"
 	"github.com/holiman/uint256"
 )
 

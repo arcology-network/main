@@ -6,7 +6,6 @@ import (
 	"encoding/gob"
 	"fmt"
 	"math/big"
-	"strconv"
 
 	"github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/common"
@@ -17,11 +16,6 @@ import (
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	strtyp "github.com/arcology-network/main/modules/storage/types"
 )
-
-// type UrlSaveRequest struct {
-// 	Keys          []string
-// 	EncodedValues [][]byte
-// }
 
 type UrlContainerGetRequest struct {
 	Address       string
@@ -56,13 +50,6 @@ func (us *UrlStore) Init(ctx context.Context, db interfaces.Datastore, _ *int) e
 	us.db = db
 	return nil
 }
-
-// func (us *UrlStore) Save(ctx context.Context, request *UrlSaveRequest, _ *int) error {
-// 	us.db.BatchInject()
-// 	us.db.BatchIn(request.Keys, request.EncodedValues)
-// 	//strtyp.SetValues(us.db, request.Keys, request.EncodedValues)
-// 	return nil
-// }
 
 func (us *UrlStore) Query(ctx context.Context, pattern *string, response *storage.QueryResponse) error {
 	keys, vals, err := us.db.Query(*pattern, cachedstorage.Under)
@@ -114,27 +101,6 @@ func (us *UrlStore) GetCode(ctx context.Context, address *string, code *[]byte) 
 func (us *UrlStore) GetEthStorage(ctx context.Context, request *UrlEthStorageGetRequest, value *[]byte) error {
 	var err error
 	*value, err = strtyp.GetStorage(us.db, request.Address, request.Key)
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (us *UrlStore) GetContainerElem(ctx context.Context, request *UrlContainerGetRequest, value *[]byte) error {
-	var err error
-	switch request.ContainerType {
-	case ContainerTypeArray:
-		var index int
-		index, err = strconv.Atoi(request.Key)
-		if err != nil {
-			return err
-		}
-		*value, err = strtyp.GetContainerArray(us.db, request.Address, request.Id, index)
-	case ContainerTypeMap:
-		*value, err = strtyp.GetContainerMap(us.db, request.Address, request.Id, []byte(request.Key))
-	case ContainerTypeQueue:
-		*value, err = strtyp.GetContainerQueue(us.db, request.Address, request.Id, []byte(request.Key))
-	}
 	if err != nil {
 		return err
 	}

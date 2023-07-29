@@ -21,7 +21,6 @@ import (
 var (
 	ssStore *StateSyncStore
 	initS3  sync.Once
-	urlRoot = ccurl.NewPlatform().Eth10Account()
 )
 
 type KvDB interface {
@@ -274,7 +273,7 @@ func (store *StateSyncStore) deleteSlice(slice *cmntyp.SyncDataRequest) error {
 
 func (store *StateSyncStore) readSliceFromSyncPointDB(request *cmntyp.SyncDataRequest) (*cmntyp.SyncDataResponse, error) {
 	// TODO: check request.To & request.From
-	keys, values, err := store.spDB.Query(fmt.Sprintf("%s%02x", urlRoot, []byte{byte(request.Slice)}), nil)
+	keys, values, err := store.spDB.Query(fmt.Sprintf("%s%02x", RootPrefix, []byte{byte(request.Slice)}), nil)
 	if err != nil {
 		return nil, err
 	}

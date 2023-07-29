@@ -6,12 +6,12 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/common"
-	ccurl "github.com/arcology-network/concurrenturl"
+	concurrenturlcommon "github.com/arcology-network/concurrenturl/common"
 	"github.com/arcology-network/concurrenturl/commutative"
 )
 
 var (
-	RootPrefix         = ccurl.NewPlatform().Eth10Account()
+	RootPrefix         = concurrenturlcommon.ETH10_ACCOUNT_PREFIX //ccurl.NewPlatform().Eth10Account()
 	ContainerPrefix    = "/storage/containers/"
 	RootPrefixLen      = len(RootPrefix)
 	AddressPrefixLen   = len(RootPrefix) + 40
