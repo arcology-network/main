@@ -5,6 +5,7 @@ import (
 	ctypes "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/main/modules/arbitrator/types"
+	"github.com/arcology-network/vm-adaptor/execution"
 )
 
 type EuResultPreProcessor struct {
@@ -33,12 +34,13 @@ func (p *EuResultPreProcessor) Outputs() map[string]int {
 
 func (p *EuResultPreProcessor) OnMessageArrived(msgs []*actor.Message) error {
 	results := *(msgs[0].Data.(*ctypes.TxAccessRecordSet))
-	processed := make([]*types.ProcessedEuResult, len(results))
+
+	processed := make([]*execution.Result, len(results))
 	worker := func(start, end, idx int, args ...interface{}) {
-		perPool := types.ProcessedEuResultPool.GetTlsMempool(idx)
+		perPool := types.ResultPool.GetTlsMempool(idx)
 		uniPool := types.UnivaluePool.GetTlsMempool(idx)
 		for i := start; i < end; i++ {
-			processed[i] = types.Process(results[i], perPool, uniPool)
+			processed[i] = types.Decode(results[i], perPool, uniPool)
 		}
 	}
 	common.ParallelWorker(len(results), p.Concurrency, worker)

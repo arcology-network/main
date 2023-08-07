@@ -8,15 +8,15 @@ import (
 	"github.com/arcology-network/component-lib/aggregator/aggregator"
 	"github.com/arcology-network/component-lib/log"
 	evmCommon "github.com/arcology-network/evm/common"
-	arbitrator "github.com/arcology-network/main/modules/arbitrator/impl-arbitrator"
 	"github.com/arcology-network/main/modules/arbitrator/types"
+	"github.com/arcology-network/vm-adaptor/execution"
 	"go.uber.org/zap"
 )
 
 type EuResultsAggreSelector struct {
 	actor.WorkerThread
-	ag         *aggregator.Aggregator
-	arbitrator *arbitrator.ArbitratorImpl
+	ag *aggregator.Aggregator
+	// arbitrator *arbitrator.ArbitratorImpl
 }
 
 // return a Subscriber struct
@@ -24,7 +24,7 @@ func NewEuResultsAggreSelector(concurrency int, groupid string) actor.IWorkerEx 
 	agg := EuResultsAggreSelector{}
 	agg.Set(concurrency, groupid)
 	agg.ag = aggregator.NewAggregator()
-	agg.arbitrator = arbitrator.NewArbitratorImpl()
+	// agg.arbitrator = arbitrator.NewArbitratorImpl()
 	return &agg
 }
 
@@ -51,8 +51,8 @@ func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
 	case actor.MsgBlockCompleted:
 		remainingQuantity := a.ag.OnClearInfoReceived()
 		t := time.Now()
-		a.arbitrator.Clear()
-		types.ProcessedEuResultPool.ReclaimRecursive()
+		// a.arbitrator.Clear()
+		types.ResultPool.ReclaimRecursive()
 		a.AddLog(log.LogLevel_Info, "clear pool", zap.Int("remainingQuantity", remainingQuantity), zap.Duration("arbitrator engine clear time", time.Since(t)))
 	case actor.MsgArbitrateReapinglist:
 		reapinglist := msgs[0].Data.(*ctypes.ReapingList)
@@ -63,14 +63,14 @@ func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
 		inclusive.Mode = ctypes.InclusiveMode_Results
 		a.ag.OnClearListReceived(inclusive)
 	case actor.MsgPreProcessedEuResults:
-		data := msgs[0].Data.([]*types.ProcessedEuResult)
-		tim, nums := a.arbitrator.Insert(data)
-		a.AddLog(log.LogLevel_Debug, "insert accessRecord***********", zap.Int("counts", nums), zap.Durations("time", tim))
+		data := msgs[0].Data.([]*execution.Result)
+		// tim, nums := a.arbitrator.Insert(data)
+		// a.AddLog(log.LogLevel_Debug, "insert accessRecord***********", zap.Int("counts", nums), zap.Durations("time", tim))
 
 		if len(data) > 0 {
 			for _, v := range data {
 				euResult := v
-				result := a.ag.OnDataReceived(evmCommon.BytesToHash([]byte(euResult.Hash)), euResult)
+				result := a.ag.OnDataReceived(evmCommon.BytesToHash(euResult.TxHash[:]), euResult)
 				a.SendMsg(result)
 			}
 		}
@@ -79,9 +79,9 @@ func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
 }
 func (a *EuResultsAggreSelector) SendMsg(selectedData *[]*interface{}) {
 	if selectedData != nil {
-		euResults := make([]*types.ProcessedEuResult, len(*selectedData))
+		euResults := make([]*execution.Result, len(*selectedData))
 		for i, euResult := range *selectedData {
-			euResults[i] = (*euResult).(*types.ProcessedEuResult)
+			euResults[i] = (*euResult).(*execution.Result)
 		}
 		a.AddLog(log.LogLevel_CheckPoint, "send gather result", zap.Int("counts", len(euResults)))
 		a.MsgBroker.Send(actor.MsgEuResultSelected, &euResults)

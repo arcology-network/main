@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 
@@ -282,13 +283,15 @@ func (exec *Executor) collectResults() {
 	exec.MsgBroker.Send(actor.MsgTxsExecuteResults, responses, exec.height, exec.requestId)
 }
 
-func toJobSequence(msgs []*types.StandardMessage) []*execution.StandardMessage {
+func toJobSequence(msgs []*types.StandardMessage, ids []uint32) []*execution.StandardMessage {
 	nmsgs := make([]*execution.StandardMessage, len(msgs))
 	for i, msg := range msgs {
+		msg.Native.SkipAccountChecks = true
 		nmsgs[i] = &execution.StandardMessage{
 			TxHash: msg.TxHash,
 			Native: msg.Native,
 			Source: msg.Source,
+			ID:     uint64(ids[i]),
 		}
 	}
 	return nmsgs
@@ -300,14 +303,27 @@ func (exec *Executor) startExec() {
 		go func(index int) {
 			for {
 				task := <-exec.taskCh
-
-				job := execution.JobSequence{
-					ID:        uint64(0),
-					StdMsgs:   toJobSequence(task.Sequence.Msgs),
-					ApiRouter: exec.apis[index],
+				fmt.Printf("====exec/executor.go=====task.Sequence.Parallel:%v\n", task.Sequence.Parallel)
+				if task.Sequence.Parallel {
+					results := make([]*execution.Result, 0, len(task.Sequence.Msgs))
+					for j := range task.Sequence.Msgs {
+						job := execution.JobSequence{
+							ID:        uint64(j),
+							StdMsgs:   toJobSequence([]*types.StandardMessage{task.Sequence.Msgs[j]}, []uint32{task.Sequence.Txids[j]}),
+							ApiRouter: exec.apis[index],
+						}
+						results = append(results, job.Run(task.Config, *task.Snapshot)...)
+					}
+					exec.sendResults(results, task.Sequence.Txids, task.Debug)
+				} else {
+					job := execution.JobSequence{
+						ID:        uint64(0),
+						StdMsgs:   toJobSequence(task.Sequence.Msgs, task.Sequence.Txids),
+						ApiRouter: exec.apis[index],
+					}
+					exec.sendResults(job.Run(task.Config, *task.Snapshot), task.Sequence.Txids, task.Debug)
 				}
 
-				exec.sendResults(job.Run(task.Config, *task.Snapshot), task.Sequence.Txids, task.Debug)
 			}
 		}(index)
 	}
@@ -326,6 +342,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		accesses := indexer.Univalues(common.Clone(result.Transitions)).To(indexer.ITCAccess{})
 		transitions := indexer.Univalues(common.Clone(result.Transitions)).To(indexer.ITCTransition{})
 
+		fmt.Printf("----------/exec/executor.go-----receipt:%v,status:%v,txid:%v,err:%v\n", result.Receipt, result.Receipt.Status, txids[i], result.Err)
 		euresult := types.EuResult{}
 		euresult.H = string(result.TxHash[:])
 		euresult.GasUsed = result.Receipt.GasUsed
