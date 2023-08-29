@@ -12,7 +12,9 @@ import (
 	kafkalib "github.com/arcology-network/component-lib/kafka/lib"
 	"github.com/arcology-network/component-lib/log"
 	arbitratorn "github.com/arcology-network/concurrenturl/arbitrator"
+	"github.com/arcology-network/concurrenturl/interfaces"
 	evmCommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/main/modules/arbitrator/types"
 	"github.com/arcology-network/vm-adaptor/execution"
 	"go.uber.org/zap"
 )
@@ -58,7 +60,7 @@ func (rs *RpcService) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
 		case actor.MsgEuResultSelected:
-			euResults := v.Data.(*[]*execution.Result)
+			euResults := v.Data.(*[]*types.AccessRecord)
 			rs.AddLog(log.LogLevel_Debug, "received selectedEuresult***********", zap.Int64("msgid", rs.msgid))
 			rs.wbs.Update(rs.msgid, euResults)
 
@@ -91,13 +93,13 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	rs.wbs.Waitforever(rs.msgid)
 	results := rs.wbs.GetData(rs.msgid)
 
-	var resultSelected *[]*execution.Result
+	var resultSelected *[]*types.AccessRecord
 	if results == nil {
 		rs.AddLog(log.LogLevel_Error, "select euresults error")
 		return errors.New("select euresults error")
 	}
 
-	if bValue, ok := results.(*[]*execution.Result); ok {
+	if bValue, ok := results.(*[]*types.AccessRecord); ok {
 		resultSelected = bValue
 	} else {
 		rs.AddLog(log.LogLevel_Error, "select euresults type error")
@@ -105,12 +107,11 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	}
 
 	if resultSelected != nil && len(*resultSelected) > 0 {
-
-		fixResults(parseListgroup(params.TxsListGroup), resultSelected)
-
 		rs.CheckPoint("Before detectConflict", zap.Int("tx nums", len(*resultSelected)))
-		conflicts := execution.Results(*resultSelected).Detect()
 
+		gen := execution.NewGeneration(0, 0, nil)
+		conflicts := gen.Detect(parseRequests(params.TxsListGroup, resultSelected))
+		// conflicts.Print()
 		response.ConflictedList, response.CPairLeft, response.CPairRight = parseResult(params.TxsListGroup, conflicts)
 		rs.CheckPoint("arbitrate return results***********", zap.Int("ConflictedList", len(response.ConflictedList)), zap.Int("left", len(response.CPairLeft)), zap.Int("right", len(response.CPairRight)))
 		return nil
@@ -118,20 +119,26 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 
 	return nil
 }
-func fixResults(dic map[[32]byte]uint32, results *[]*execution.Result) {
-	for _, result := range *results {
-		result.BranchID = dic[result.TxHash]
-	}
-}
 
-func parseListgroup(txsListGroup [][]*ctypes.TxElement) map[[32]byte]uint32 {
-	mp := map[[32]byte]uint32{}
-	for i, row := range txsListGroup {
-		for _, e := range row {
-			mp[[32]byte(e.TxHash.Bytes())] = uint32(i)
-		}
+func parseRequests(txsListGroup [][]*ctypes.TxElement, results *[]*types.AccessRecord) ([][]uint32, [][]interfaces.Univalue) {
+	mp := map[[32]byte]*types.AccessRecord{}
+	for _, result := range *results {
+		mp[result.TxHash] = result
 	}
-	return mp
+	groupIDs := make([][]uint32, len(txsListGroup))
+	records := make([][]interfaces.Univalue, len(txsListGroup))
+	for i, row := range txsListGroup {
+		ids := make([]uint32, 0, len(row))
+		transactations := []interfaces.Univalue{}
+		for _, e := range row {
+			result := mp[[32]byte(e.TxHash.Bytes())]
+			ids = append(ids, common.Fill(make([]uint32, len(result.Accesses)), uint32(i))...)
+			transactations = append(transactations, result.Accesses...)
+		}
+		groupIDs[i] = ids
+		records[i] = transactations
+	}
+	return groupIDs, records
 }
 
 func parseResult(txsListGroup [][]*ctypes.TxElement, conflits arbitratorn.Conflicts) ([]*evmCommon.Hash, []uint32, []uint32) {
@@ -141,7 +148,7 @@ func parseResult(txsListGroup [][]*ctypes.TxElement, conflits arbitratorn.Confli
 			dic[e.Txid] = e.TxHash
 		}
 	}
-	idsmp, paris := conflits.ToDict()
+	idsmp, _, paris := conflits.ToDict()
 	confiltList := []*evmCommon.Hash{}
 	for _, id := range common.MapKeys(*idsmp) {
 		confiltList = append(confiltList, dic[id])

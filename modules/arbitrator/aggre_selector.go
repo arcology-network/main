@@ -9,7 +9,6 @@ import (
 	"github.com/arcology-network/component-lib/log"
 	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/modules/arbitrator/types"
-	"github.com/arcology-network/vm-adaptor/execution"
 	"go.uber.org/zap"
 )
 
@@ -52,7 +51,7 @@ func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
 		remainingQuantity := a.ag.OnClearInfoReceived()
 		t := time.Now()
 		// a.arbitrator.Clear()
-		types.ResultPool.ReclaimRecursive()
+		types.RecordPool.ReclaimRecursive()
 		a.AddLog(log.LogLevel_Info, "clear pool", zap.Int("remainingQuantity", remainingQuantity), zap.Duration("arbitrator engine clear time", time.Since(t)))
 	case actor.MsgArbitrateReapinglist:
 		reapinglist := msgs[0].Data.(*ctypes.ReapingList)
@@ -63,7 +62,7 @@ func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
 		inclusive.Mode = ctypes.InclusiveMode_Results
 		a.ag.OnClearListReceived(inclusive)
 	case actor.MsgPreProcessedEuResults:
-		data := msgs[0].Data.([]*execution.Result)
+		data := msgs[0].Data.([]*types.AccessRecord)
 		// tim, nums := a.arbitrator.Insert(data)
 		// a.AddLog(log.LogLevel_Debug, "insert accessRecord***********", zap.Int("counts", nums), zap.Durations("time", tim))
 
@@ -79,9 +78,9 @@ func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
 }
 func (a *EuResultsAggreSelector) SendMsg(selectedData *[]*interface{}) {
 	if selectedData != nil {
-		euResults := make([]*execution.Result, len(*selectedData))
+		euResults := make([]*types.AccessRecord, len(*selectedData))
 		for i, euResult := range *selectedData {
-			euResults[i] = (*euResult).(*execution.Result)
+			euResults[i] = (*euResult).(*types.AccessRecord)
 		}
 		a.AddLog(log.LogLevel_CheckPoint, "send gather result", zap.Int("counts", len(euResults)))
 		a.MsgBroker.Send(actor.MsgEuResultSelected, &euResults)

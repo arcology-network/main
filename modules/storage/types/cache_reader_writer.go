@@ -3,6 +3,7 @@ package types
 import (
 	"math/big"
 
+	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	"github.com/arcology-network/concurrenturl/noncommutative"
@@ -19,7 +20,10 @@ func GetBalance(ds interfaces.Datastore, addr string) (*big.Int, error) {
 		return big.NewInt(0), nil
 	}
 
-	return obj.(*commutative.U256).Value().(*uint256.Int).ToBig(), nil
+	ubalance := obj.(*commutative.U256).Value().(*codec.Uint256)
+	uubalance := uint256.Int(*ubalance) //.ToBig()
+	balance := uubalance.ToBig()
+	return balance, nil
 
 }
 func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
@@ -27,14 +31,16 @@ func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
 	if err != nil {
 		return 0, err
 	}
-	return obj.(*commutative.Uint64).Value().(uint64), nil
+	nonce := obj.(*commutative.Uint64).Value().(*codec.Uint64).Get().(codec.Uint64)
+	return uint64(nonce), nil
 }
 func GetCode(ds interfaces.Datastore, addr string) ([]byte, error) {
 	obj, err := ds.Retrive(getCodePath(addr))
 	if err != nil {
 		return []byte{}, err
 	}
-	return obj.(*noncommutative.Bytes).Value().([]byte), nil
+	bys := obj.(*noncommutative.Bytes).Value().(codec.Bytes)
+	return []byte(bys), nil
 }
 
 func GetStorage(ds interfaces.Datastore, addr, key string) ([]byte, error) {
@@ -42,5 +48,6 @@ func GetStorage(ds interfaces.Datastore, addr, key string) ([]byte, error) {
 	if err != nil {
 		return []byte{}, err
 	}
-	return obj.(*noncommutative.Bytes).Value().([]byte), nil
+	bys := obj.(*noncommutative.Bytes).Value().(codec.Bytes)
+	return []byte(bys), nil
 }

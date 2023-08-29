@@ -14,7 +14,7 @@ import (
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/storage"
-	ccurl "github.com/arcology-network/concurrenturl"
+	ccurlcommon "github.com/arcology-network/concurrenturl/common"
 	evmCommon "github.com/arcology-network/evm/common"
 )
 
@@ -88,7 +88,7 @@ func (store *StateSyncStore) Outputs() map[string]int {
 
 func (store *StateSyncStore) Config(params map[string]interface{}) {
 	store.sliceDB = transactional.NewSimpleFileDB(params["slice_db_root"].(string))
-	store.spDB = cachedstorage.NewParaBadgerDB(params["sync_point_root"].(string), ccurl.Eth10AccountShard)
+	store.spDB = cachedstorage.NewParaBadgerDB(params["sync_point_root"].(string), ccurlcommon.Eth10AccountShard)
 	store.spInterval = uint64(params["sync_point_interval"].(float64))
 }
 

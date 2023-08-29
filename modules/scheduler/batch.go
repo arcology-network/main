@@ -2,7 +2,6 @@ package scheduler
 
 import (
 	"bytes"
-	"fmt"
 
 	"github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
@@ -21,7 +20,7 @@ func newBatch(context *processContext, sequences []*cmntyp.ExecutingSequence) *b
 	msgsToExec := make(map[evmCommon.Hash]*schtyp.Message)
 	for _, seq := range sequences {
 		for i := range seq.Txids {
-			seq.Txids[i] = context.txId << 8
+			seq.Txids[i] = context.txId //<< 8
 			context.txId++
 
 			context.txHash2IdBiMap.Add(seq.Msgs[i].TxHash, seq.Txids[i])
@@ -87,15 +86,6 @@ func (b *batch) process(execTree *execTree) *batch {
 			}
 		}
 	}
-
-	fmt.Printf("====/scheduler/batch.go=>>>>>>>>>>>>\n")
-	for k, v := range b.context.conflicts {
-		fmt.Printf("====/scheduler/batch.go=>>>>>key:%x\n", k.Bytes())
-		for kk := range v {
-			fmt.Printf("====/scheduler/batch.go=>>>>>v:%x\n", v[kk].Bytes())
-		}
-	}
-	fmt.Printf("====/scheduler/batch.go=<<<<<<<<<<<<\n")
 
 	deletedDict := make(map[evmCommon.Hash]struct{})
 	for _, ch := range conflictedHashes {

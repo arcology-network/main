@@ -10,6 +10,7 @@ import (
 	cstore "github.com/arcology-network/common-lib/cachedstorage"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	ccurl "github.com/arcology-network/concurrenturl"
+	ccurlcommon "github.com/arcology-network/concurrenturl/common"
 	concurrenturlcommon "github.com/arcology-network/concurrenturl/common"
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/interfaces"
@@ -238,7 +239,7 @@ func TestPoolCleanObsolete(t *testing.T) {
 }
 
 func initdb(path string) (interfaces.Datastore, *cstore.ParaBadgerDB) {
-	badger := cstore.NewParaBadgerDB(path, ccurl.Eth10AccountShard)
+	badger := cstore.NewParaBadgerDB(path, ccurlcommon.Eth10AccountShard)
 	db := cstore.NewDataStore(
 		nil,
 		cstore.NewCachePolicy(math.MaxUint64, 1),

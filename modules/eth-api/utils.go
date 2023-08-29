@@ -20,7 +20,6 @@ import (
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
 )
 
-
 func ToTransactionResponse(tx *ethrpc.RPCTransaction, chainid uint64) interface{} { //} map[string]string {
 	tx.ChainID = (*hexutil.Big)(big.NewInt(0).SetUint64(chainid))
 	return tx

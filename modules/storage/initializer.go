@@ -18,6 +18,7 @@ import (
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/storage"
 	ccurl "github.com/arcology-network/concurrenturl"
+	ccurlcommon "github.com/arcology-network/concurrenturl/common"
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
@@ -103,7 +104,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		db = cstore.NewDataStore(
 			nil,
 			cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
-			cstore.NewParaBadgerDB(i.storage_url_path, ccurl.Eth10AccountShard),
+			cstore.NewParaBadgerDB(i.storage_url_path, ccurlcommon.Eth10AccountShard),
 			func(v interface{}) []byte {
 				return ccdb.Codec{}.Encode(v)
 			},
@@ -194,7 +195,7 @@ func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Has
 	db := cstore.NewDataStore(
 		nil,
 		cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
-		cstore.NewParaBadgerDB(i.storage_url_path, ccurl.Eth10AccountShard),
+		cstore.NewParaBadgerDB(i.storage_url_path, ccurlcommon.Eth10AccountShard),
 		func(v interface{}) []byte {
 			return ccdb.Codec{}.Encode(v)
 		},
@@ -222,7 +223,7 @@ func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Has
 		}
 	}
 
-	merkle := indexer.NewAccountMerkle(ccurl.NewPlatform())
+	merkle := indexer.NewAccountMerkle(ccurlcommon.NewPlatform())
 	merkle.Import(common.Clone(transitions))
 	rootHash := calcRootHash(merkle, evmCommon.Hash{}, keys, encodedValues)
 	url.WriteToDbBuffer()

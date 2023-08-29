@@ -1,7 +1,6 @@
 package exec
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 
@@ -303,25 +302,34 @@ func (exec *Executor) startExec() {
 		go func(index int) {
 			for {
 				task := <-exec.taskCh
-				fmt.Printf("====exec/executor.go=====task.Sequence.Parallel:%v\n", task.Sequence.Parallel)
 				if task.Sequence.Parallel {
 					results := make([]*execution.Result, 0, len(task.Sequence.Msgs))
 					for j := range task.Sequence.Msgs {
 						job := execution.JobSequence{
-							ID:        uint64(j),
+							ID:        uint32(j),
 							StdMsgs:   toJobSequence([]*types.StandardMessage{task.Sequence.Msgs[j]}, []uint32{task.Sequence.Txids[j]}),
 							ApiRouter: exec.apis[index],
 						}
-						results = append(results, job.Run(task.Config, *task.Snapshot)...)
+
+						url := ccurl.NewConcurrentUrl(*task.Snapshot)
+						api := ccapi.NewAPI(url)
+						job.Run(task.Config, api)
+
+						results = append(results, job.Results...)
 					}
 					exec.sendResults(results, task.Sequence.Txids, task.Debug)
 				} else {
 					job := execution.JobSequence{
-						ID:        uint64(0),
+						ID:        uint32(0),
 						StdMsgs:   toJobSequence(task.Sequence.Msgs, task.Sequence.Txids),
 						ApiRouter: exec.apis[index],
 					}
-					exec.sendResults(job.Run(task.Config, *task.Snapshot), task.Sequence.Txids, task.Debug)
+
+					url := ccurl.NewConcurrentUrl(*task.Snapshot)
+					api := ccapi.NewAPI(url)
+					job.Run(task.Config, api)
+
+					exec.sendResults(job.Results, task.Sequence.Txids, task.Debug)
 				}
 
 			}
@@ -338,11 +346,14 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	nilAddress := evmCommon.Address{}
 	sendingCallResults := make([][]byte, counter)
 	txsResults := make([]*types.ExecuteResponse, counter)
+	failed := 0
 	for i, result := range results {
-		accesses := indexer.Univalues(common.Clone(result.Transitions)).To(indexer.ITCAccess{})
-		transitions := indexer.Univalues(common.Clone(result.Transitions)).To(indexer.ITCTransition{})
+		accesses := indexer.Univalues(common.Clone(result.Transitions())).To(indexer.ITCAccess{})
+		transitions := indexer.Univalues(common.Clone(result.Transitions())).To(indexer.ITCTransition{})
 
-		fmt.Printf("----------/exec/executor.go-----receipt:%v,status:%v,txid:%v,err:%v\n", result.Receipt, result.Receipt.Status, txids[i], result.Err)
+		if result.Receipt.Status == 0 {
+			failed++
+		}
 		euresult := types.EuResult{}
 		euresult.H = string(result.TxHash[:])
 		euresult.GasUsed = result.Receipt.GasUsed
@@ -371,6 +382,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 			GasUsed: euresult.GasUsed,
 		}
 	}
+	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>execute Results", zap.Int("failed", failed))
 	//-----------------------------start sending ------------------------------
 	if !debug {
 		euresults := types.Euresults(sendingEuResults)

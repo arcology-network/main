@@ -3,14 +3,22 @@ package types
 import (
 	"github.com/arcology-network/common-lib/mempool"
 	ctypes "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/concurrenturl/interfaces"
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
-	"github.com/arcology-network/vm-adaptor/execution"
 )
 
-func Decode(ars *ctypes.TxAccessRecords, perPool, uniPool *mempool.Mempool) *execution.Result {
-	result := perPool.Get().(*execution.Result)
-	result.Transitions = univaluepk.UnivaluesDecode(ars.Accesses, uniPool.Get, nil)
-	result.TxHash = [32]byte([]byte(ars.Hash))
+func Decode(ars *ctypes.TxAccessRecords, recordPool, uniPool *mempool.Mempool) *AccessRecord {
+	record := recordPool.Get().(*AccessRecord)
+	record.Accesses = univaluepk.UnivaluesDecode(ars.Accesses, uniPool.Get, nil)
+	record.TxHash = [32]byte([]byte(ars.Hash))
+	record.TxID = ars.ID
 	uniPool.Reclaim()
-	return result
+	return record
+}
+
+type AccessRecord struct {
+	GroupID  uint32
+	TxID     uint32
+	TxHash   [32]byte
+	Accesses []interfaces.Univalue
 }

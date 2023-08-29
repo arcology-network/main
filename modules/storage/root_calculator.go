@@ -4,7 +4,7 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/storage"
-	ccurl "github.com/arcology-network/concurrenturl"
+	ccurlcommon "github.com/arcology-network/concurrenturl/common"
 	"github.com/arcology-network/concurrenturl/indexer"
 	evmCommon "github.com/arcology-network/evm/common"
 )
@@ -24,7 +24,7 @@ type RootCalculator struct {
 
 func NewRootCalculator(concurrency int, groupId string) actor.IWorkerEx {
 	rc := &RootCalculator{
-		merkle: indexer.NewAccountMerkle(ccurl.NewPlatform()),
+		merkle: indexer.NewAccountMerkle(ccurlcommon.NewPlatform()),
 		state:  rcStateUninit,
 	}
 	rc.Set(concurrency, groupId)
