@@ -601,24 +601,44 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool) (*ethrpc.RPCBlock, er
 	rpcBlock := ethrpc.RPCBlock{
 		Header: &header,
 	}
-	var hashstr []string
-	intf.Router.Call("indexerstore", "GetBlockHashes", &block.Height, &hashstr)
+
 	if fulltx {
-		transactions := make([]interface{}, len(hashstr))
-		for i := range hashstr {
-			var tx *evmTypes.Transaction
-			intf.Router.Call("blockstore", "GetTxByHash", &mstypes.Position{
-				Height:     block.Height,
-				IdxInBlock: i,
-			}, &tx)
-			if tx.To() == nil {
-				transactions[i] = evmTypes.NewContractCreation(tx.Nonce(), tx.Value(), tx.Gas(), tx.GasPrice(), tx.Data())
-			} else {
-				transactions[i] = evmTypes.NewTransaction(tx.Nonce(), evmCommon.Address(*tx.To()), tx.Value(), tx.Gas(), tx.GasPrice(), tx.Data())
+		transactions := make([]interface{}, len(block.Txs))
+		for i := range block.Txs {
+			//------------------------------------------------
+			// tx := new(evmTypes.Transaction)
+
+			// txType := block.Txs[i][0]
+			// txReal := block.Txs[i][1:]
+			// switch txType {
+			// case types.TxType_Eth:
+			// 	if err := evmrlp.DecodeBytes(txReal, tx); err != nil {
+			// 		return nil, err
+			// 	}
+			// 	transactions[i] = *tx
+			// }
+			//---------------------------------------------------------------------
+			// intf.Router.Call("blockstore", "GetTxByHash", &mstypes.Position{
+			// 	Height:     block.Height,
+			// 	IdxInBlock: i,
+			// }, &tx)
+			// if tx.To() == nil {
+			// 	transactions[i] = evmTypes.NewContractCreation(tx.Nonce(), tx.Value(), tx.Gas(), tx.GasPrice(), tx.Data())
+			// } else {
+			// 	transactions[i] = evmTypes.NewTransaction(tx.Nonce(), evmCommon.Address(*tx.To()), tx.Value(), tx.Gas(), tx.GasPrice(), tx.Data())
+			// }
+			//-------------------------------------------------------------------
+			rpctransaction, err := rs.getTransaction(height, i)
+			if err != nil {
+				return nil, err
 			}
+			transactions[i] = rpctransaction
 		}
 		rpcBlock.Transactions = transactions
 	} else {
+		var hashstr []string
+		intf.Router.Call("indexerstore", "GetBlockHashes", &block.Height, &hashstr)
+
 		hashes := make([]interface{}, len(hashstr))
 		for i := range hashstr {
 			hashes[i] = evmCommon.HexToHash(hashstr[i])

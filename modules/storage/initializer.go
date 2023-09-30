@@ -85,21 +85,27 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		})
 
 		db, rootHash = i.initGenesisAccounts()
-		var na int
-		intf.Router.Call("statestore", "Save", &State{
-			Height:     0,
-			ParentHash: evmCommon.Hash{},
-			ParentRoot: rootHash,
-		}, &na)
 		parentinfo := &types.ParentInfo{
 			ParentHash: evmCommon.Hash{},
-			ParentRoot: rootHash,
+			ParentRoot: evmCommon.Hash{},
 		}
-		_, block, err := core.CreateBlock(parentinfo, uint64(0), big.NewInt(0), evmCommon.Address{}, rootHash, uint64(0), evmCommon.Hash{}, evmCommon.Hash{}, [][]byte{})
+		header, block, err := core.CreateBlock(parentinfo, uint64(0), big.NewInt(0), evmCommon.Address{}, rootHash, uint64(0), evmCommon.Hash{}, evmCommon.Hash{}, [][]byte{})
 		if err != nil {
 			panic("Create genesis block err!")
 		}
 		intf.Router.Call("blockstore", "Save", block, &na)
+
+		var na int
+		intf.Router.Call("statestore", "Save", &State{
+			Height:     0,
+			ParentHash: header.Hash(),
+			ParentRoot: rootHash,
+		}, &na)
+		parentinfo = &types.ParentInfo{
+			ParentHash: header.Hash(),
+			ParentRoot: rootHash,
+		}
+
 	} else {
 		db = cstore.NewDataStore(
 			nil,

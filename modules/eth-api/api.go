@@ -74,11 +74,16 @@ func getBlockByNumber(ctx context.Context, params []interface{}) (interface{}, e
 		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[0])
 	}
 
-	block, err := backend.GetBlockByNumber(number, false)
+	isTransaction, err := ToBool(params[1])
+	if err != nil {
+		return nil, jsonrpc.InvalidParams("invalid isTransaction  given %v", params[1])
+	}
+
+	block, err := backend.GetBlockByNumber(number, isTransaction)
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return parseBlock(block), nil
+	return parseBlock(block, isTransaction), nil
 }
 
 func getBlockByHash(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -87,21 +92,23 @@ func getBlockByHash(ctx context.Context, params []interface{}) (interface{}, err
 		return nil, jsonrpc.InvalidParams("invalid hash given %v", params[0])
 	}
 
-	block, err := backend.GetBlockByHash(hash, false)
+	isTransaction, err := ToBool(params[1])
+	if err != nil {
+		return nil, jsonrpc.InvalidParams("invalid isTransaction  given %v", params[1])
+	}
+
+	block, err := backend.GetBlockByHash(hash, isTransaction)
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return parseBlock(block), nil
+	return parseBlock(block, isTransaction), nil
 }
 
-func parseBlock(block *ethrpc.RPCBlock) interface{} {
-	transactions := make([]string, len(block.Transactions))
-	for i := range block.Transactions {
-		transactions[i] = fmt.Sprintf("%x", block.Transactions[i])
-	}
+func parseBlock(block *ethrpc.RPCBlock, isTransaction bool) interface{} {
+
 	uncles := make([]string, 0)
 	header := block.Header
-	return map[string]interface{}{
+	blockResult := map[string]interface{}{
 		"uncles": uncles,
 
 		"number":           (*hexutil.Big)(header.Number),
@@ -122,8 +129,24 @@ func parseBlock(block *ethrpc.RPCBlock) interface{} {
 		"transactionsRoot": header.TxHash,
 		"receiptsRoot":     header.ReceiptHash,
 		"totalDifficulty":  (*hexutil.Big)(header.Difficulty),
-		"transactions":     transactions,
+		// "transactions":     transactions,
 	}
+
+	if isTransaction {
+		transactions := make([]*ethrpc.RPCTransaction, len(block.Transactions))
+		for i := range block.Transactions {
+			transactions[i] = AttachChainId(block.Transactions[i].(*ethrpc.RPCTransaction), options.ChainID)
+		}
+		blockResult["transactions"] = transactions
+	} else {
+		hashes := make([]string, len(block.Transactions))
+		for i := range block.Transactions {
+			hashes[i] = fmt.Sprintf("%x", block.Transactions[i])
+		}
+		blockResult["transactions"] = hashes
+	}
+
+	return blockResult
 }
 
 func getTransactionCount(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -613,6 +636,18 @@ func clientVersion(ctx context.Context) (interface{}, error) {
 	return fmt.Sprintf("client-%d", options.ChainID), nil
 }
 
+func txpoolContent(ctx context.Context) (interface{}, error) {
+	mm := map[string]interface{}{}
+	blockResult := map[string]interface{}{
+		"pending": mm,
+		"queued":  mm,
+	}
+	return blockResult, nil
+}
+func traceTransaction(ctx context.Context) (interface{}, error) {
+	return nil, nil
+}
+
 func startJsonRpc() {
 	filters := internal.NewFilters()
 	options.ChainID = mainCfg.MainConfig.ChainId.Uint64()
@@ -685,7 +720,9 @@ func startJsonRpc() {
 		"eth_getFilterChanges":            getFilterChanges,
 		"eth_getFilterLogs":               getFilterLogs,
 
-		"web3_clientVersion": clientVersion,
+		"web3_clientVersion":     clientVersion,
+		"txpool_content":         txpoolContent,
+		"debug_traceTransaction": traceTransaction,
 	})
 
 	if options.Debug {

@@ -173,9 +173,10 @@ func CreateBlock(parentinfo *types.ParentInfo, height uint64, timestamp *big.Int
 	headers = append(headers, ethHeaders)
 
 	block := &types.MonacoBlock{
-		Height:  height,
-		Headers: headers,
-		Txs:     txSelected,
+		Blockhash: header.Hash().Bytes(),
+		Height:    height,
+		Headers:   headers,
+		Txs:       txSelected,
 	}
 	return header, block, nil
 }

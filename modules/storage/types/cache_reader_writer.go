@@ -16,7 +16,7 @@ func GetBalance(ds interfaces.Datastore, addr string) (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
-	if obj == nil {
+	if obj == nil || obj == nil {
 		return big.NewInt(0), nil
 	}
 
@@ -28,7 +28,7 @@ func GetBalance(ds interfaces.Datastore, addr string) (*big.Int, error) {
 }
 func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
 	obj, err := ds.Retrive(getNoncePath(addr))
-	if err != nil {
+	if err != nil || obj == nil {
 		return 0, err
 	}
 	nonce := obj.(*commutative.Uint64).Value().(*codec.Uint64).Get().(codec.Uint64)
@@ -36,7 +36,7 @@ func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
 }
 func GetCode(ds interfaces.Datastore, addr string) ([]byte, error) {
 	obj, err := ds.Retrive(getCodePath(addr))
-	if err != nil {
+	if err != nil || obj == nil {
 		return []byte{}, err
 	}
 	bys := obj.(*noncommutative.Bytes).Value().(codec.Bytes)
@@ -44,10 +44,12 @@ func GetCode(ds interfaces.Datastore, addr string) ([]byte, error) {
 }
 
 func GetStorage(ds interfaces.Datastore, addr, key string) ([]byte, error) {
-	obj, err := ds.Retrive(getStorageKeyPath(addr, key))
-	if err != nil {
+	path := getStorageKeyPath(addr, key)
+	obj, err := ds.Retrive(path)
+	if err != nil || obj == nil {
 		return []byte{}, err
 	}
+
 	bys := obj.(*noncommutative.Bytes).Value().(codec.Bytes)
 	return []byte(bys), nil
 }

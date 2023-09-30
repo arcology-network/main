@@ -20,9 +20,13 @@ import (
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
 )
 
-func ToTransactionResponse(tx *ethrpc.RPCTransaction, chainid uint64) interface{} { //} map[string]string {
+func AttachChainId(tx *ethrpc.RPCTransaction, chainid uint64) *ethrpc.RPCTransaction { //} map[string]string {
 	tx.ChainID = (*hexutil.Big)(big.NewInt(0).SetUint64(chainid))
 	return tx
+}
+
+func ToTransactionResponse(tx *ethrpc.RPCTransaction, chainid uint64) interface{} { //} map[string]string {
+	return AttachChainId(tx, chainid)
 }
 func ToBlockIndex(v interface{}) (int, error) {
 	if str, ok := v.(string); !ok {
@@ -56,6 +60,14 @@ func ToBlockNumber(v interface{}) (int64, error) {
 			}
 			return strconv.ParseInt(str, 16, 0)
 		}
+	}
+}
+
+func ToBool(v interface{}) (bool, error) {
+	if str, ok := v.(bool); !ok {
+		return false, errors.New("unexpected data type given")
+	} else {
+		return str, nil
 	}
 }
 
