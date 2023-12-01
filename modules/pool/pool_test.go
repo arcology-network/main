@@ -3,7 +3,6 @@
 package pool
 
 import (
-	"math"
 	"math/big"
 	"testing"
 
@@ -11,7 +10,6 @@ import (
 	cmntyp "github.com/arcology-network/common-lib/types"
 	ccurl "github.com/arcology-network/concurrenturl"
 	ccurlcommon "github.com/arcology-network/concurrenturl/common"
-	concurrenturlcommon "github.com/arcology-network/concurrenturl/common"
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
@@ -240,21 +238,24 @@ func TestPoolCleanObsolete(t *testing.T) {
 
 func initdb(path string) (interfaces.Datastore, *cstore.ParaBadgerDB) {
 	badger := cstore.NewParaBadgerDB(path, ccurlcommon.Eth10AccountShard)
-	db := cstore.NewDataStore(
-		nil,
-		cstore.NewCachePolicy(math.MaxUint64, 1),
-		badger,
-		// func(v interface{}) []byte { return urltyp.ToBytes(v) },
-		// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
-		func(v interface{}) []byte {
-			return ccdb.Codec{}.Encode(v)
-		},
-		func(bytes []byte) interface{} {
-			return ccdb.Codec{}.Decode(bytes)
-		},
-	)
+	// db := cstore.NewDataStore(
+	// 	nil,
+	// 	cstore.NewCachePolicy(math.MaxUint64, 1),
+	// 	badger,
+	// 	// func(v interface{}) []byte { return urltyp.ToBytes(v) },
+	// 	// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+	// 	// func(v interface{}) []byte {
+	// 	// 	return ccdb.Codec{}.Encode(v)
+	// 	// },
+	// 	// func(bytes []byte) interface{} {
+	// 	// 	return ccdb.Codec{}.Decode(bytes)
+	// 	// },
+	// 	ccdb.Rlp{}.Encode,
+	// 	ccdb.Rlp{}.Decode,
+	// )
+	db := ccdb.NewParallelEthMemDataStore()
 
-	db.Inject(concurrenturlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
+	db.Inject(ccurlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
 	return db, badger
 }
 

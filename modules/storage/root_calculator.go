@@ -1,6 +1,7 @@
 package storage
 
 import (
+	"github.com/arcology-network/common-lib/merkle"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/storage"
@@ -24,7 +25,7 @@ type RootCalculator struct {
 
 func NewRootCalculator(concurrency int, groupId string) actor.IWorkerEx {
 	rc := &RootCalculator{
-		merkle: indexer.NewAccountMerkle(ccurlcommon.NewPlatform()),
+		merkle: indexer.NewAccountMerkle(ccurlcommon.NewPlatform(), indexer.RlpEncoder, merkle.Keccak256{}.Hash),
 		state:  rcStateUninit,
 	}
 	rc.Set(concurrency, groupId)

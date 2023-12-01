@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 
-	cstore "github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/transactional"
 	types "github.com/arcology-network/common-lib/types"
@@ -26,6 +25,7 @@ import (
 	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/modules/core"
 
+	"github.com/arcology-network/common-lib/merkle"
 	indexer "github.com/arcology-network/concurrenturl/indexer"
 	ccapi "github.com/arcology-network/vm-adaptor/api"
 	"github.com/arcology-network/vm-adaptor/eth"
@@ -107,17 +107,22 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		}
 
 	} else {
-		db = cstore.NewDataStore(
-			nil,
-			cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
-			cstore.NewParaBadgerDB(i.storage_url_path, ccurlcommon.Eth10AccountShard),
-			func(v interface{}) []byte {
-				return ccdb.Codec{}.Encode(v)
-			},
-			func(bytes []byte) interface{} {
-				return ccdb.Codec{}.Decode(bytes)
-			},
-		)
+		// db = cstore.NewDataStore(
+		// 	nil,
+		// 	cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
+		// 	cstore.NewParaBadgerDB(i.storage_url_path, ccurlcommon.Eth10AccountShard),
+		// 	// func(v interface{}) []byte {
+		// 	// 	return ccdb.Codec{}.Encode(v)
+		// 	// },
+		// 	// func(bytes []byte) interface{} {
+		// 	// 	return ccdb.Codec{}.Decode(bytes)
+		// 	// },
+		// 	ccdb.Rlp{}.Encode,
+		// 	ccdb.Rlp{}.Decode,
+		// )
+
+		// db = ccdb.NewParallelEthMemDataStore()
+		db = ccdb.NewLevelDBDataStore(i.storage_url_path)
 
 		db.Inject(RootPrefix, commutative.NewPath())
 
@@ -131,7 +136,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 
 			values := make([]interface{}, len(updates.EncodedValues))
 			for i, v := range updates.EncodedValues {
-				values[i] = ccdb.Codec{}.Decode(v) //urltyp.FromBytes(v)
+				values[i] = ccdb.Codec{}.Decode(v, nil) //urltyp.FromBytes(v)
 			}
 			db.BatchInject(updates.Keys, values)
 			fmt.Printf("[storage.Initializer] Recover urlupdate.\n")
@@ -198,17 +203,19 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 
 func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Hash) {
 	accounts := i.loadGenesisAccounts()
-	db := cstore.NewDataStore(
-		nil,
-		cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
-		cstore.NewParaBadgerDB(i.storage_url_path, ccurlcommon.Eth10AccountShard),
-		func(v interface{}) []byte {
-			return ccdb.Codec{}.Encode(v)
-		},
-		func(bytes []byte) interface{} {
-			return ccdb.Codec{}.Decode(bytes)
-		},
-	)
+	// db := cstore.NewDataStore(
+	// 	nil,
+	// 	cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
+	// 	cstore.NewParaBadgerDB(i.storage_url_path, ccurlcommon.Eth10AccountShard),
+	// 	func(v interface{}) []byte {
+	// 		return ccdb.Codec{}.Encode(v)
+	// 	},
+	// 	func(bytes []byte) interface{} {
+	// 		return ccdb.Codec{}.Decode(bytes)
+	// 	},
+	// )
+	// db := ccdb.NewParallelEthMemDataStore()
+	db := ccdb.NewLevelDBDataStore(i.storage_url_path)
 
 	db.Inject(RootPrefix, commutative.NewPath())
 
@@ -222,14 +229,14 @@ func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Has
 	for _, v := range values {
 		if v != nil {
 			univalue := v.(interfaces.Univalue)
-			data := ccdb.Codec{}.Encode(univalue.Value()) //urltyp.ToBytes(univalue.Value())
+			data := ccdb.Codec{}.Encode("", univalue.Value())
 			encodedValues = append(encodedValues, data)
 		} else {
 			encodedValues = append(encodedValues, []byte{})
 		}
 	}
 
-	merkle := indexer.NewAccountMerkle(ccurlcommon.NewPlatform())
+	merkle := indexer.NewAccountMerkle(ccurlcommon.NewPlatform(), indexer.RlpEncoder, merkle.Keccak256{}.Hash)
 	merkle.Import(common.Clone(transitions))
 	rootHash := calcRootHash(merkle, evmCommon.Hash{}, keys, encodedValues)
 	url.WriteToDbBuffer()

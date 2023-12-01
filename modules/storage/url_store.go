@@ -62,10 +62,10 @@ func (us *UrlStore) Query(ctx context.Context, pattern *string, response *storag
 }
 
 func (us *UrlStore) Get(ctx context.Context, keys *[]string, values *[][]byte) error {
-	objs := us.db.BatchRetrive(*keys)
+	objs := us.db.BatchRetrive(*keys, nil)
 	datas := make([][]byte, len(objs))
 	for i := range *keys {
-		datas[i] = ccdb.Codec{}.Encode(objs[i]) //urltyp.ToBytes(objs[i])
+		datas[i] = ccdb.Codec{}.Encode("", objs[i]) //urltyp.ToBytes(objs[i])
 	}
 	*values = datas
 	return nil
@@ -143,7 +143,7 @@ func (us *UrlStore) ApplyData(ctx context.Context, request *cmntyp.SyncDataReque
 			func() {
 				values := make([]interface{}, len(urlUpdate.EncodedValues))
 				for i, v := range urlUpdate.EncodedValues {
-					values[i] = ccdb.Codec{}.Decode(v) //urltyp.FromBytes(v)
+					values[i] = ccdb.Codec{}.Decode(v, nil) //urltyp.FromBytes(v)
 				}
 				us.db.BatchInject(urlUpdate.Keys, values)
 			},

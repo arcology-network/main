@@ -31,17 +31,17 @@ func TestBootstrapCase1(t *testing.T) {
 		[][]*cmntypes.TxElement{{createTxElement(hash1, 0, 1)}, {createTxElement(hash2, 0, 2)}, {createTxElement(hash3, 0, 3)}, {createTxElement(hash4, 0, 4)}},
 		newAccessRecords(hash1, 1,
 			newAccess(noncommutative.BYTES, "blcc://eth1.0/accounts/Alice/storage/containers/map1/key1", 0, 1, true, false, nil),
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 50, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 50, false, nil, nil)),
 		),
 		newAccessRecords(hash2, 2,
 			newAccess(noncommutative.BYTES, "blcc://eth1.0/accounts/Alice/storage/containers/map1/key1", 0, 1, true, false, nil),
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 100, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 100, false, nil, nil)),
 		),
 		newAccessRecords(hash3, 3,
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 50, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 50, false, nil, nil)),
 		),
 		newAccessRecords(hash4, 4,
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 50, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 50, false, nil, nil)),
 		),
 	)
 	t.Log(response)
@@ -75,25 +75,25 @@ func TestBootstrapCase2(t *testing.T) {
 		},
 		newAccessRecords(hashes[0], 1,
 			newAccess(noncommutative.BYTES, "blcc://eth1.0/accounts/Alice/storage/containers/map1/key1", 0, 1, true, false, nil),
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 10, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 10, false, nil, nil)),
 		),
 		newAccessRecords(hashes[1], 2,
 			newAccess(noncommutative.BYTES, "blcc://eth1.0/accounts/Alice/storage/containers/map1/key2", 0, 1, true, false, nil),
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 10, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 10, false, nil, nil)),
 		),
 		newAccessRecords(hashes[2], 3,
 			newAccess(noncommutative.BYTES, "blcc://eth1.0/accounts/Alice/storage/containers/map1/key1", 0, 1, true, false, nil),
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 10, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 10, false, nil, nil)),
 		),
 		newAccessRecords(hashes[3], 4,
 			newAccess(noncommutative.BYTES, "blcc://eth1.0/accounts/Alice/storage/containers/map1/key1", 1, 0, true, false, nil),
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 10, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 10, false, nil, nil)),
 		),
 		newAccessRecords(hashes[4], 5,
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 10, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 10, false, nil, nil)),
 		),
 		newAccessRecords(hashes[5], 6,
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 10, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 10, false, nil, nil)),
 		),
 		newAccessRecords(hashes[6], 7,
 			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/storage/containers/map2/key1", 0, 1, true, false, nil),
@@ -102,7 +102,7 @@ func TestBootstrapCase2(t *testing.T) {
 			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/storage/containers/map2/key2", 0, 1, true, false, nil),
 		),
 		newAccessRecords(hashes[8], 9,
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 50, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 50, false, nil, nil)),
 		),
 		newAccessRecords(hashes[9], 10,
 			newAccess(noncommutative.BYTES, "blcc://eth1.0/accounts/Alice/storage/containers/map3/key1", 0, 1, true, false, nil),
@@ -111,7 +111,7 @@ func TestBootstrapCase2(t *testing.T) {
 			newAccess(noncommutative.BYTES, "blcc://eth1.0/accounts/Alice/storage/containers/map3/key2", 0, 1, true, false, nil),
 		),
 		newAccessRecords(hashes[11], 12,
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(100, 50, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 50, false, nil, nil)),
 		),
 	)
 	t.Log(response)
@@ -143,9 +143,9 @@ func TestDetectConflictPerf(t *testing.T) {
 			hashes[i],
 			uint32(i+1),
 
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/"+addresses[i*2].Hex()+"/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(1000000000, 2, false, nil, nil)),
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/"+addresses[i*2+1].Hex()+"/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(1000000000, 1, true, nil, nil)),
-			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/"+coinbase.Hex()+"/balance", 0, 1, true, true, commutative.NewU256().(*commutative.U256).New(1000000000, 1, true, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/"+addresses[i*2].Hex()+"/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(1000000000, 2, false, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/"+addresses[i*2+1].Hex()+"/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(1000000000, 1, true, nil, nil)),
+			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/"+coinbase.Hex()+"/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(1000000000, 1, true, nil, nil)),
 			newAccess(commutative.UINT64, "blcc://eth1.0/accounts/"+addresses[i*2].Hex()+"/nonce", 0, 1, true, true, commutative.NewInt64(0, 1)),
 			newAccess(commutative.PATH, "blcc://eth1.0/accounts/", 1, 0, true, false, nil),
 		)
@@ -242,7 +242,7 @@ func runTestCase(t *testing.T, txGroups [][]*cmntypes.TxElement, records ...*acc
 		univalues := []interfaces.Univalue{}
 		for _, a := range record.accesses {
 
-			univalues = append(univalues, univaluepk.NewUnivalue(record.id, a.path, a.reads, a.writes, 0, a.value))
+			univalues = append(univalues, univaluepk.NewUnivalue(record.id, a.path, a.reads, a.writes, 0, a.value, nil))
 		}
 		txAccessRecords = append(txAccessRecords, &cmntypes.TxAccessRecords{
 			Hash:     string(record.hash.Bytes()),

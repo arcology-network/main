@@ -4,7 +4,6 @@ import (
 	"math"
 	"math/big"
 
-	cachedstorage "github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
@@ -132,7 +131,7 @@ func (exec *Executor) Config(params map[string]interface{}) {
 
 func (exec *Executor) OnStart() {
 	for i := 0; i < int(exec.Concurrency); i++ {
-		persistentDB := cachedstorage.NewDataStore()
+		persistentDB := ccdb.NewParallelEthMemDataStore() //cachedstorage.NewDataStore()
 		persistentDB.Inject(concurrenturlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
 		db := ccdb.NewTransientDB(persistentDB)
 

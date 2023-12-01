@@ -1,21 +1,17 @@
 package exec
 
 import (
-	"math"
 	"math/big"
 	"testing"
 	"time"
 
-	cachedstorage "github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/config"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
-	"github.com/arcology-network/component-lib/storage"
 	"github.com/arcology-network/component-lib/streamer"
-	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	evmCommon "github.com/arcology-network/evm/common"
 )
@@ -129,22 +125,25 @@ func setup(tb testing.TB) (*streamer.StatefulStreamer, *mockWorker) {
 	mockActor.Connect(streamer.NewDisjunctions(mockActor, 1))
 	broker.Serve()
 
-	var db interfaces.Datastore = cachedstorage.NewDataStore(
-		nil,
-		cachedstorage.NewCachePolicy(math.MaxUint64, 1),
-		storage.NewReadonlyRpcClient(),
-		// func(v interface{}) []byte { return urltyp.ToBytes(v) },
-		// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
+	// var db interfaces.Datastore = cachedstorage.NewDataStore(
+	// 	nil,
+	// 	cachedstorage.NewCachePolicy(math.MaxUint64, 1),
+	// 	storage.NewReadonlyRpcClient(),
+	// 	// func(v interface{}) []byte { return urltyp.ToBytes(v) },
+	// 	// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
 
-		func(v interface{}) []byte {
-			return ccdb.Codec{}.Encode(v)
-		},
-		func(bytes []byte) interface{} {
-			return ccdb.Codec{}.Decode(bytes)
-		},
+	// 	// func(v interface{}) []byte {
+	// 	// 	return ccdb.Codec{}.Encode(v)
+	// 	// },
+	// 	// func(bytes []byte) interface{} {
+	// 	// 	return ccdb.Codec{}.Decode(bytes)
+	// 	// },
 
-		cachedstorage.NotQueryRpc,
-	)
+	// 	// cachedstorage.NotQueryRpc,
+	// 	ccdb.Rlp{}.Encode,
+	// 	ccdb.Rlp{}.Decode,
+	// )
+	db := ccdb.NewParallelEthMemDataStore()
 
 	mock.MsgBroker.Send(
 		actor.CombinedName(actor.MsgApcHandle, actor.MsgCached),

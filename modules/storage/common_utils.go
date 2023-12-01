@@ -36,7 +36,7 @@ func calcRootHash(merkle *indexer.AccountMerkle, lastRoot evmCommon.Hash, paths 
 	}
 	common.ParallelWorker(len(sortedKeys), 6, worker)
 
-	all := cmnmkl.NewMerkle(len(rootDatas), cmnmkl.Sha256)
+	all := cmnmkl.NewMerkle(len(rootDatas), cmnmkl.Concatenator{}, cmnmkl.Sha256{})
 	nodePool := mempool.NewMempool("nodes", func() interface{} {
 		return cmnmkl.NewNode()
 	})

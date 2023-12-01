@@ -33,3 +33,4 @@ modules/storage/types/datas/
 test/statesync/data/
 *.tar
 log/
+rpc.log

@@ -1,6 +1,6 @@
 module github.com/arcology-network/main
 
-go 1.20
+go 1.21
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.29.0
 
@@ -22,6 +22,12 @@ replace github.com/deliveroo/jsonrpc-go => github.com/cody-yang/jsonrpc-go v1.0.
 
 require (
 	github.com/BurntSushi/toml v1.2.0
+	github.com/arcology-network/common-lib v1.9.0
+	github.com/arcology-network/component-lib v1.9.0
+	github.com/arcology-network/concurrenturl v1.9.0
+	github.com/arcology-network/consensus-engine v1.9.0
+	github.com/arcology-network/evm v1.9.0
+	github.com/arcology-network/vm-adaptor v1.9.0
 	github.com/go-kit/kit v0.10.0
 	github.com/go-zookeeper/zk v1.0.2
 	github.com/prometheus/client_golang v1.14.0
@@ -31,15 +37,6 @@ require (
 	github.com/tendermint/tm-db v0.6.4
 	go.uber.org/zap v1.21.0
 	golang.org/x/crypto v0.13.0
-)
-
-require (
-	github.com/arcology-network/common-lib v1.8.0
-	github.com/arcology-network/component-lib v1.8.0
-	github.com/arcology-network/concurrenturl v1.8.0
-	github.com/arcology-network/consensus-engine v0.0.0-20230127232401-92cf8e3738cb
-	github.com/arcology-network/evm v1.8.0
-	github.com/arcology-network/vm-adaptor v1.8.0
 )
 
 require (
@@ -220,7 +217,7 @@ require (
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/stretchr/objx v0.5.0 // indirect
-	github.com/stretchr/testify v1.8.1 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/subosito/gotenv v1.4.1 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tatsushid/go-fastping v0.0.0-20160109021039-d7bb493dee3e // indirect
