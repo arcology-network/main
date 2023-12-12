@@ -8,8 +8,8 @@ import (
 	"testing"
 
 	cachedstorage "github.com/arcology-network/common-lib/cachedstorage"
-	evmCommon "github.com/arcology-network/evm/common"
-	evmTypes "github.com/arcology-network/evm/core/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 func newReceipt(height uint64, idx, idxInBlock int) *evmTypes.Receipt {

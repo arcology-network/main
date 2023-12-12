@@ -14,9 +14,9 @@ import (
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/component-lib/streamer"
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/core"
 	"github.com/arcology-network/main/modules/storage"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 )
 
 func TestSchedulerEmptyBlock(t *testing.T) {

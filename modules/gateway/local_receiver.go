@@ -7,8 +7,8 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
-	evmCommon "github.com/arcology-network/evm/common"
 	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type LocalReceiver struct {

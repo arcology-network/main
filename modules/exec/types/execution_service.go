@@ -3,9 +3,9 @@ package types
 import (
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/concurrenturl/interfaces"
-	evmCommon "github.com/arcology-network/evm/common"
-	evmTypes "github.com/arcology-network/evm/core/types"
 	adaptor "github.com/arcology-network/vm-adaptor/execution"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type ExecMessagers struct {

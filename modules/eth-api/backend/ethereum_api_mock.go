@@ -6,13 +6,13 @@ import (
 	"sync"
 
 	"github.com/arcology-network/component-lib/ethrpc"
-	eth "github.com/arcology-network/evm"
-	ethcmn "github.com/arcology-network/evm/common"
-	ethtyp "github.com/arcology-network/evm/core/types"
-	ethrlp "github.com/arcology-network/evm/rlp"
+	eth "github.com/ethereum/go-ethereum"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	ethtyp "github.com/ethereum/go-ethereum/core/types"
+	ethrlp "github.com/ethereum/go-ethereum/rlp"
 
-	"github.com/arcology-network/evm/common/hexutil"
-	"github.com/arcology-network/evm/core"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core"
 )
 
 type EthereumAPIMock struct {
@@ -63,6 +63,15 @@ func (mock *EthereumAPIMock) GetBlockByNumber(number int64, fullTx bool) (*ethrp
 }
 
 func (mock *EthereumAPIMock) GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*ethrpc.RPCBlock, error) {
+	// TODO
+	return nil, nil
+}
+
+func (mock *EthereumAPIMock) GetHeaderByHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
+	// TODO
+	return nil, nil
+}
+func (mock *EthereumAPIMock) GetHeaderByNumber(number int64) (*ethrpc.RPCBlock, error) {
 	// TODO
 	return nil, nil
 }
@@ -144,6 +153,13 @@ func (mock *EthereumAPIMock) GetTransactionReceipt(hash ethcmn.Hash) (*ethtyp.Re
 		Status:           1,
 		ContractAddress:  ethcmn.BytesToAddress(hash.Bytes()[:20]),
 	}, nil
+}
+
+func (mock *EthereumAPIMock) GetBlockReceipts(height uint64) ([]*ethtyp.Receipt, error) {
+	mock.blockGuard.RLock()
+	defer mock.blockGuard.RUnlock()
+
+	return nil, nil
 }
 
 func (mock *EthereumAPIMock) GetLogs(filter eth.FilterQuery) ([]*ethtyp.Log, error) {

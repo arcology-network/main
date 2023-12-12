@@ -5,8 +5,8 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
-	evmCommon "github.com/arcology-network/evm/common"
 	schedulingTypes "github.com/arcology-network/main/modules/scheduler/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type Arbitrator interface {

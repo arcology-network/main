@@ -9,10 +9,10 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	monacoConfig "github.com/arcology-network/component-lib/config"
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/core"
-	evmTypes "github.com/arcology-network/evm/core/types"
-	evmRlp "github.com/arcology-network/evm/rlp"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	evmRlp "github.com/ethereum/go-ethereum/rlp"
 )
 
 type Block struct {

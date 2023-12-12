@@ -11,10 +11,10 @@ import (
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
-	evmCommon "github.com/arcology-network/evm/common"
 	engine "github.com/arcology-network/main/modules/scheduler/lib"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	"github.com/arcology-network/main/modules/storage"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 )
 

@@ -5,9 +5,9 @@ import (
 	"github.com/arcology-network/component-lib/actor"
 	ccurl "github.com/arcology-network/concurrenturl"
 	"github.com/arcology-network/concurrenturl/interfaces"
-	evmCommon "github.com/arcology-network/evm/common"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	adaptor "github.com/arcology-network/vm-adaptor/execution"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type SnapshotDict interface {

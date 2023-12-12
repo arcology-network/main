@@ -7,8 +7,8 @@ import (
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/aggregator/aggregator"
 	"github.com/arcology-network/component-lib/log"
-	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/modules/arbitrator/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 )
 

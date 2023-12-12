@@ -7,11 +7,11 @@ import (
 	"math/big"
 	"testing"
 
-	ethcmn "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/core"
-	ethtyp "github.com/arcology-network/evm/core/types"
-	ethcrp "github.com/arcology-network/evm/crypto"
-	ethrlp "github.com/arcology-network/evm/rlp"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	ethtyp "github.com/ethereum/go-ethereum/core/types"
+	ethcrp "github.com/ethereum/go-ethereum/crypto"
+	ethrlp "github.com/ethereum/go-ethereum/rlp"
 	bip32 "github.com/tyler-smith/go-bip32"
 	bip39 "github.com/tyler-smith/go-bip39"
 )

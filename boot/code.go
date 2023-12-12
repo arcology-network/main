@@ -1,7 +1,7 @@
 package boot
 
 import (
-	evmcommon "github.com/arcology-network/evm/common"
+	evmcommon "github.com/ethereum/go-ethereum/common"
 )
 
 var (

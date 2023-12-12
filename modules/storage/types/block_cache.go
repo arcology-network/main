@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/arcology-network/common-lib/types"
-	evmTypes "github.com/arcology-network/evm/core/types"
-	evmRlp "github.com/arcology-network/evm/rlp"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	evmRlp "github.com/ethereum/go-ethereum/rlp"
 )
 
 type BlockCaches struct {

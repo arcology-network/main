@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/arcology-network/common-lib/types"
-	mevmCommon "github.com/arcology-network/evm/common"
+	mevmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type ExecutorParameter struct {

@@ -13,10 +13,10 @@ import (
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/core"
 	ccapi "github.com/arcology-network/vm-adaptor/api"
 	"github.com/arcology-network/vm-adaptor/eth"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 )
 
 func TestPoolWithUncheckedTx(t *testing.T) {

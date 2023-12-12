@@ -14,16 +14,16 @@ import (
 	"github.com/arcology-network/concurrenturl/indexer"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
-	evmCommon "github.com/arcology-network/evm/common"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 
 	concurrenturlcommon "github.com/arcology-network/concurrenturl/common"
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
-	evmTypes "github.com/arcology-network/evm/core/types"
 	ccapi "github.com/arcology-network/vm-adaptor/api"
 	eucommon "github.com/arcology-network/vm-adaptor/common"
 	"github.com/arcology-network/vm-adaptor/execution"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type ExecutorResponse struct {

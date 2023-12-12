@@ -13,7 +13,7 @@ import (
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/component-lib/streamer"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 func TestExecSvcBasic(t *testing.T) {

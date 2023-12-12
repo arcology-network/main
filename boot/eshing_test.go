@@ -11,8 +11,8 @@ import (
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/mock/kafka"
 	"github.com/arcology-network/component-lib/mock/rpc"
-	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/config"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 func TestEshingSvc(t *testing.T) {

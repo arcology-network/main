@@ -8,10 +8,9 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/core"
-	evmTypes "github.com/arcology-network/evm/core/types"
-	evmRlp "github.com/arcology-network/evm/rlp"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
 	"go.uber.org/zap"
 )
 
@@ -43,7 +42,7 @@ func NewCheckingTxHash(tx []byte, txfrom byte) (*CheckingTx, error) {
 	switch txType {
 	case types.TxType_Eth:
 		otx := new(evmTypes.Transaction)
-		if err := evmRlp.DecodeBytes(txReal, otx); err != nil {
+		if err := otx.UnmarshalBinary(txReal); err != nil {
 			return nil, err
 		}
 		txhash := types.RlpHash(otx)

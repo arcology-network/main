@@ -7,7 +7,7 @@ import (
 	cmncmn "github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 	// schdv1 "github.com/arcology-network/main/modules/scheduler"
 )
 

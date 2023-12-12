@@ -8,8 +8,8 @@ import (
 	"time"
 
 	"github.com/arcology-network/common-lib/types"
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/core"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 )
 
 func TestScheduler(t *testing.T) {

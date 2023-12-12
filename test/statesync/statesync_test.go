@@ -15,9 +15,9 @@ import (
 	"github.com/arcology-network/component-lib/actor"
 	cmnst "github.com/arcology-network/component-lib/storage"
 	"github.com/arcology-network/component-lib/streamer"
-	evmCommon "github.com/arcology-network/evm/common"
 	statesync "github.com/arcology-network/main/modules/state-sync"
 	"github.com/arcology-network/main/modules/storage"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 var (

@@ -15,7 +15,7 @@ import (
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/storage"
 	ccurlcommon "github.com/arcology-network/concurrenturl/common"
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 var (

@@ -9,7 +9,7 @@ import (
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 	"go.uber.org/zap"

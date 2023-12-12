@@ -22,8 +22,8 @@ import (
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	"github.com/arcology-network/consensus-engine/state"
-	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/modules/core"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/arcology-network/common-lib/merkle"
 	indexer "github.com/arcology-network/concurrenturl/indexer"
@@ -107,19 +107,6 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		}
 
 	} else {
-		// db = cstore.NewDataStore(
-		// 	nil,
-		// 	cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
-		// 	cstore.NewParaBadgerDB(i.storage_url_path, ccurlcommon.Eth10AccountShard),
-		// 	// func(v interface{}) []byte {
-		// 	// 	return ccdb.Codec{}.Encode(v)
-		// 	// },
-		// 	// func(bytes []byte) interface{} {
-		// 	// 	return ccdb.Codec{}.Decode(bytes)
-		// 	// },
-		// 	ccdb.Rlp{}.Encode,
-		// 	ccdb.Rlp{}.Decode,
-		// )
 
 		// db = ccdb.NewParallelEthMemDataStore()
 		db = ccdb.NewLevelDBDataStore(i.storage_url_path)
@@ -203,17 +190,7 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 
 func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Hash) {
 	accounts := i.loadGenesisAccounts()
-	// db := cstore.NewDataStore(
-	// 	nil,
-	// 	cstore.NewCachePolicy(cstore.Cache_Quota_Full, 1),
-	// 	cstore.NewParaBadgerDB(i.storage_url_path, ccurlcommon.Eth10AccountShard),
-	// 	func(v interface{}) []byte {
-	// 		return ccdb.Codec{}.Encode(v)
-	// 	},
-	// 	func(bytes []byte) interface{} {
-	// 		return ccdb.Codec{}.Decode(bytes)
-	// 	},
-	// )
+
 	// db := ccdb.NewParallelEthMemDataStore()
 	db := ccdb.NewLevelDBDataStore(i.storage_url_path)
 

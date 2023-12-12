@@ -12,7 +12,7 @@ import (
 	"github.com/arcology-network/common-lib/transactional"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 var (

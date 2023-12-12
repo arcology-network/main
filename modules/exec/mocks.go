@@ -5,10 +5,10 @@ import (
 	"github.com/arcology-network/component-lib/actor"
 	ccurl "github.com/arcology-network/concurrenturl"
 	"github.com/arcology-network/concurrenturl/interfaces"
-	evmCommon "github.com/arcology-network/evm/common"
-	ethTypes "github.com/arcology-network/evm/core/types"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	adaptor "github.com/arcology-network/vm-adaptor/execution"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type mockWorker struct {

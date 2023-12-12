@@ -8,10 +8,10 @@ import (
 	cmntyp "github.com/arcology-network/common-lib/types"
 	url "github.com/arcology-network/concurrenturl"
 	"github.com/arcology-network/concurrenturl/interfaces"
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/core/vm"
 	ccapi "github.com/arcology-network/vm-adaptor/api"
 	"github.com/arcology-network/vm-adaptor/eth"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/vm"
 )
 
 type Pool struct {

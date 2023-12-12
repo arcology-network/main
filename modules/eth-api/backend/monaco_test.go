@@ -5,8 +5,8 @@ import (
 	"math/big"
 	"testing"
 
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/core"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 )
 
 func TestMsgHash(t *testing.T) {

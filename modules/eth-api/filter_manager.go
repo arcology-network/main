@@ -7,9 +7,9 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
-	evmCommon "github.com/arcology-network/evm/common"
-	ethTypes "github.com/arcology-network/evm/core/types"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type FilterManager struct {

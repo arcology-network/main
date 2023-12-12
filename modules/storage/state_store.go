@@ -5,8 +5,8 @@ import (
 
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/types"
-	evmCommon "github.com/arcology-network/evm/common"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type State struct {

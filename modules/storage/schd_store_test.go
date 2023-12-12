@@ -3,7 +3,7 @@ package storage
 import (
 	"testing"
 
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 func TestWriteRead(t *testing.T) {

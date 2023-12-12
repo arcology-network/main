@@ -8,8 +8,8 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
-	evmCommon "github.com/arcology-network/evm/common"
 	tppTypes "github.com/arcology-network/main/modules/tpp/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 var (

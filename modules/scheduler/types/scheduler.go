@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/arcology-network/common-lib/types"
-	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/modules/scheduler/lib"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type ExecutingSchedule struct {

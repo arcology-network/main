@@ -16,8 +16,8 @@ import (
 	"github.com/arcology-network/concurrenturl/interfaces"
 	"github.com/arcology-network/concurrenturl/noncommutative"
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
-	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/config"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 func TestBootstrapCase1(t *testing.T) {

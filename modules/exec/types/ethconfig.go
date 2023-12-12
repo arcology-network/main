@@ -5,12 +5,12 @@ import (
 	"math/big"
 
 	mainCfg "github.com/arcology-network/component-lib/config"
-	"github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/consensus"
-	"github.com/arcology-network/evm/core/types"
-	"github.com/arcology-network/evm/core/vm"
-	"github.com/arcology-network/evm/params"
 	adaptor "github.com/arcology-network/vm-adaptor/execution"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/consensus"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 // fakeChain implements the ChainContext interface.

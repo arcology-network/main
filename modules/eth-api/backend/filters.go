@@ -5,12 +5,11 @@ import (
 	"sync"
 	"time"
 
-	evmCommon "github.com/arcology-network/evm/common"
+	ethcmn "github.com/ethereum/go-ethereum/common"
 
 	"github.com/arcology-network/component-lib/ethrpc"
-	eth "github.com/arcology-network/evm"
-	ethcmn "github.com/arcology-network/evm/common"
-	ethtyp "github.com/arcology-network/evm/core/types"
+	eth "github.com/ethereum/go-ethereum"
+	ethtyp "github.com/ethereum/go-ethereum/core/types"
 )
 
 const (
@@ -42,7 +41,7 @@ func (f *Filter) getLogs() []*ethtyp.Log {
 	f.Logs = nil
 	return logs
 }
-func (f *Filter) append(height uint64, logs []*ethtyp.Log, blockhash evmCommon.Hash) {
+func (f *Filter) append(height uint64, logs []*ethtyp.Log, blockhash ethcmn.Hash) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
 
@@ -98,7 +97,7 @@ func (fs *Filters) SetTimeout(timeout time.Duration) {
 	go fs.timeoutLoop(timeout)
 }
 
-func (fs *Filters) OnResultsArrived(height uint64, receipts []*ethtyp.Receipt, blockhash evmCommon.Hash) {
+func (fs *Filters) OnResultsArrived(height uint64, receipts []*ethtyp.Receipt, blockhash ethcmn.Hash) {
 	logs := ethrpc.ToLogs(receipts)
 	for _, f := range fs.filters {
 		go f.append(height, logs, blockhash)

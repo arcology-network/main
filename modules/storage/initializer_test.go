@@ -12,7 +12,7 @@ import (
 	"testing"
 
 	"github.com/arcology-network/common-lib/types"
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 func TestLoadFile(t *testing.T) {

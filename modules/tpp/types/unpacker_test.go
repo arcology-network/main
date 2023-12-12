@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/arcology-network/common-lib/types"
-	evmCommon "github.com/arcology-network/evm/common"
-	evmTypes "github.com/arcology-network/evm/core/types"
-	evmRlp "github.com/arcology-network/evm/rlp"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	evmRlp "github.com/ethereum/go-ethereum/rlp"
 )
 
 func TestRlp(t *testing.T) {

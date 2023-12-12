@@ -12,12 +12,12 @@ import (
 	"strings"
 
 	"github.com/arcology-network/component-lib/ethrpc"
-	eth "github.com/arcology-network/evm"
-	ethcmn "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/common/hexutil"
-	ethflt "github.com/arcology-network/evm/eth/filters"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
+	eth "github.com/ethereum/go-ethereum"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethflt "github.com/ethereum/go-ethereum/eth/filters"
 )
 
 func AttachChainId(tx *ethrpc.RPCTransaction, chainid uint64) *ethrpc.RPCTransaction { //} map[string]string {

@@ -4,8 +4,8 @@ import (
 	"context"
 
 	types "github.com/arcology-network/common-lib/types"
-	evmTypes "github.com/arcology-network/evm/core/types"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type BlockStore struct {

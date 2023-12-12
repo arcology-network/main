@@ -3,8 +3,8 @@ package types
 import (
 	"strings"
 
-	evmcommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/vm-adaptor/eth"
+	evmcommon "github.com/ethereum/go-ethereum/common"
 )
 
 const (

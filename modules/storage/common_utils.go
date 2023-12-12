@@ -6,7 +6,7 @@ import (
 	cmnmkl "github.com/arcology-network/common-lib/merkle"
 	"github.com/arcology-network/common-lib/mhasher"
 	"github.com/arcology-network/concurrenturl/indexer"
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 func calcRootHash(merkle *indexer.AccountMerkle, lastRoot evmCommon.Hash, paths []string, encodedValues [][]byte) evmCommon.Hash {

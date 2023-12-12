@@ -5,8 +5,8 @@ import (
 
 	"github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	evmCommon "github.com/arcology-network/evm/common"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type batch struct {

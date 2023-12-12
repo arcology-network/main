@@ -6,8 +6,8 @@ import (
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/component-lib/storage"
-	evmCommon "github.com/arcology-network/evm/common"
 	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type TxRepeatedChecker struct {

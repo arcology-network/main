@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/arcology-network/component-lib/ethrpc"
-	evm "github.com/arcology-network/evm"
-	evmCommon "github.com/arcology-network/evm/common"
-	evmTypes "github.com/arcology-network/evm/core/types"
+	evm "github.com/ethereum/go-ethereum"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 func TestFilter(t *testing.T) {

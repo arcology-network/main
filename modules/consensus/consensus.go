@@ -23,7 +23,7 @@ import (
 	"github.com/arcology-network/consensus-engine/p2p"
 	"github.com/arcology-network/consensus-engine/privval"
 	"github.com/arcology-network/consensus-engine/proxy"
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/libs/cli"
 	"go.uber.org/zap"

@@ -3,7 +3,7 @@ package scheduler
 import (
 	cmncmn "github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	evmCommon "github.com/arcology-network/evm/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type branch struct {

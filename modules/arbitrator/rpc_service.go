@@ -13,9 +13,9 @@ import (
 	"github.com/arcology-network/component-lib/log"
 	arbitratorn "github.com/arcology-network/concurrenturl/arbitrator"
 	"github.com/arcology-network/concurrenturl/interfaces"
-	evmCommon "github.com/arcology-network/evm/common"
 	"github.com/arcology-network/main/modules/arbitrator/types"
 	"github.com/arcology-network/vm-adaptor/execution"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 )
 
