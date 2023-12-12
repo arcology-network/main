@@ -15,13 +15,13 @@ import (
 	"github.com/arcology-network/component-lib/ethrpc"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
-	evm "github.com/arcology-network/evm"
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/common/hexutil"
-	"github.com/arcology-network/evm/core"
-	evmTypes "github.com/arcology-network/evm/core/types"
-	evmrlp "github.com/arcology-network/evm/rlp"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	evm "github.com/ethereum/go-ethereum"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	evmrlp "github.com/ethereum/go-ethereum/rlp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/cors"
@@ -441,6 +441,17 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		}
 
 		response.Data = receipt
+	case types.QueryType_Block_Receipts:
+		height := request.Data.(uint64)
+
+		var receipts []*evmTypes.Receipt
+		intf.Router.Call("receiptstore", "GetBlockReceipts", height, &receipts)
+		if receipts == nil {
+			response.Data = nil
+			return errors.New("receipts not found")
+		}
+
+		response.Data = receipts
 	case types.QueryType_Transaction:
 		hash := request.Data.(evmCommon.Hash)
 		txhashstr := string(hash.Bytes())
@@ -460,7 +471,26 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		request := request.Data.(*types.RequestBlockEth)
 		queryHeight := rs.getQueryHeight(request.Number)
 
-		rpcBlock, err := rs.getRpcBlock(queryHeight, request.FullTx)
+		rpcBlock, err := rs.getRpcBlock(queryHeight, request.FullTx, false)
+		if err != nil {
+			return err
+		}
+		response.Data = rpcBlock
+	case types.QueryType_HeaderByNumber:
+		request := request.Data.(*types.RequestBlockEth)
+		queryHeight := rs.getQueryHeight(request.Number)
+
+		rpcBlock, err := rs.getRpcBlock(queryHeight, false, true)
+		if err != nil {
+			return err
+		}
+		response.Data = rpcBlock
+	case types.QueryType_HeaderByHash:
+		request := request.Data.(*types.RequestBlockEth)
+		hash := string(request.Hash.Bytes())
+		var height uint64
+		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
+		rpcBlock, err := rs.getRpcBlock(height, false, true)
 		if err != nil {
 			return err
 		}
@@ -470,7 +500,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		hash := string(request.Hash.Bytes())
 		var height uint64
 		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
-		rpcBlock, err := rs.getRpcBlock(height, request.FullTx)
+		rpcBlock, err := rs.getRpcBlock(height, request.FullTx, false)
 		if err != nil {
 			return err
 		}
@@ -568,7 +598,7 @@ func (rs *Storage) getBlockTxs(height uint64) int {
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 	return len(block.Txs)
 }
-func (rs *Storage) getRpcBlock(height uint64, fulltx bool) (*ethrpc.RPCBlock, error) {
+func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*ethrpc.RPCBlock, error) {
 	var block *types.MonacoBlock
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 
@@ -601,33 +631,12 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool) (*ethrpc.RPCBlock, er
 	rpcBlock := ethrpc.RPCBlock{
 		Header: &header,
 	}
-
+	if onlyHeader {
+		return &rpcBlock, nil
+	}
 	if fulltx {
 		transactions := make([]interface{}, len(block.Txs))
 		for i := range block.Txs {
-			//------------------------------------------------
-			// tx := new(evmTypes.Transaction)
-
-			// txType := block.Txs[i][0]
-			// txReal := block.Txs[i][1:]
-			// switch txType {
-			// case types.TxType_Eth:
-			// 	if err := evmrlp.DecodeBytes(txReal, tx); err != nil {
-			// 		return nil, err
-			// 	}
-			// 	transactions[i] = *tx
-			// }
-			//---------------------------------------------------------------------
-			// intf.Router.Call("blockstore", "GetTxByHash", &mstypes.Position{
-			// 	Height:     block.Height,
-			// 	IdxInBlock: i,
-			// }, &tx)
-			// if tx.To() == nil {
-			// 	transactions[i] = evmTypes.NewContractCreation(tx.Nonce(), tx.Value(), tx.Gas(), tx.GasPrice(), tx.Data())
-			// } else {
-			// 	transactions[i] = evmTypes.NewTransaction(tx.Nonce(), evmCommon.Address(*tx.To()), tx.Value(), tx.Gas(), tx.GasPrice(), tx.Data())
-			// }
-			//-------------------------------------------------------------------
 			rpctransaction, err := rs.getTransaction(height, i)
 			if err != nil {
 				return nil, err

@@ -5,7 +5,7 @@ import (
 
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
-	evmTypes "github.com/arcology-network/evm/core/types"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type ReceiptCaches struct {
@@ -29,13 +29,30 @@ func (rc *ReceiptCaches) QueryReceipt(height uint64, idx int) *evmTypes.Receipt 
 	return datas[idx].(*evmTypes.Receipt)
 }
 
+func (rc *ReceiptCaches) QueryBlockReceipts(height uint64) []*evmTypes.Receipt {
+	datas := rc.updateCache(height)
+	if datas == nil {
+		return nil
+	}
+	receipts := make([]*evmTypes.Receipt, len(datas))
+	for i := range receipts {
+		receipts[i] = datas[i].(*evmTypes.Receipt)
+	}
+	return receipts
+}
+
 func (rc *ReceiptCaches) updateCache(height uint64) []interface{} {
+	retDatas := rc.caches.QueryBlock(height)
+	if retDatas != nil {
+		return retDatas
+	}
 	data, err := rc.db.Read(rc.db.GetFilename(height))
 	if err != nil || data == nil {
 		return nil
 	}
 	buffers := [][]byte(codec.Byteset{}.Decode(data).(codec.Byteset))
 	datas := make([]interface{}, len(buffers))
+
 	keys := make([]string, len(buffers))
 	worker := func(start, end int, idx int, args ...interface{}) {
 		for i := start; i < end; i++ {

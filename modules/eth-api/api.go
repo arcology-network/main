@@ -3,6 +3,7 @@ package ethapi
 import (
 	"context"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"log"
 	"math"
@@ -14,14 +15,14 @@ import (
 	"github.com/BurntSushi/toml"
 	mainCfg "github.com/arcology-network/component-lib/config"
 	"github.com/arcology-network/component-lib/ethrpc"
-	ethereum "github.com/arcology-network/evm"
-	"github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/common/hexutil"
-	ethtyp "github.com/arcology-network/evm/core/types"
-	"github.com/arcology-network/evm/params"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 	wal "github.com/arcology-network/main/modules/eth-api/wallet"
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
+	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	ethtyp "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/rs/cors"
 )
 
@@ -68,6 +69,19 @@ func blockNumber(ctx context.Context) (interface{}, error) {
 	return NumberToHex(number), nil
 }
 
+func getHeaderByNumber(ctx context.Context, params []interface{}) (interface{}, error) {
+	number, err := ToBlockNumber(params[0])
+	if err != nil {
+		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[0])
+	}
+
+	block, err := backend.GetHeaderByNumber(number)
+	if err != nil {
+		return nil, jsonrpc.InternalError(err)
+	}
+	return RPCMarshalHeader(block.Header), nil
+}
+
 func getBlockByNumber(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
@@ -84,6 +98,19 @@ func getBlockByNumber(ctx context.Context, params []interface{}) (interface{}, e
 		return nil, jsonrpc.InternalError(err)
 	}
 	return parseBlock(block, isTransaction), nil
+}
+
+func getHeaderByHash(ctx context.Context, params []interface{}) (interface{}, error) {
+	hash, err := ToHash(params[0])
+	if err != nil {
+		return nil, jsonrpc.InvalidParams("invalid hash given %v", params[0])
+	}
+
+	block, err := backend.GetHeaderByHash(hash)
+	if err != nil {
+		return nil, jsonrpc.InternalError(err)
+	}
+	return RPCMarshalHeader(block.Header), nil
 }
 
 func getBlockByHash(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -104,6 +131,43 @@ func getBlockByHash(ctx context.Context, params []interface{}) (interface{}, err
 	return parseBlock(block, isTransaction), nil
 }
 
+// RPCMarshalHeader converts the given header to the RPC output .
+func RPCMarshalHeader(head *ethtyp.Header) map[string]interface{} {
+	result := map[string]interface{}{
+		"number":           (*hexutil.Big)(head.Number),
+		"hash":             head.Hash(),
+		"parentHash":       head.ParentHash,
+		"nonce":            head.Nonce,
+		"mixHash":          head.MixDigest,
+		"sha3Uncles":       head.UncleHash,
+		"logsBloom":        head.Bloom,
+		"stateRoot":        head.Root,
+		"miner":            head.Coinbase,
+		"difficulty":       (*hexutil.Big)(head.Difficulty),
+		"extraData":        hexutil.Bytes(head.Extra),
+		"gasLimit":         hexutil.Uint64(head.GasLimit),
+		"gasUsed":          hexutil.Uint64(head.GasUsed),
+		"timestamp":        hexutil.Uint64(head.Time),
+		"transactionsRoot": head.TxHash,
+		"receiptsRoot":     head.ReceiptHash,
+	}
+	if head.BaseFee != nil {
+		result["baseFeePerGas"] = (*hexutil.Big)(head.BaseFee)
+	}
+	if head.WithdrawalsHash != nil {
+		result["withdrawalsRoot"] = head.WithdrawalsHash
+	}
+	if head.BlobGasUsed != nil {
+		result["blobGasUsed"] = hexutil.Uint64(*head.BlobGasUsed)
+	}
+	if head.ExcessBlobGas != nil {
+		result["excessBlobGas"] = hexutil.Uint64(*head.ExcessBlobGas)
+	}
+	if head.ParentBeaconRoot != nil {
+		result["parentBeaconBlockRoot"] = head.ParentBeaconRoot
+	}
+	return result
+}
 func parseBlock(block *ethrpc.RPCBlock, isTransaction bool) interface{} {
 
 	uncles := make([]string, 0)
@@ -271,6 +335,28 @@ func sendTransaction(ctx context.Context, params []interface{}) (interface{}, er
 	return hash.Hex(), nil
 }
 
+func getBlockReceipts(ctx context.Context, params []interface{}) (interface{}, error) {
+	number, err := ToBlockNumber(params[0])
+	if err != nil {
+		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[0])
+	}
+	var receipts []*ethtyp.Receipt
+	receipts, err = backend.GetBlockReceipts(uint64(number))
+	if err != nil {
+		return nil, errors.New("not found receipts")
+	}
+	allfields := make([]map[string]interface{}, len(receipts))
+	for i := range receipts {
+		tx, err := backend.GetTransactionByHash(receipts[i].TxHash)
+		if err != nil {
+			fmt.Printf("<<<<<<<<<<<<<<<<getTransactionByHash err:%v\n", err)
+			return nil, jsonrpc.InternalError(err)
+		}
+		allfields[i] = marshalReceipt(receipts[i], tx)
+	}
+	return allfields, nil
+}
+
 func getTransactionReceipt(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
@@ -301,10 +387,44 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 		return nil, jsonrpc.InternalError(err)
 	}
 
+	// fields := map[string]interface{}{
+	// 	"blockHash":         receipt.BlockHash,
+	// 	"blockNumber":       hexutil.Uint64(receipt.BlockNumber.Uint64()),
+	// 	"transactionHash":   hash,
+	// 	"transactionIndex":  hexutil.Uint64(receipt.TransactionIndex),
+	// 	"from":              tx.From,
+	// 	"to":                tx.To,
+	// 	"gasUsed":           hexutil.Uint64(receipt.GasUsed),
+	// 	"cumulativeGasUsed": hexutil.Uint64(receipt.CumulativeGasUsed),
+	// 	"contractAddress":   nil,
+	// 	"logs":              receipt.Logs,
+	// 	"logsBloom":         receipt.Bloom,
+	// 	"type":              hexutil.Uint(receipt.Type),
+	// }
+	// //fields["effectiveGasPrice"] = hexutil.Uint64(receipt.)
+	// // Assign receipt status or post state.
+	// if len(receipt.PostState) > 0 {
+	// 	fields["root"] = hexutil.Bytes(receipt.PostState)
+	// } else {
+	// 	fields["status"] = hexutil.Uint(receipt.Status)
+	// }
+	// if receipt.Logs == nil {
+	// 	fields["logs"] = []*ethtyp.Log{}
+	// }
+	// // If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
+	// if receipt.ContractAddress != (common.Address{}) {
+	// 	fields["contractAddress"] = receipt.ContractAddress
+	// }
+
+	// fields["effectiveGasPrice"] = hexutil.Uint64(tx.GasPrice.ToInt().Uint64())
+
+	return marshalReceipt(receipt, tx), nil
+}
+func marshalReceipt(receipt *ethtyp.Receipt, tx *ethrpc.RPCTransaction) map[string]interface{} {
 	fields := map[string]interface{}{
 		"blockHash":         receipt.BlockHash,
 		"blockNumber":       hexutil.Uint64(receipt.BlockNumber.Uint64()),
-		"transactionHash":   hash,
+		"transactionHash":   receipt.TxHash,
 		"transactionIndex":  hexutil.Uint64(receipt.TransactionIndex),
 		"from":              tx.From,
 		"to":                tx.To,
@@ -331,8 +451,7 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 	}
 
 	fields["effectiveGasPrice"] = hexutil.Uint64(tx.GasPrice.ToInt().Uint64())
-
-	return fields, nil
+	return fields
 }
 
 func getTransactionByHash(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -647,6 +766,9 @@ func txpoolContent(ctx context.Context) (interface{}, error) {
 func traceTransaction(ctx context.Context) (interface{}, error) {
 	return nil, nil
 }
+func maxPriorityFeePerGas(ctx context.Context) (interface{}, error) {
+	return big.NewInt(1), nil
+}
 
 func startJsonRpc() {
 	filters := internal.NewFilters()
@@ -723,6 +845,11 @@ func startJsonRpc() {
 		"web3_clientVersion":     clientVersion,
 		"txpool_content":         txpoolContent,
 		"debug_traceTransaction": traceTransaction,
+
+		"eth_getBlockReceipts":     getBlockReceipts,
+		"eth_getHeaderByHash":      getHeaderByHash,
+		"eth_getHeaderByNumber":    getHeaderByNumber,
+		"eth_maxPriorityFeePerGas": maxPriorityFeePerGas,
 	})
 
 	if options.Debug {

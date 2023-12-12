@@ -4,9 +4,9 @@ import (
 	"math/big"
 
 	"github.com/arcology-network/component-lib/ethrpc"
-	eth "github.com/arcology-network/evm"
-	ethcmn "github.com/arcology-network/evm/common"
-	ethtyp "github.com/arcology-network/evm/core/types"
+	eth "github.com/ethereum/go-ethereum"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	ethtyp "github.com/ethereum/go-ethereum/core/types"
 )
 
 type EthereumAPI interface {
@@ -15,6 +15,8 @@ type EthereumAPI interface {
 	// If fullTx is false, the actual type of RPCBlock.Transactions is []ethcmn.Hash.
 	GetBlockByNumber(number int64, fullTx bool) (*ethrpc.RPCBlock, error)
 	GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*ethrpc.RPCBlock, error)
+	GetHeaderByNumber(number int64) (*ethrpc.RPCBlock, error)
+	GetHeaderByHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error)
 	GetCode(address ethcmn.Address, number int64) ([]byte, error)
 	GetBalance(address ethcmn.Address, number int64) (*big.Int, error)
 	GetTransactionCount(address ethcmn.Address, number int64) (uint64, error)
@@ -28,6 +30,7 @@ type EthereumAPI interface {
 	Call(msg eth.CallMsg) ([]byte, error)
 	SendRawTransaction(rawTx []byte) (ethcmn.Hash, error)
 	GetTransactionReceipt(hash ethcmn.Hash) (*ethtyp.Receipt, error)
+	GetBlockReceipts(height uint64) ([]*ethtyp.Receipt, error)
 	GetLogs(filter eth.FilterQuery) ([]*ethtyp.Log, error)
 
 	GetBlockTransactionCountByHash(hash ethcmn.Hash) (int, error)

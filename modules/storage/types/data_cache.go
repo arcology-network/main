@@ -37,6 +37,25 @@ func (caches *DataCache) Query(hash string) interface{} {
 	return nil
 }
 
+func (caches *DataCache) QueryBlock(height uint64) []interface{} {
+	caches.lock.Lock()
+	defer caches.lock.Unlock()
+
+	datas := []interface{}{}
+	if hashes, ok := caches.Indexer[height]; ok {
+		for i := range hashes {
+			if data, ok := caches.Datas[hashes[i]]; ok {
+				datas = append(datas, data)
+			}
+		}
+		if len(hashes) == len(datas) {
+			return datas
+		}
+	}
+
+	return nil
+}
+
 func (caches *DataCache) GetHashes(height uint64) []string {
 	caches.lock.Lock()
 	defer caches.lock.Unlock()

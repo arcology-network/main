@@ -9,14 +9,14 @@ import (
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/ethrpc"
 	intf "github.com/arcology-network/component-lib/interface"
-	eth "github.com/arcology-network/evm"
-	ethcmn "github.com/arcology-network/evm/common"
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/core"
-	ethtyp "github.com/arcology-network/evm/core/types"
-	ethcrp "github.com/arcology-network/evm/crypto"
-	"github.com/arcology-network/evm/rlp"
+	eth "github.com/ethereum/go-ethereum"
+	ethcmn "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	ethcrp "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
+
+	"github.com/ethereum/go-ethereum/core/types"
 )
 
 type Monaco struct {
@@ -62,6 +62,34 @@ func (m *Monaco) GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*ethrpc.RPCBlock
 		Data: &cmntyp.RequestBlockEth{
 			Hash:   hash,
 			FullTx: fullTx,
+		},
+	}, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Data.(*ethrpc.RPCBlock), nil
+}
+
+func (m *Monaco) GetHeaderByNumber(number int64) (*ethrpc.RPCBlock, error) {
+	var response cmntyp.QueryResult
+	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
+		QueryType: cmntyp.QueryType_HeaderByNumber,
+		Data: &cmntyp.RequestBlockEth{
+			Number: number,
+		},
+	}, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Data.(*ethrpc.RPCBlock), nil
+}
+
+func (m *Monaco) GetHeaderByHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
+	var response cmntyp.QueryResult
+	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
+		QueryType: cmntyp.QueryType_HeaderByHash,
+		Data: &cmntyp.RequestBlockEth{
+			Hash: hash,
 		},
 	}, &response)
 	if err != nil {
@@ -161,13 +189,13 @@ func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*ethrpc.RPCTransaction,
 
 func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 	var response cmntyp.ExecutorResponses
-	var to *evmCommon.Address
+	var to *ethcmn.Address
 	if msg.To != nil {
-		addr := evmCommon.BytesToAddress(msg.To.Bytes())
+		addr := ethcmn.BytesToAddress(msg.To.Bytes())
 		to = &addr
 	}
 	message := core.NewMessage(
-		evmCommon.BytesToAddress(msg.From.Bytes()),
+		ethcmn.BytesToAddress(msg.From.Bytes()),
 		to,
 		1,
 		msg.Value,
@@ -196,8 +224,8 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 					Txids:      []uint32{0},
 				},
 			},
-			Precedings:    [][]*evmCommon.Hash{nil},
-			PrecedingHash: []evmCommon.Hash{{}},
+			Precedings:    [][]*ethcmn.Hash{nil},
+			PrecedingHash: []ethcmn.Hash{{}},
 			Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
 			Parallelism:   1,
 			Debug:         true,
@@ -220,7 +248,7 @@ func (m *Monaco) SendRawTransaction(rawTx []byte) (ethcmn.Hash, error) {
 	return response.TxHash.(ethcmn.Hash), nil
 }
 
-func (m *Monaco) GetTransactionReceipt(hash ethcmn.Hash) (*ethtyp.Receipt, error) {
+func (m *Monaco) GetTransactionReceipt(hash ethcmn.Hash) (*types.Receipt, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_Receipt_Eth,
@@ -229,10 +257,22 @@ func (m *Monaco) GetTransactionReceipt(hash ethcmn.Hash) (*ethtyp.Receipt, error
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*ethtyp.Receipt), nil
+	return response.Data.(*types.Receipt), nil
 }
 
-func (m *Monaco) GetLogs(filter eth.FilterQuery) ([]*ethtyp.Log, error) {
+func (m *Monaco) GetBlockReceipts(height uint64) ([]*types.Receipt, error) {
+	var response cmntyp.QueryResult
+	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
+		QueryType: cmntyp.QueryType_Block_Receipts,
+		Data:      height,
+	}, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Data.([]*types.Receipt), nil
+}
+
+func (m *Monaco) GetLogs(filter eth.FilterQuery) ([]*types.Log, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_Logs,
@@ -241,7 +281,7 @@ func (m *Monaco) GetLogs(filter eth.FilterQuery) ([]*ethtyp.Log, error) {
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.([]*ethtyp.Log), nil
+	return response.Data.([]*types.Log), nil
 }
 
 func (m *Monaco) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) (*ethrpc.RPCTransaction, error) {
@@ -297,8 +337,8 @@ func (m *Monaco) GetBlockTransactionCountByNumber(number int64) (int, error) {
 }
 
 type messageRLP struct {
-	To         *evmCommon.Address
-	From       evmCommon.Address
+	To         *ethcmn.Address
+	From       ethcmn.Address
 	Nonce      uint64
 	Amount     *big.Int
 	GasLimit   uint64
@@ -307,8 +347,8 @@ type messageRLP struct {
 	CheckNonce bool
 }
 
-func msgHash(msg *core.Message) (evmCommon.Hash, error) {
-	var hash evmCommon.Hash
+func msgHash(msg *core.Message) (ethcmn.Hash, error) {
+	var hash ethcmn.Hash
 	sha := sha3.NewLegacyKeccak256().(ethcrp.KeccakState)
 	rlp.Encode(sha, &messageRLP{
 		To:         msg.To,
@@ -386,7 +426,7 @@ func (m *Monaco) UninstallFilter(id ID) (bool, error) {
 func (m *Monaco) GetFilterChanges(id ID) (interface{}, error) {
 	return m.filters.GetFilterChanges(id)
 }
-func (m *Monaco) GetFilterLogs(id ID) ([]*ethtyp.Log, error) {
+func (m *Monaco) GetFilterLogs(id ID) ([]*types.Log, error) {
 	crit, err := m.filters.GetFilterLogsCrit(id)
 	if err != nil {
 		return nil, err

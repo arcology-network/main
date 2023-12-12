@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 
-	evmTypes "github.com/arcology-network/evm/core/types"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type SaveReceiptsRequest struct {
@@ -32,5 +32,10 @@ func (rs *ReceiptStore) Save(ctx context.Context, request *SaveReceiptsRequest, 
 
 func (rs *ReceiptStore) Get(ctx context.Context, position *mstypes.Position, receipt **evmTypes.Receipt) error {
 	*receipt = rs.db.QueryReceipt(position.Height, position.IdxInBlock)
+	return nil
+}
+
+func (rs *ReceiptStore) GetBlockReceipts(ctx context.Context, height uint64, receipts *[]*evmTypes.Receipt) error {
+	*receipts = rs.db.QueryBlockReceipts(height)
 	return nil
 }
