@@ -12,7 +12,8 @@
             "retry_time": 60,
             "coinbase": "__global__",
             "protocol_version": 10002,
-            "hash_rate": 998
+            "hash_rate": 998,
+            "chain_id": "__global__"
         }
     }
 }

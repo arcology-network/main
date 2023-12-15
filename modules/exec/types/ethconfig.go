@@ -4,7 +4,6 @@ import (
 	"math"
 	"math/big"
 
-	mainCfg "github.com/arcology-network/component-lib/config"
 	adaptor "github.com/arcology-network/vm-adaptor/execution"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
@@ -28,7 +27,7 @@ func (chain *fakeChain) Engine() consensus.Engine {
 // var coinbase = common.BytesToAddress([]byte{100, 100, 100})
 var coinbase = common.HexToAddress("0x3d361736e7c94ee64f74c57a82b2af7ee17c2bf1")
 
-func MainConfig() *adaptor.Config {
+func MainConfig(chainid *big.Int) *adaptor.Config {
 	vmConfig := vm.Config{}
 	cfg := &adaptor.Config{
 		ChainConfig: params.MainnetChainConfig,
@@ -40,7 +39,7 @@ func MainConfig() *adaptor.Config {
 		GasLimit:    math.MaxUint64,
 		Difficulty:  new(big.Int).SetUint64(10000000),
 	}
-	cfg.ChainConfig.ChainID = mainCfg.MainConfig.ChainId
+	cfg.ChainConfig.ChainID = chainid
 	cfg.Chain = new(fakeChain)
 	return cfg
 

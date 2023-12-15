@@ -8,7 +8,6 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/types"
-	monacoConfig "github.com/arcology-network/component-lib/config"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
@@ -43,13 +42,13 @@ type ScanCache struct {
 	tabs         []uint64
 }
 
-func NewScanCache(bsize, tsize int) *ScanCache {
+func NewScanCache(bsize, tsize int, chainid *big.Int) *ScanCache {
 	return &ScanCache{
 		blockNums:    bsize,
 		txNums:       tsize,
 		blocks:       make([]*Block, 0, bsize),
 		transactions: make([]*Transaction, 0, tsize),
-		chainid:      monacoConfig.MainConfig.ChainId,
+		chainid:      chainid,
 		tabs:         make([]uint64, 4),
 	}
 }

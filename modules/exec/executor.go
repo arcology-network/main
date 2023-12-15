@@ -84,6 +84,8 @@ type Executor struct {
 	url          *ccurl.ConcurrentUrl
 	numTasks     int
 	requestId    uint64
+
+	chainId *big.Int
 }
 
 func NewExecutor(concurrency int, groupId string) actor.IWorkerEx {
@@ -127,6 +129,7 @@ func (exec *Executor) Config(params map[string]interface{}) {
 	if v, ok := params["gatherexeclog"]; ok {
 		exec.genExecLog = v.(bool)
 	}
+	exec.chainId = params["chain_id"].(*big.Int)
 }
 
 func (exec *Executor) OnStart() {
@@ -259,7 +262,7 @@ func (exec *Executor) sendNewTask(
 	debug bool,
 ) {
 	//db := curstorage.NewTransientDB(snapshot)
-	config := exetyp.MainConfig()
+	config := exetyp.MainConfig(exec.chainId)
 	config.Coinbase = exec.execParams.Coinbase
 	config.BlockNumber = new(big.Int).SetUint64(exec.height)
 	config.Time = timestamp

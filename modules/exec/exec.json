@@ -22,7 +22,8 @@
         },
         "exec_rpc": {},
         "executor": {
-            "gatherexeclog": false
+            "gatherexeclog": false,
+            "chain_id": "__global__"
         },
         "stateless_euresult_aggr_selector": {}
     },

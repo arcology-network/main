@@ -8,7 +8,6 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/config"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/component-lib/streamer"
@@ -100,9 +99,9 @@ func TestExecSvcMakeSnapshot(t *testing.T) {
 
 func setup(tb testing.TB) (*streamer.StatefulStreamer, *mockWorker) {
 	log.InitLog("exec-svc.log", "./log.toml", "tester", "tester", 0)
-	config.MainConfig = &config.Monaco{
-		ChainId: new(big.Int),
-	}
+	// config.MainConfig = &config.Monaco{
+	// 	ChainId: new(big.Int),
+	// }
 	broker := streamer.NewStatefulStreamer()
 
 	intf.RPCCreator = func(serviceAddr, basepath string, zkAddrs []string, rcvrs, fns []interface{}) {}

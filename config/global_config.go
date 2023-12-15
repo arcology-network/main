@@ -5,8 +5,6 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
-
-	cfg "github.com/arcology-network/component-lib/config"
 )
 
 type GlobalConfig struct {
@@ -43,9 +41,9 @@ func LoadGlobalConfig(file string) GlobalConfig {
 	if err != nil {
 		panic(err)
 	}
-	cfg.MainConfig = &cfg.Monaco{
-		ChainId: config.ChainId,
-	}
+	// cfg.MainConfig = &cfg.Monaco{
+	// 	ChainId: config.ChainId,
+	// }
 	return config
 }
 
