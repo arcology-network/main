@@ -224,7 +224,7 @@ func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Has
 	url.Import(common.Clone(transitions))
 	url.Sort()
 	url.Finalize([]uint32{0})
-	keys, values := url.KVs()
+	_, values := url.KVs()
 	encodedValues := make([][]byte, 0, len(values))
 	for _, v := range values {
 		if v != nil {
@@ -238,8 +238,8 @@ func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Has
 
 	merkle := indexer.NewAccountMerkle(ccurlcommon.NewPlatform(), indexer.RlpEncoder, merkle.Keccak256{}.Hash)
 	merkle.Import(common.Clone(transitions))
-	rootHash := calcRootHash(merkle, evmCommon.Hash{}, keys, encodedValues)
-	url.WriteToDbBuffer()
+	rootHash := url.WriteToDbBuffer() //calcRootHash(merkle, evmCommon.Hash{}, keys, encodedValues)
+	// url.WriteToDbBuffer()
 	url.SaveToDB()
 	return db, rootHash
 }

@@ -3,11 +3,12 @@ package receipthashing
 import (
 	"time"
 
-	"github.com/arcology-network/common-lib/mhasher"
+	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
 	evmCommon "github.com/arcology-network/evm/common"
+	"github.com/arcology-network/evm/crypto"
 	"go.uber.org/zap"
 )
 
@@ -75,10 +76,12 @@ func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, 
 	begintime := time.Now()
 	datas := make([][]byte, 0, len(inclusiveList.HashList))
 	var gasused uint64 = 0
+
 	nilroot := evmCommon.Hash{}
 	if inclusiveList == nil || receipts == nil {
 		return nilroot, 0
 	}
+
 	for i, hash := range inclusiveList.HashList {
 		if inclusiveList.Successful[i] {
 
@@ -90,16 +93,20 @@ func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, 
 			}
 		}
 	}
+
 	roothash := evmCommon.Hash{}
 	if len(datas) > 0 {
 		// src := bytes.Join(datas, []byte(""))
 		// totallen := len(src)
-		roothashbytes, err := mhasher.Roothash(datas, mhasher.HashType_256)
-		if err != nil {
-			cr.AddLog(log.LogLevel_Error, "make roothash err ", zap.String("err", err.Error()))
-			return nilroot, 0
-		}
-		roothash = evmCommon.BytesToHash(roothashbytes)
+		// roothashbytes, err := mhasher.Roothash(datas, mhasher.HashType_256)
+
+		// roothashbytes := crypto.Keccak256(common.Flatten(datas))
+
+		// if err != nil {
+		// 	cr.AddLog(log.LogLevel_Error, "make roothash err ", zap.String("err", err.Error()))
+		// 	return nilroot, 0
+		// }
+		roothash = evmCommon.BytesToHash(crypto.Keccak256(common.Flatten(datas)))
 		cr.AddLog(log.LogLevel_Info, "calculate recept roothash ", zap.Duration("times", time.Now().Sub(begintime)))
 	}
 	return roothash, gasused
