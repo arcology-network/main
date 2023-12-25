@@ -14,8 +14,8 @@
 # Dependency directories (remove the comment below to include it)
 # vendor/
 
-*.dot
-*.svg
+# *.dot
+# *.svg
 
 **/*.db
 boot/log/
