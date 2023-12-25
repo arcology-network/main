@@ -6,7 +6,11 @@ The main project contains all the service modules for the Arcology network. Thes
 
 - **Binary release :** Please download the latest [binary releases](https://github.com/arcology-network/binary-releases/tags). 
 
-- **Build From Source:**
+- **Build From Source:** 
+
+``` bash
+
+```
 
 ## Installation
 
