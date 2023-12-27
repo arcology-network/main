@@ -8,6 +8,8 @@
             "filter_timeout_mins": 5,
             "key_file": "./genesis_accounts_100.txt",
             "json_rpc_port": 7545,
+            "auth_rpc_port": 8551,
+            "jwt_file": "./jwt.txt",
             "debug": false,
             "retry_time": 60,
             "coinbase": "__global__",

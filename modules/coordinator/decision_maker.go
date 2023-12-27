@@ -13,6 +13,7 @@ const (
 	dmStateFastSync
 	dmStateBlockSyncWaiting
 	dmStateBlockSync
+	dmStateGenesis
 )
 
 type DecisionMaker struct {
@@ -26,11 +27,13 @@ type DecisionMaker struct {
 	maxPeerHeights       []uint64
 	consensusUp          bool
 	initHeight           uint64
+
+	genesisData *actor.BlockStart
 }
 
 func NewDecisionMaker(concurrency int, groupId string) actor.IWorkerEx {
 	dm := &DecisionMaker{
-		state: dmStateUninit,
+		state: dmStateGenesis,
 		fastSyncMessageTypes: map[string]struct{}{
 			actor.MsgConsensusMaxPeerHeight: {},
 			actor.MsgConsensusUp:            {},
@@ -59,6 +62,7 @@ func (dm *DecisionMaker) Inputs() ([]string, bool) {
 		actor.MsgExtReapingList,
 		actor.MsgAppHash,
 		actor.MsgStateSyncDone,
+		actor.MsgCoinbase,
 	}, false
 }
 
@@ -81,6 +85,12 @@ func (dm *DecisionMaker) OnStart() {}
 func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	switch dm.state {
+	case dmStateGenesis:
+		switch msg.Name {
+		case actor.MsgCoinbase:
+			dm.genesisData = msg.Data.(*actor.BlockStart)
+			dm.state = dmStateUninit
+		}
 	case dmStateUninit:
 		switch msg.Name {
 		case actor.MsgStorageUp:
@@ -150,7 +160,10 @@ func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 	case dmStateBlockSync:
 		switch msg.Name {
 		case actor.MsgExtBlockStart:
-			dm.MsgBroker.Send(actor.MsgBlockStart, msg.Data)
+			blockStart := msg.Data.(*actor.BlockStart)
+			blockStart.Coinbase = dm.genesisData.Coinbase //fix coinbase
+			blockStart.Extra = dm.genesisData.Extra
+			dm.MsgBroker.Send(actor.MsgBlockStart, blockStart)
 		case actor.MsgExtBlockEnd:
 			dm.MsgBroker.Send(actor.MsgBlockEnd, msg.Data)
 		case actor.MsgExtReapCommand:
@@ -175,6 +188,9 @@ func (dm *DecisionMaker) GetStateDefinitions() map[int][]string {
 		fastSyncMsgs = append(fastSyncMsgs, typ)
 	}
 	return map[int][]string{
+		dmStateGenesis: {
+			actor.MsgCoinbase,
+		},
 		dmStateUninit: {
 			actor.MsgStorageUp,
 			actor.MsgConsensusMaxPeerHeight,

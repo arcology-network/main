@@ -5,7 +5,8 @@
             "generate_apc_handle": true,
             "generate_url_update": false,
             "init_db": false,
-            "cached": false
+            "cached": false,
+            "no_op":true
         }
     },
     "actors": {
@@ -23,7 +24,9 @@
         "pool_aggr_selector": {
             "max_reap_size": 50000,
             "obsolete_time": 100,
-            "close_check": true
+            "close_check": true,
+            "chain_id": "__global__",
+            "no_op":"__env__"
         }
     }
 }

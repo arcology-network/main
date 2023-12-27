@@ -132,7 +132,7 @@ func (sc *ScanCache) GetTransaction(tx []byte, height uint64, time *big.Int, rec
 		}
 		txhash := types.RlpHash(otx)
 
-		msg, err := core.TransactionToMessage(otx, evmTypes.NewEIP155Signer(sc.chainid), nil)
+		msg, err := core.TransactionToMessage(otx, evmTypes.NewLondonSigner(sc.chainid), nil)
 		if err != nil {
 			return nil, err
 		}

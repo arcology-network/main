@@ -1,7 +1,9 @@
 package backend
 
 import (
+	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	cmncmn "github.com/arcology-network/common-lib/common"
@@ -10,23 +12,137 @@ import (
 	"github.com/arcology-network/component-lib/ethrpc"
 	intf "github.com/arcology-network/component-lib/interface"
 	eth "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/beacon/engine"
+	"github.com/ethereum/go-ethereum/common"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	ethcrp "github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/miner"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/eth/catalyst"
 )
 
 type Monaco struct {
-	filters *Filters
+	filters     *Filters
+	localBlocks *payloadQueue // Cache of local payloads generated
+
+	forkchoiceLock sync.Mutex // Lock for the forkChoiceUpdated method
+	newPayloadLock sync.Mutex // Lock for the NewPayload method
 }
 
 func NewMonaco(filters *Filters) *Monaco {
 	return &Monaco{
-		filters: filters,
+		filters:     filters,
+		localBlocks: newPayloadQueue(),
 	}
+}
+
+// ForkchoiceUpdatedV2 is equivalent to V1 with the addition of withdrawals in the payload attributes.
+func (api *Monaco) ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadAttributes *engine.PayloadAttributes, chainid uint64) (engine.ForkChoiceResponse, error) {
+	api.forkchoiceLock.Lock()
+	defer api.forkchoiceLock.Unlock()
+	fmt.Printf(">>>>>>>>>>>>>>main/modules/eth-api/backend/monaco.go>>>>>1111>>>>>>>\n")
+	valid := func(id *engine.PayloadID) engine.ForkChoiceResponse {
+		return engine.ForkChoiceResponse{
+			PayloadStatus: engine.PayloadStatusV1{Status: engine.VALID, LatestValidHash: &update.HeadBlockHash},
+			PayloadID:     id,
+		}
+	}
+	fmt.Printf(">>>>>>>>>>>>>>main/modules/eth-api/backend/monaco.go>>>>>2222>>>>>>>\n")
+	// If payload generation was requested, create a new block to be potentially
+	// sealed by the beacon client. The payload will be requested later, and we
+	// will replace it arbitrarily many times in between.
+	if payloadAttributes != nil {
+		// if api.eth.BlockChain().Config().Optimism != nil && payloadAttributes.GasLimit == nil {
+		// 	return engine.STATUS_INVALID, engine.InvalidPayloadAttributes.With(errors.New("gasLimit parameter is required"))
+		// }
+		transactions := make(types.Transactions, 0, len(payloadAttributes.Transactions))
+		for i, otx := range payloadAttributes.Transactions {
+			var tx types.Transaction
+			if err := tx.UnmarshalBinary(otx); err != nil {
+				return engine.STATUS_INVALID, fmt.Errorf("transaction %d is not valid: %v", i, err)
+			}
+			transactions = append(transactions, &tx)
+		}
+		args := &miner.BuildPayloadArgs{
+			Parent:       update.HeadBlockHash,
+			Timestamp:    payloadAttributes.Timestamp,
+			FeeRecipient: payloadAttributes.SuggestedFeeRecipient,
+			Random:       payloadAttributes.Random,
+			Withdrawals:  payloadAttributes.Withdrawals,
+			BeaconRoot:   payloadAttributes.BeaconRoot,
+			NoTxPool:     payloadAttributes.NoTxPool,
+			Transactions: transactions,
+			GasLimit:     payloadAttributes.GasLimit,
+		}
+		id := args.Id()
+		// If we already are busy generating this work, then we do not need
+		// to start a second process.
+		if api.localBlocks.has(id) {
+			return valid(&id), nil
+		}
+		payload, err := buildPayload(args, payloadAttributes.Transactions, chainid)
+		if err != nil {
+			log.Error("Failed to build payload", "err", err)
+			return valid(nil), engine.InvalidPayloadAttributes.With(err)
+		}
+
+		api.localBlocks.put(id, payload)
+		return valid(&id), nil
+	}
+	return valid(nil), nil
+}
+
+// GetPayloadV2 returns a cached payload by id.
+func (api *Monaco) GetPayloadV2(payloadID engine.PayloadID) (*engine.ExecutionPayloadEnvelope, error) {
+	log.Trace("Engine API request received", "method", "GetPayload", "id", payloadID)
+	data := api.localBlocks.get(payloadID, false)
+	if data == nil {
+		return nil, engine.UnknownPayload
+	}
+	return data, nil
+}
+
+// invalid returns a response "INVALID" with the latest valid hash supplied by latest.
+func (api *Monaco) invalid(err error, latestValid *types.Header) engine.PayloadStatusV1 {
+	var currentHash *common.Hash
+	if latestValid != nil {
+		if latestValid.Difficulty.BitLen() != 0 {
+			// Set latest valid hash to 0x0 if parent is PoW block
+			currentHash = &common.Hash{}
+		} else {
+			// Otherwise set latest valid hash to parent hash
+			h := latestValid.Hash()
+			currentHash = &h
+		}
+	}
+	errorMsg := err.Error()
+	return engine.PayloadStatusV1{Status: engine.INVALID, LatestValidHash: currentHash, ValidationError: &errorMsg}
+}
+
+// NewPayloadV2 creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
+func (api *Monaco) NewPayloadV2(params engine.ExecutableData) (engine.PayloadStatusV1, error) {
+	// api.newPayloadLock.Lock()
+	// defer api.newPayloadLock.Unlock()
+
+	// log.Trace("Engine API request received", "method", "NewPayload", "number", params.Number, "hash", params.BlockHash)
+	// block, err := engine.ExecutableDataToBlock(params, nil, nil)
+	// if err != nil {
+	// 	log.Warn("Invalid NewPayload params", "params", params, "error", err)
+	// 	return api.invalid(err, nil), nil
+	// }
+	// hash := block.Hash()
+
+	return engine.PayloadStatusV1{Status: engine.VALID, LatestValidHash: &params.BlockHash}, nil
+}
+
+func (api *Monaco) SignalSuperchainV1(signal *catalyst.SuperchainSignal) (params.ProtocolVersion, error) {
+	return params.OPStackSupport, nil
 }
 
 func (m *Monaco) BlockNumber() (uint64, error) {
@@ -213,10 +329,10 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 		Data: &cmntyp.ExecutorRequest{
 			Sequences: []*cmntyp.ExecutingSequence{
 				{
-					Msgs: []*cmntyp.StandardMessage{
+					Msgs: []*cmntyp.StandardTransaction{
 						{
-							TxHash: hash,
-							Native: &message,
+							TxHash:        hash,
+							NativeMessage: &message,
 						},
 					},
 					Parallel:   true,

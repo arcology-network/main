@@ -5,7 +5,6 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
-	evmRlp "github.com/ethereum/go-ethereum/rlp"
 )
 
 type BlockCaches struct {
@@ -24,9 +23,10 @@ func (rc *BlockCaches) QueryTx(height uint64, idx int) *evmTypes.Transaction {
 	if block == nil || idx >= len(block.Txs) {
 		return nil
 	}
-	data := block.Txs[idx][1:]
+	// data := block.Txs[idx][1:]
 	otx := new(evmTypes.Transaction)
-	if err := evmRlp.DecodeBytes(data, otx); err != nil {
+
+	if err := otx.UnmarshalBinary(block.Txs[idx][1:]); err != nil {
 		return nil
 	}
 	return otx

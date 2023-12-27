@@ -5,8 +5,11 @@ import (
 
 	"github.com/arcology-network/component-lib/ethrpc"
 	eth "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	ethtyp "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/eth/catalyst"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 type EthereumAPI interface {
@@ -59,4 +62,9 @@ type EthereumAPI interface {
 	UninstallFilter(id ID) (bool, error)
 	GetFilterChanges(id ID) (interface{}, error)
 	GetFilterLogs(id ID) ([]*ethtyp.Log, error)
+
+	ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadAttributes *engine.PayloadAttributes, chainid uint64) (engine.ForkChoiceResponse, error)
+	GetPayloadV2(payloadID engine.PayloadID) (*engine.ExecutionPayloadEnvelope, error)
+	NewPayloadV2(params engine.ExecutableData) (engine.PayloadStatusV1, error)
+	SignalSuperchainV1(signal *catalyst.SuperchainSignal) (params.ProtocolVersion, error)
 }

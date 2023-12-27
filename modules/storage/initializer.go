@@ -1,18 +1,16 @@
 package storage
 
 import (
-	"bufio"
 	"bytes"
 	"encoding/gob"
+	"encoding/json"
 	"fmt"
-	"io"
 	"math/big"
 	"os"
-	"strings"
 
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/transactional"
-	types "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	intf "github.com/arcology-network/component-lib/interface"
 	"github.com/arcology-network/component-lib/storage"
@@ -23,24 +21,30 @@ import (
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	"github.com/arcology-network/consensus-engine/state"
 	"github.com/arcology-network/main/modules/core"
+	"github.com/ethereum/go-ethereum/cmd/utils"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 
 	"github.com/arcology-network/common-lib/merkle"
 	indexer "github.com/arcology-network/concurrenturl/indexer"
 	ccapi "github.com/arcology-network/vm-adaptor/api"
 	"github.com/arcology-network/vm-adaptor/eth"
+
+	evmcore "github.com/ethereum/go-ethereum/core"
 )
 
 type Initializer struct {
 	actor.WorkerThread
 
-	accountFile      string
-	storage_url_path string
+	genesisFile     string
+	storage_db_path string
+
+	SignerType uint8
 }
 
 func NewInitializer(concurrency int, groupId string) actor.IWorkerEx {
 	w := &Initializer{}
 	w.Set(concurrency, groupId)
+	w.SignerType = types.Signer_London
 	return w
 }
 
@@ -52,14 +56,14 @@ func (i *Initializer) Outputs() map[string]int {
 	return map[string]int{
 		actor.MsgInitDB:    1,
 		actor.MsgStorageUp: 1,
+		actor.MsgCoinbase:  1,
 	}
 }
 
 // Config implements Configurable interface.
 func (i *Initializer) Config(params map[string]interface{}) {
-	//mstypes.CreateDB(params)
-	i.accountFile = params["account_file"].(string)
-	i.storage_url_path = params["storage_url_path"].(string)
+	i.genesisFile = params["genesis_file"].(string)
+	i.storage_db_path = params["storage_db_path"].(string)
 }
 
 func (i *Initializer) InitMsgs() []*actor.Message {
@@ -69,6 +73,18 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		panic(err)
 	}
 	height := state.LastBlockHeight
+
+	genesis := i.readGenesis(i.genesisFile)
+	blockStart := &actor.BlockStart{
+		Timestamp: big.NewInt(int64(genesis.Timestamp)),
+		Coinbase:  genesis.Coinbase,
+		Extra:     genesis.ExtraData,
+	}
+
+	addr := evmCommon.HexToAddress("aB01a3BfC5de6b5Fc481e18F274ADBdbA9B111f0")
+	if acc, ok := genesis.Alloc[addr]; ok {
+		fmt.Printf(">>>>>>>>>>>>>main/modules/storage/initializer.go>>>>> balance:%v\n", acc.Balance)
+	}
 
 	var db interfaces.Datastore
 	var rootHash evmCommon.Hash
@@ -84,32 +100,27 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			return nil
 		})
 
-		db, rootHash = i.initGenesisAccounts()
-		parentinfo := &types.ParentInfo{
-			ParentHash: evmCommon.Hash{},
-			ParentRoot: evmCommon.Hash{},
-		}
-		header, block, err := core.CreateBlock(parentinfo, uint64(0), big.NewInt(0), evmCommon.Address{}, rootHash, uint64(0), evmCommon.Hash{}, evmCommon.Hash{}, [][]byte{})
+		db, rootHash = i.initGenesisAccounts(genesis)
+
+		evmblock := genesis.ToBlock()
+
+		block, err := core.CreateBlock(evmblock.Header(), [][]byte{}, i.SignerType)
 		if err != nil {
 			panic("Create genesis block err!")
 		}
 		intf.Router.Call("blockstore", "Save", block, &na)
-
+		hash := evmblock.Hash()
 		var na int
 		intf.Router.Call("statestore", "Save", &State{
 			Height:     0,
-			ParentHash: header.Hash(),
+			ParentHash: hash,
 			ParentRoot: rootHash,
 		}, &na)
-		parentinfo = &types.ParentInfo{
-			ParentHash: header.Hash(),
-			ParentRoot: rootHash,
-		}
 
 	} else {
 
 		// db = ccdb.NewParallelEthMemDataStore()
-		db = ccdb.NewLevelDBDataStore(i.storage_url_path)
+		db = ccdb.NewLevelDBDataStore(i.storage_db_path)
 
 		db.Inject(RootPrefix, commutative.NewPath())
 
@@ -179,6 +190,11 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			Name:   actor.MsgStorageUp,
 			Height: uint64(height),
 		},
+		{
+			Name:   actor.MsgCoinbase,
+			Height: uint64(height),
+			Data:   blockStart,
+		},
 	}
 }
 
@@ -188,20 +204,19 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Hash) {
-	accounts := i.loadGenesisAccounts()
-
+func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis) (interfaces.Datastore, evmCommon.Hash) {
 	// db := ccdb.NewParallelEthMemDataStore()
-	db := ccdb.NewLevelDBDataStore(i.storage_url_path)
+	db := ccdb.NewLevelDBDataStore(i.storage_db_path)
 
 	db.Inject(RootPrefix, commutative.NewPath())
 
-	transitions := i.generateTransitions(db, accounts)
+	transitions := i.createTransitions(db, genesis.Alloc) //i.generateTransitions(db, accounts)
 	url := ccurl.NewConcurrentUrl(db)
 	url.Import(common.Clone(transitions))
 	url.Sort()
 	url.Finalize([]uint32{0})
 	keys, values := url.KVs()
+
 	encodedValues := make([][]byte, 0, len(values))
 	for _, v := range values {
 		if v != nil {
@@ -221,74 +236,68 @@ func (i *Initializer) initGenesisAccounts() (interfaces.Datastore, evmCommon.Has
 	return db, rootHash
 }
 
-func (i *Initializer) loadGenesisAccounts() map[evmCommon.Address]*types.Account {
-	file, err := os.OpenFile(i.accountFile, os.O_RDWR, 0666)
-	if err != nil {
-		panic(err)
-	}
-	defer file.Close()
+//--------------------------------------------------------------------------------------------------------------------------------
 
-	buf := bufio.NewReader(file)
-	accounts := make(map[evmCommon.Address]*types.Account)
-	for {
-		line, err := buf.ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				panic(err)
-			}
-		}
-
-		line = strings.TrimRight(line, "\n")
-		segments := strings.Split(line, ",")
-		balance, ok := new(big.Int).SetString(segments[2], 10)
-		if !ok {
-			panic(fmt.Sprintf("invalid balance in genesis accounts: %v", segments[2]))
-		}
-
-		accounts[evmCommon.HexToAddress(segments[1])] = &types.Account{
-			Nonce:   0,
-			Balance: balance,
-		}
-	}
-	return accounts
-}
-
-func (i *Initializer) generateTransitions(db interfaces.Datastore, genesisAccounts map[evmCommon.Address]*types.Account) []interfaces.Univalue {
+func (i *Initializer) createTransitions(db interfaces.Datastore, genesisAlloc evmcore.GenesisAlloc) []interfaces.Univalue {
 	batch := 10
 	addresses := make([]evmCommon.Address, 0, batch)
-	accounts := make([]*types.Account, 0, batch)
 	index := 0
-	transitions := make([]interfaces.Univalue, 0, len(genesisAccounts)*10)
-	for addr, account := range genesisAccounts {
+	transitions := make([]interfaces.Univalue, 0, len(genesisAlloc)*10)
+	for addr, _ := range genesisAlloc {
 		if index%batch == 0 && index > 0 {
-			transitions = append(transitions, getTransitions(db, addresses, accounts)...)
+			transitions = append(transitions, getTransition(db, addresses, genesisAlloc)...)
 			addresses = make([]evmCommon.Address, 0, batch)
-			accounts = make([]*types.Account, 0, batch)
 		}
 		addresses = append(addresses, addr)
-		accounts = append(accounts, account)
 		index++
 	}
 	if len(addresses) > 0 {
-		transitions = append(transitions, getTransitions(db, addresses, accounts)...)
+		transitions = append(transitions, getTransition(db, addresses, genesisAlloc)...)
 	}
 	return transitions
 }
 
-func getTransitions(db interfaces.Datastore, addresses []evmCommon.Address, accounts []*types.Account) []interfaces.Univalue {
+func getTransition(db interfaces.Datastore, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []interfaces.Univalue {
 	url := ccurl.NewConcurrentUrl(db)
 	api := ccapi.NewAPI(url)
 	stateDB := eth.NewImplStateDB(api)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
-	for i, addr := range addresses {
-		address := evmCommon.BytesToAddress(addr.Bytes())
-		stateDB.CreateAccount(address)
-		stateDB.SetBalance(address, accounts[i].Balance)
-		stateDB.SetNonce(address, uint64(1))
+	for _, addr := range addresses {
+		acct := genesisAlloc[addr]
+		stateDB.CreateAccount(addr)
+		stateDB.SetBalance(addr, acct.Balance)
+		stateDB.SetNonce(addr, uint64(1))
+		code := acct.Code
+		if len(code) > 0 {
+			stateDB.SetCode(addr, code)
+		}
+		for k, v := range acct.Storage {
+			stateDB.SetState(addr, k, v)
+		}
+
 	}
 	_, transitions := url.ExportAll()
 
 	return transitions
+}
+
+// readGenesis will read the given JSON format genesis file and return
+// the initialized Genesis structure
+func (i *Initializer) readGenesis(genesisPath string) *evmcore.Genesis {
+	// Make sure we have a valid genesis JSON
+	//genesisPath := ctx.Args().First()
+	if len(genesisPath) == 0 {
+		utils.Fatalf("Must supply path to genesis JSON file")
+	}
+	file, err := os.Open(genesisPath)
+	if err != nil {
+		utils.Fatalf("Failed to read genesis file: %v", err)
+	}
+	defer file.Close()
+
+	genesis := new(evmcore.Genesis)
+	if err := json.NewDecoder(file).Decode(genesis); err != nil {
+		utils.Fatalf("invalid genesis file: %v", err)
+	}
+	return genesis
 }

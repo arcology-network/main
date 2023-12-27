@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"math/big"
 	"sync"
 
 	"github.com/arcology-network/common-lib/types"
@@ -12,11 +13,10 @@ import (
 	"github.com/arcology-network/component-lib/ethrpc"
 	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/concurrenturl/interfaces"
-	evmCommon "github.com/arcology-network/evm/common"
-	"github.com/arcology-network/evm/common/hexutil"
-	evmTypes "github.com/arcology-network/evm/core/types"
-	evmtypes "github.com/arcology-network/evm/core/types"
-	evmRlp "github.com/arcology-network/evm/rlp"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
 	"go.uber.org/zap"
 )
 
@@ -29,12 +29,19 @@ type AggrSelector struct {
 	pool         *Pool
 	state        int
 	height       uint64
+
+	reapcmd  *ReapPair
+	chainID  *big.Int
+	resultch chan *types.BlockResult
+
+	noOp bool //no opnode
 }
 
 const (
 	poolStateClean = iota
 	poolStateReap
 	poolStateCherryPick
+	resultCollect
 )
 
 var (
@@ -44,15 +51,11 @@ var (
 
 // return a Subscriber struct
 func NewAggrSelector(concurrency int, groupid string) actor.IWorkerEx {
-	// agg := AggrSelector{
-	// 	state: poolStateClean,
-	// }
-	// agg.Set(concurrency, groupid)
-	// return &agg
 
 	initRpcOnce.Do(func() {
 		rpcInstance = &AggrSelector{
-			state: poolStateClean,
+			state:    poolStateClean,
+			resultch: make(chan *types.BlockResult, 1),
 		}
 		rpcInstance.(*AggrSelector).Set(concurrency, groupid)
 	})
@@ -66,6 +69,9 @@ func (a *AggrSelector) Inputs() ([]string, bool) {
 		actor.MsgMessager,
 		actor.MsgReapCommand,
 		actor.MsgReapinglist,
+		actor.MsgOpCommand,
+		actor.MsgSelectedReceipts,
+		actor.MsgPendingBlock,
 	}, false
 }
 
@@ -74,6 +80,10 @@ func (a *AggrSelector) Outputs() map[string]int {
 		actor.MsgMessagersReaped: 1,
 		actor.MsgMetaBlock:       1,
 		actor.MsgSelectedTx:      1,
+		actor.MsgOpCommand:       1,
+		actor.MsgBlockParams:     1,
+		actor.MsgTxHash:          1,
+		actor.MsgWithDrawHash:    1,
 	}
 }
 
@@ -83,9 +93,28 @@ func (a *AggrSelector) Config(params map[string]interface{}) {
 	if _, ok := params["close_check"]; ok {
 		a.closeCheck = params["close_check"].(bool)
 	}
+	a.chainID = params["chain_id"].(*big.Int)
+	a.reapcmd = NewReapPair(a.maxReap, a.chainID)
+	a.noOp = params["no_op"].(bool)
 }
 
 func (a *AggrSelector) OnStart() {
+}
+
+func (a *AggrSelector) reap(height uint64) {
+	reaped := a.pool.Reap(a.reapcmd.ReapSize)
+	a.send(reaped, true, height)
+	a.state = poolStateCherryPick
+	a.AddLog(log.LogLevel_Info, "Reap done, switch to poolStateCherryPick")
+}
+
+func (a *AggrSelector) returnResult(result *types.BlockResult) {
+	if !a.noOp {
+		a.resultch <- result
+	}
+
+	a.state = poolStateClean
+	a.AddLog(log.LogLevel_Info, "received all results, switch to poolStateClean")
 }
 
 func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
@@ -100,29 +129,47 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 				a.pool.Clean(msg.Height)
 				a.AddLog(log.LogLevel_Info, fmt.Sprintf("Clear pool on height %d", msg.Height))
 			}
+			a.reapcmd.Reset()
 			a.state = poolStateReap
 			a.height = msg.Height + 1
 		}
 	case poolStateReap:
 		switch msg.Name {
 		case actor.MsgMessager:
-			msgs := msg.Data.(*types.IncomingMsgs)
-			a.pool.Add(msgs.Msgs, msgs.Src, msg.Height)
+			msgs := msg.Data.(*types.StdTransactionPack)
+			a.pool.Add(msgs.Txs, msgs.Src, msg.Height)
 		case actor.MsgReapCommand:
-			reaped := a.pool.Reap(a.maxReap)
-			a.send(reaped, true, msg.Height)
-			a.state = poolStateCherryPick
-			a.AddLog(log.LogLevel_Info, "Reap done, switch to poolStateCherryPick")
+			if a.noOp {
+				a.MsgBroker.Send(actor.MsgOpCommand, &types.OpRequest{
+					Withdrawals:  evmTypes.Withdrawals{},
+					Transactions: []*types.StandardTransaction{},
+				})
+				a.MsgBroker.Send(actor.MsgBlockParams, &types.BlockParams{
+					Random:     evmCommon.Hash{},
+					BeaconRoot: &evmCommon.Hash{},
+				})
+				a.MsgBroker.Send(actor.MsgWithDrawHash, &evmTypes.EmptyWithdrawalsHash)
+			}
+
+			if a.reapcmd.AddReapCommand() {
+				a.reap(msg.Height)
+			}
+		case actor.MsgOpCommand:
+			oprequest := msg.Data.(*types.OpRequest)
+			a.AddLog(log.LogLevel_Debug, "oprequest received", zap.Int("oprequest.Transactions", len(oprequest.Transactions)), zap.Int("oprequest.Withdrawals", len(oprequest.Withdrawals)))
+			if a.reapcmd.AddOpCommand(oprequest.Transactions, oprequest.Withdrawals) {
+				a.reap(msg.Height)
+			}
 		}
 	case poolStateCherryPick:
 		switch msg.Name {
 		case actor.MsgMessager:
-			msgs := msg.Data.(*types.IncomingMsgs)
-			reaped := a.pool.Add(msgs.Msgs, msgs.Src, msg.Height)
+			msgs := msg.Data.(*types.StdTransactionPack)
+			reaped := a.pool.Add(msgs.Txs, msgs.Src, msg.Height)
 			if reaped != nil {
 				a.send(reaped, false, a.height)
-				a.state = poolStateClean
-				a.AddLog(log.LogLevel_Info, "Data received, switch to poolStateClean")
+				a.state = resultCollect
+				a.AddLog(log.LogLevel_Info, "Data received, switch to resultCollect")
 			}
 		case actor.MsgReapinglist:
 			a.CheckPoint("pool received reapinglist")
@@ -130,40 +177,59 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 			for i := range list {
 				list[i] = *msg.Data.(*types.ReapingList).List[i]
 			}
-			reaped := a.pool.CherryPick(list)
+			reaped := a.pool.CherryPick(a.reapcmd.ClipReapList(list))
 			if reaped != nil {
 				a.send(reaped, false, msg.Height)
-				a.state = poolStateClean
-				a.AddLog(log.LogLevel_Info, "List received, switch to poolStateClean")
+				a.state = resultCollect
+				a.AddLog(log.LogLevel_Info, "List received, switch to resultCollect")
+			}
+		}
+	case resultCollect:
+		switch msg.Name {
+		case actor.MsgSelectedReceipts:
+			var receipts []*evmTypes.Receipt
+			for _, item := range msg.Data.([]interface{}) {
+				receipts = append(receipts, item.(*evmTypes.Receipt))
+			}
+			fmt.Printf(">>>>>>>>>>>>>>>>main/modules/pool/aggr_selector.go>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n")
+			if ok, result := a.reapcmd.AddReceipts(receipts); ok {
+				a.returnResult(result)
+			}
+
+		case actor.MsgPendingBlock:
+			block := msg.Data.(*types.MonacoBlock)
+			fmt.Printf("<<<<<<<<<<<<<<<main/modules/pool/aggr_selector.go<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n")
+			if ok, result := a.reapcmd.AddBlock(block); ok {
+				a.returnResult(result)
 			}
 		}
 	}
 	return nil
 }
 
-func (a *AggrSelector) send(reaped []*types.StandardMessage, isProposer bool, height uint64) {
+func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool, height uint64) {
 	a.AddLog(log.LogLevel_Debug, "reap end", zap.Int("reapeds", len(reaped)))
 	if isProposer {
 		hashes := make([]*evmCommon.Hash, len(reaped))
 		for i := range hashes {
 			hashes[i] = &reaped[i].TxHash
 		}
+
 		a.MsgBroker.Send(actor.MsgMetaBlock, &types.MetaBlock{
 			Txs:      [][]byte{},
-			Hashlist: hashes,
+			Hashlist: a.reapcmd.AppendList(hashes),
 		}, height)
 	} else {
-		txs := make([][]byte, len(reaped))
-		for i := range txs {
-			txs[i] = reaped[i].TxRawData
+		msgs, transactions, txs := a.reapcmd.ReapEnd(reaped)
+		a.MsgBroker.Send(actor.MsgMessagersReaped, msgs, height)
+		a.CheckPoint("send messagersReaped", zap.Int("msgs", len(msgs)))
+		txhash := evmTypes.EmptyTxsHash
+		if len(transactions) > 0 {
+			txhash = evmTypes.DeriveSha(evmTypes.Transactions(transactions), trie.NewStackTrie(nil))
 		}
-		// a.MsgBroker.Send(actor.MsgMessagersReaped, types.SendingStandardMessages{
-		// 	Data: types.StandardMessages(reaped).EncodeToBytes(),
-		// }, height)
-		a.MsgBroker.Send(actor.MsgMessagersReaped, reaped, height)
-		a.CheckPoint("send messagersReaped")
-		a.MsgBroker.Send(actor.MsgSelectedTx, types.Txs{Data: txs}, height)
-		a.CheckPoint("send selectedtx")
+		a.MsgBroker.Send(actor.MsgSelectedTx, txs, height)
+		a.MsgBroker.Send(actor.MsgTxHash, &txhash, height)
+		a.CheckPoint("send selectedtx", zap.String("txhash", fmt.Sprintf("%x", txhash)))
 	}
 }
 
@@ -174,11 +240,16 @@ func (a *AggrSelector) GetStateDefinitions() map[int][]string {
 		},
 		poolStateReap: {
 			actor.MsgMessager,
+			actor.MsgOpCommand,
 			actor.MsgReapCommand,
 		},
 		poolStateCherryPick: {
 			actor.MsgMessager,
 			actor.MsgReapinglist,
+		},
+		resultCollect: {
+			actor.MsgSelectedReceipts,
+			actor.MsgPendingBlock,
 		},
 	}
 }
@@ -194,6 +265,24 @@ func (a *AggrSelector) Height() uint64 {
 	return a.height
 }
 
+func (a *AggrSelector) ReceivedMessages(ctx context.Context, request *types.OpRequest, response *types.QueryResult) error {
+	a.MsgBroker.Send(actor.MsgOpCommand, request)
+	a.MsgBroker.Send(actor.MsgBlockParams, request.BlockParam)
+
+	var withdrawalsHash *evmCommon.Hash
+	if request.Withdrawals == nil {
+		withdrawalsHash = nil
+	} else if len(request.Withdrawals) == 0 {
+		withdrawalsHash = &evmTypes.EmptyWithdrawalsHash
+	} else {
+		h := evmTypes.DeriveSha(evmTypes.Withdrawals(request.Withdrawals), trie.NewStackTrie(nil))
+		withdrawalsHash = &h
+	}
+	a.MsgBroker.Send(actor.MsgWithDrawHash, withdrawalsHash)
+	response.Data = <-a.resultch
+	return nil
+}
+
 func (a *AggrSelector) Query(ctx context.Context, request *types.QueryRequest, response *types.QueryResult) error {
 	switch request.QueryType {
 	case types.QueryType_Transaction:
@@ -205,18 +294,18 @@ func (a *AggrSelector) Query(ctx context.Context, request *types.QueryRequest, r
 		}
 		txReal := st.TxRawData[1:]
 		otx := new(evmTypes.Transaction)
-		if err := evmRlp.DecodeBytes(txReal, otx); err != nil {
+		if err := otx.UnmarshalBinary(txReal); err != nil {
 			return errors.New("tx decode err")
 		}
 		// transactionIndex := uint64(0)
 		v, s, r := otx.RawSignatureValues()
-		msg := st.Native
+		msg := st.NativeMessage
 		transaction := ethrpc.RPCTransaction{
 			// BlockHash:        evmCommon.Hash{},
 			// BlockNumber:      big.NewInt(0),
 			// TransactionIndex: &transactionIndex,
 
-			Type:     hexutil.Uint64(evmtypes.LegacyTxType),
+			Type:     hexutil.Uint64(evmTypes.LegacyTxType),
 			From:     evmCommon.Address(msg.From),
 			Gas:      hexutil.Uint64(otx.Gas()),
 			GasPrice: (*hexutil.Big)(otx.GasPrice()),

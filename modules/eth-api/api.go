@@ -13,16 +13,16 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	mainCfg "github.com/arcology-network/component-lib/config"
 	"github.com/arcology-network/component-lib/ethrpc"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 	wal "github.com/arcology-network/main/modules/eth-api/wallet"
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
 	ethereum "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtyp "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/eth/catalyst"
 	"github.com/rs/cors"
 )
 
@@ -44,6 +44,8 @@ type Options struct {
 	ProtocolVersion int    `short:"pv" long:"protocolVersion" description:"Protocol Version`
 	Hashrate        int    `short:"hr" long:hashrate" description:"hash rate`
 	ExecId          string `short:"EID" long:ExecID" description:"Exector instance id `
+	AuthPort        uint64 `short:"ap" long:"authport" description:"auth Service port" default:"8551"`
+	JwtFile         string `short:"j" long:"jwtfile" description:"Jwt file path" default:"./jwt.txt"`
 }
 
 var options Options
@@ -172,29 +174,33 @@ func parseBlock(block *ethrpc.RPCBlock, isTransaction bool) interface{} {
 
 	uncles := make([]string, 0)
 	header := block.Header
-	blockResult := map[string]interface{}{
-		"uncles": uncles,
 
-		"number":           (*hexutil.Big)(header.Number),
-		"hash":             header.Hash(),
-		"parentHash":       header.ParentHash,
-		"nonce":            header.Nonce,
-		"mixHash":          header.MixDigest,
-		"sha3Uncles":       header.UncleHash,
-		"logsBloom":        header.Bloom,
-		"stateRoot":        header.Root,
-		"miner":            header.Coinbase,
-		"difficulty":       (*hexutil.Big)(header.Difficulty),
-		"extraData":        hexutil.Bytes(header.Extra),
-		"size":             hexutil.Uint64(header.Size()),
-		"gasLimit":         hexutil.Uint64(header.GasLimit),
-		"gasUsed":          hexutil.Uint64(header.GasUsed),
-		"timestamp":        hexutil.Uint64(header.Time),
-		"transactionsRoot": header.TxHash,
-		"receiptsRoot":     header.ReceiptHash,
-		"totalDifficulty":  (*hexutil.Big)(header.Difficulty),
-		// "transactions":     transactions,
-	}
+	blockResult := RPCMarshalHeader(header)
+	blockResult["uncles"] = uncles
+
+	// blockResult := map[string]interface{}{
+	// 	"uncles": uncles,
+
+	// 	"number":           (*hexutil.Big)(header.Number),
+	// 	"hash":             header.Hash(),
+	// 	"parentHash":       header.ParentHash,
+	// 	"nonce":            header.Nonce,
+	// 	"mixHash":          header.MixDigest,
+	// 	"sha3Uncles":       header.UncleHash,
+	// 	"logsBloom":        header.Bloom,
+	// 	"stateRoot":        header.Root,
+	// 	"miner":            header.Coinbase,
+	// 	"difficulty":       (*hexutil.Big)(header.Difficulty),
+	// 	"extraData":        hexutil.Bytes(header.Extra),
+	// 	"size":             hexutil.Uint64(header.Size()),
+	// 	"gasLimit":         hexutil.Uint64(header.GasLimit),
+	// 	"gasUsed":          hexutil.Uint64(header.GasUsed),
+	// 	"timestamp":        hexutil.Uint64(header.Time),
+	// 	"transactionsRoot": header.TxHash,
+	// 	"receiptsRoot":     header.ReceiptHash,
+	// 	"totalDifficulty":  (*hexutil.Big)(header.Difficulty),
+	// 	// "transactions":     transactions,
+	// }
 
 	if isTransaction {
 		transactions := make([]*ethrpc.RPCTransaction, len(block.Transactions))
@@ -386,37 +392,6 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 		fmt.Printf("<<<<<<<<<<<<<<<<getTransactionByHash err:%v\n", err)
 		return nil, jsonrpc.InternalError(err)
 	}
-
-	// fields := map[string]interface{}{
-	// 	"blockHash":         receipt.BlockHash,
-	// 	"blockNumber":       hexutil.Uint64(receipt.BlockNumber.Uint64()),
-	// 	"transactionHash":   hash,
-	// 	"transactionIndex":  hexutil.Uint64(receipt.TransactionIndex),
-	// 	"from":              tx.From,
-	// 	"to":                tx.To,
-	// 	"gasUsed":           hexutil.Uint64(receipt.GasUsed),
-	// 	"cumulativeGasUsed": hexutil.Uint64(receipt.CumulativeGasUsed),
-	// 	"contractAddress":   nil,
-	// 	"logs":              receipt.Logs,
-	// 	"logsBloom":         receipt.Bloom,
-	// 	"type":              hexutil.Uint(receipt.Type),
-	// }
-	// //fields["effectiveGasPrice"] = hexutil.Uint64(receipt.)
-	// // Assign receipt status or post state.
-	// if len(receipt.PostState) > 0 {
-	// 	fields["root"] = hexutil.Bytes(receipt.PostState)
-	// } else {
-	// 	fields["status"] = hexutil.Uint(receipt.Status)
-	// }
-	// if receipt.Logs == nil {
-	// 	fields["logs"] = []*ethtyp.Log{}
-	// }
-	// // If the ContractAddress is 20 0x0 bytes, assume it is not a contract creation
-	// if receipt.ContractAddress != (common.Address{}) {
-	// 	fields["contractAddress"] = receipt.ContractAddress
-	// }
-
-	// fields["effectiveGasPrice"] = hexutil.Uint64(tx.GasPrice.ToInt().Uint64())
 
 	return marshalReceipt(receipt, tx), nil
 }
@@ -769,15 +744,48 @@ func traceTransaction(ctx context.Context) (interface{}, error) {
 func maxPriorityFeePerGas(ctx context.Context) (interface{}, error) {
 	return big.NewInt(1), nil
 }
+func forkchoiceUpdatedV2(ctx context.Context, params []interface{}) (interface{}, error) {
+	update, err := ParseJsonParam[engine.ForkchoiceStateV1](params[0], "ForkchoiceStateV1")
+	if err != nil {
+		return nil, err
+	}
+	fmt.Printf(">>>>>>>main/modules/eth-api/api.go>>>>>>>>>>>>>11111111111>>>>>>>>len:%v>>>>>>\n", len(params))
+	var payloadAttributes *engine.PayloadAttributes
+	if len(params) > 1 && params[1] != nil {
+		payloadAttributes, err = ParseJsonParam[engine.PayloadAttributes](params[1], "payloadAttributes")
+		if err != nil {
+			return nil, err
+		}
+	}
+	fmt.Printf(">>>>>>>main/modules/eth-api/api.go>>>>>>>>>>>>>22222222222>>>>>>>>>>>>>>\n")
+	return backend.ForkchoiceUpdatedV2(*update, payloadAttributes, options.ChainID)
+}
+
+func getPayloadV2(ctx context.Context, params []interface{}) (interface{}, error) {
+	id, err := ParseJsonParam[engine.PayloadID](params[0], "PayloadID")
+	if err != nil {
+		return nil, err
+	}
+	return backend.GetPayloadV2(*id)
+}
+func newPayloadV2(ctx context.Context, params []interface{}) (interface{}, error) {
+	payload, err := ParseJsonParam[engine.ExecutableData](params[0], "ExecutableData")
+	if err != nil {
+		return nil, err
+	}
+	return backend.NewPayloadV2(*payload)
+}
+func exchangeTransitionConfigurationV1(ctx context.Context, params []interface{}) (interface{}, error) {
+	signal, err := ParseJsonParam[catalyst.SuperchainSignal](params[0], "SuperchainSignal")
+	if err != nil {
+		return nil, err
+	}
+	return backend.SignalSuperchainV1(signal)
+}
 
 func startJsonRpc() {
 	filters := internal.NewFilters()
-	options.ChainID = mainCfg.MainConfig.ChainId.Uint64()
-	fmt.Println(options)
 
-	if options.ChainID == 0 {
-		options.ChainID = params.MainnetChainConfig.ChainID.Uint64()
-	}
 	privateKeys := LoadKeys(options.KeyFile)
 
 	logFile, err := os.OpenFile("./rpc.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
@@ -791,66 +799,76 @@ func startJsonRpc() {
 	server := jsonrpc.New()
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
 		return func(ctx context.Context, params interface{}) (interface{}, error) {
-			// method := jsonrpc.MethodFromContext(ctx)
-			// fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
+			method := jsonrpc.MethodFromContext(ctx)
+			fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
 			return next(ctx, params)
 		}
 	})
-	server.Register(jsonrpc.Methods{
-		"net_version":               version,
-		"eth_chainId":               chainId, //mock_chainId, //
-		"eth_blockNumber":           blockNumber,
-		"eth_getBlockByNumber":      getBlockByNumber, //mock_getBlockByNumber, //
-		"eth_getBlockByHash":        getBlockByHash,
-		"eth_getTransactionCount":   getTransactionCount, //mock_getTransactionCount, //
-		"eth_getCode":               getCode,
-		"eth_getBalance":            getBalance,
-		"eth_getStorageAt":          getStorageAt,
-		"eth_accounts":              accounts,    //mock_accounts,    //
-		"eth_estimateGas":           estimateGas, //mock_estimateGas, //
-		"eth_gasPrice":              gasPrice,
-		"eth_sendTransaction":       sendTransaction,       //mock_sendTransaction,       //
-		"eth_getTransactionReceipt": getTransactionReceipt, //mock_getTransactionReceipt, //
-		"eth_getTransactionByHash":  getTransactionByHash,  //mock_getTransactionByHash,  //
-		"eth_sendRawTransaction":    sendRawTransaction,
-		"eth_call":                  call,
-		"eth_getLogs":               getLogs,
 
-		"eth_getBlockTransactionCountByHash":      getBlockTransactionCountByHash,
-		"eth_getBlockTransactionCountByNumber":    getBlockTransactionCountByNumber,
-		"eth_getTransactionByBlockHashAndIndex":   getTransactionByBlockHashAndIndex,
-		"eth_getTransactionByBlockNumberAndIndex": getTransactionByBlockNumberAndIndex,
-		"eth_getUncleCountByBlockHash":            getUncleCountByBlockHash,
-		"eth_getUncleCountByBlockNumber":          getUncleCountByBlockNumber,
-		"eth_submitWork":                          submitWork,
-		"eth_submitHashrate":                      submitHashrate,
-		"eth_hashrate":                            hashrate,
-		"eth_getWork":                             getWork,
-		"eth_protocolVersion":                     protocolVersion,
-		"eth_coinbase":                            coinbase,
+	/*
+		server.Register(jsonrpc.Methods{
+			"net_version":               version,
+			"eth_chainId":               chainId, //mock_chainId, //
+			"eth_blockNumber":           blockNumber,
+			"eth_getBlockByNumber":      getBlockByNumber, //mock_getBlockByNumber, //
+			"eth_getBlockByHash":        getBlockByHash,
+			"eth_getTransactionCount":   getTransactionCount, //mock_getTransactionCount, //
+			"eth_getCode":               getCode,
+			"eth_getBalance":            getBalance,
+			"eth_getStorageAt":          getStorageAt,
+			"eth_accounts":              accounts,    //mock_accounts,    //
+			"eth_estimateGas":           estimateGas, //mock_estimateGas, //
+			"eth_gasPrice":              gasPrice,
+			"eth_sendTransaction":       sendTransaction,       //mock_sendTransaction,       //
+			"eth_getTransactionReceipt": getTransactionReceipt, //mock_getTransactionReceipt, //
+			"eth_getTransactionByHash":  getTransactionByHash,  //mock_getTransactionByHash,  //
+			"eth_sendRawTransaction":    sendRawTransaction,
+			"eth_call":                  call,
+			"eth_getLogs":               getLogs,
 
-		"eth_sign":            sign,
-		"eth_signTransaction": signTransaction,
-		"eth_feeHistory":      feeHistory,
-		"eth_syncing":         syncing,
-		"eth_mining":          mining,
+			"eth_getBlockTransactionCountByHash":      getBlockTransactionCountByHash,
+			"eth_getBlockTransactionCountByNumber":    getBlockTransactionCountByNumber,
+			"eth_getTransactionByBlockHashAndIndex":   getTransactionByBlockHashAndIndex,
+			"eth_getTransactionByBlockNumberAndIndex": getTransactionByBlockNumberAndIndex,
+			"eth_getUncleCountByBlockHash":            getUncleCountByBlockHash,
+			"eth_getUncleCountByBlockNumber":          getUncleCountByBlockNumber,
+			"eth_submitWork":                          submitWork,
+			"eth_submitHashrate":                      submitHashrate,
+			"eth_hashrate":                            hashrate,
+			"eth_getWork":                             getWork,
+			"eth_protocolVersion":                     protocolVersion,
+			"eth_coinbase":                            coinbase,
 
-		"eth_newFilter":                   newFilter,
-		"eth_newBlockFilter":              newBlockFilter,
-		"eth_newPendingTransactionFilter": newPendingTransactionFilter,
-		"eth_uninstallFilter":             uninstallFilter,
-		"eth_getFilterChanges":            getFilterChanges,
-		"eth_getFilterLogs":               getFilterLogs,
+			"eth_sign":            sign,
+			"eth_signTransaction": signTransaction,
+			"eth_feeHistory":      feeHistory,
+			"eth_syncing":         syncing,
+			"eth_mining":          mining,
 
-		"web3_clientVersion":     clientVersion,
-		"txpool_content":         txpoolContent,
-		"debug_traceTransaction": traceTransaction,
+			"eth_newFilter":                   newFilter,
+			"eth_newBlockFilter":              newBlockFilter,
+			"eth_newPendingTransactionFilter": newPendingTransactionFilter,
+			"eth_uninstallFilter":             uninstallFilter,
+			"eth_getFilterChanges":            getFilterChanges,
+			"eth_getFilterLogs":               getFilterLogs,
 
-		"eth_getBlockReceipts":     getBlockReceipts,
-		"eth_getHeaderByHash":      getHeaderByHash,
-		"eth_getHeaderByNumber":    getHeaderByNumber,
-		"eth_maxPriorityFeePerGas": maxPriorityFeePerGas,
-	})
+			"web3_clientVersion":     clientVersion,
+			"txpool_content":         txpoolContent,
+			"debug_traceTransaction": traceTransaction,
+
+			"eth_getBlockReceipts":     getBlockReceipts,
+			"eth_getHeaderByHash":      getHeaderByHash,
+			"eth_getHeaderByNumber":    getHeaderByNumber,
+			"eth_maxPriorityFeePerGas": maxPriorityFeePerGas,
+
+			// "engine_forkchoiceUpdatedV2":               forkchoiceUpdatedV2,
+			// "engine_getPayloadV2":                      getPayloadV2,
+			// "engine_newPayloadV2":                      newPayloadV2,
+			// "engine_exchangeTransitionConfigurationV1": exchangeTransitionConfigurationV1,
+		})
+	*/
+
+	server.Register(methods)
 
 	if options.Debug {
 		backend = internal.NewEthereumAPIMock(new(big.Int).SetUint64(options.ChainID))
@@ -862,4 +880,60 @@ func startJsonRpc() {
 
 	c := cors.AllowAll()
 	go http.ListenAndServe(fmt.Sprintf(":%d", options.Port), c.Handler(server))
+}
+
+var methods = map[string]jsonrpc.MethodFunc{
+	"net_version":               version,
+	"eth_chainId":               chainId, //mock_chainId, //
+	"eth_blockNumber":           blockNumber,
+	"eth_getBlockByNumber":      getBlockByNumber, //mock_getBlockByNumber, //
+	"eth_getBlockByHash":        getBlockByHash,
+	"eth_getTransactionCount":   getTransactionCount, //mock_getTransactionCount, //
+	"eth_getCode":               getCode,
+	"eth_getBalance":            getBalance,
+	"eth_getStorageAt":          getStorageAt,
+	"eth_accounts":              accounts,    //mock_accounts,    //
+	"eth_estimateGas":           estimateGas, //mock_estimateGas, //
+	"eth_gasPrice":              gasPrice,
+	"eth_sendTransaction":       sendTransaction,       //mock_sendTransaction,       //
+	"eth_getTransactionReceipt": getTransactionReceipt, //mock_getTransactionReceipt, //
+	"eth_getTransactionByHash":  getTransactionByHash,  //mock_getTransactionByHash,  //
+	"eth_sendRawTransaction":    sendRawTransaction,
+	"eth_call":                  call,
+	"eth_getLogs":               getLogs,
+
+	"eth_getBlockTransactionCountByHash":      getBlockTransactionCountByHash,
+	"eth_getBlockTransactionCountByNumber":    getBlockTransactionCountByNumber,
+	"eth_getTransactionByBlockHashAndIndex":   getTransactionByBlockHashAndIndex,
+	"eth_getTransactionByBlockNumberAndIndex": getTransactionByBlockNumberAndIndex,
+	"eth_getUncleCountByBlockHash":            getUncleCountByBlockHash,
+	"eth_getUncleCountByBlockNumber":          getUncleCountByBlockNumber,
+	"eth_submitWork":                          submitWork,
+	"eth_submitHashrate":                      submitHashrate,
+	"eth_hashrate":                            hashrate,
+	"eth_getWork":                             getWork,
+	"eth_protocolVersion":                     protocolVersion,
+	"eth_coinbase":                            coinbase,
+
+	"eth_sign":            sign,
+	"eth_signTransaction": signTransaction,
+	"eth_feeHistory":      feeHistory,
+	"eth_syncing":         syncing,
+	"eth_mining":          mining,
+
+	"eth_newFilter":                   newFilter,
+	"eth_newBlockFilter":              newBlockFilter,
+	"eth_newPendingTransactionFilter": newPendingTransactionFilter,
+	"eth_uninstallFilter":             uninstallFilter,
+	"eth_getFilterChanges":            getFilterChanges,
+	"eth_getFilterLogs":               getFilterLogs,
+
+	"web3_clientVersion":     clientVersion,
+	"txpool_content":         txpoolContent,
+	"debug_traceTransaction": traceTransaction,
+
+	"eth_getBlockReceipts":     getBlockReceipts,
+	"eth_getHeaderByHash":      getHeaderByHash,
+	"eth_getHeaderByNumber":    getHeaderByNumber,
+	"eth_maxPriorityFeePerGas": maxPriorityFeePerGas,
 }

@@ -54,6 +54,10 @@ func ToBlockNumber(v interface{}) (int64, error) {
 			return ethrpc.BlockNumberEarliest, nil
 		case "pending":
 			return ethrpc.BlockNumberPending, nil
+		case "finalized":
+			return ethrpc.BlockNumberFinalized, nil
+		case "safe":
+			return ethrpc.BlockNumberSafe, nil
 		default:
 			if str[:2] == "0x" {
 				str = str[2:]
@@ -85,6 +89,18 @@ func ToHash(v interface{}) (ethcmn.Hash, error) {
 	} else {
 		return ethcmn.HexToHash(str), nil
 	}
+}
+
+func ParseJsonParam[T any](v interface{}, paramDesc string) (*T, error) {
+	var obj T
+	vData, err := json.Marshal(v)
+	if err != nil {
+		return nil, errors.New("cannot marshal " + paramDesc)
+	}
+	if err := json.Unmarshal(vData, &obj); err != nil {
+		return nil, errors.New("cannot parse " + paramDesc)
+	}
+	return &obj, nil
 }
 
 func ToBytes(v interface{}) ([]byte, error) {

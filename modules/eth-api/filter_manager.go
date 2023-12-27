@@ -41,16 +41,19 @@ func (fm *FilterManager) Config(params map[string]interface{}) {
 
 	options.KeyFile = params["key_file"].(string)
 	options.Port = uint64(params["json_rpc_port"].(float64))
+	options.AuthPort = uint64(params["auth_rpc_port"].(float64))
 	options.Debug = params["debug"].(bool)
 	options.Waits = int(params["retry_time"].(float64))
 	options.Coinbase = params["coinbase"].(string)
 	options.ProtocolVersion = int(params["protocol_version"].(float64))
 	options.Hashrate = int(params["hash_rate"].(float64))
 	options.ChainID = params["chain_id"].(*big.Int).Uint64()
+	options.JwtFile = params["jwt_file"].(string)
 }
 
 func (*FilterManager) OnStart() {
 	startJsonRpc()
+	startAuthJsonRpc()
 }
 
 func (*FilterManager) Stop() {}

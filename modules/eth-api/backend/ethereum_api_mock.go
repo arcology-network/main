@@ -7,8 +7,11 @@ import (
 
 	"github.com/arcology-network/component-lib/ethrpc"
 	eth "github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	ethtyp "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/eth/catalyst"
+	"github.com/ethereum/go-ethereum/params"
 	ethrlp "github.com/ethereum/go-ethereum/rlp"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -35,6 +38,19 @@ func NewEthereumAPIMock(chainID *big.Int) EthereumAPI {
 			MixDigest:  ethcmn.HexToHash("1234567890123456789012345678901234567890123456789012345678901234"),
 		},
 	}
+}
+
+func (mock *EthereumAPIMock) ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadAttributes *engine.PayloadAttributes, chainid uint64) (engine.ForkChoiceResponse, error) {
+	return engine.ForkChoiceResponse{}, nil
+}
+func (mock *EthereumAPIMock) GetPayloadV2(payloadID engine.PayloadID) (*engine.ExecutionPayloadEnvelope, error) {
+	return nil, nil
+}
+func (mock *EthereumAPIMock) NewPayloadV2(params engine.ExecutableData) (engine.PayloadStatusV1, error) {
+	return engine.PayloadStatusV1{}, nil
+}
+func (mock *EthereumAPIMock) SignalSuperchainV1(signal *catalyst.SuperchainSignal) (params.ProtocolVersion, error) {
+	return params.ProtocolVersion{}, nil
 }
 
 func (mock *EthereumAPIMock) BlockNumber() (uint64, error) {
@@ -135,8 +151,7 @@ func (mock *EthereumAPIMock) Call(msg eth.CallMsg) ([]byte, error) {
 func (mock *EthereumAPIMock) SendRawTransaction(rawTx []byte) (ethcmn.Hash, error) {
 	tx := new(ethtyp.Transaction)
 	ethrlp.DecodeBytes(rawTx, tx)
-	// msg, _ := tx.AsMessage(ethtyp.NewEIP155Signer(mock.chainID))
-	msg, _ := core.TransactionToMessage(tx, ethtyp.NewEIP155Signer(mock.chainID), nil)
+	msg, _ := core.TransactionToMessage(tx, ethtyp.NewLondonSigner(mock.chainID), nil)
 	return ethcmn.BytesToHash(msg.Data[:32]), nil
 }
 

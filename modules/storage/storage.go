@@ -21,7 +21,6 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
-	evmrlp "github.com/ethereum/go-ethereum/rlp"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/rs/cors"
@@ -78,12 +77,13 @@ func (s *Storage) Outputs() map[string]int {
 func (s *Storage) Config(params map[string]interface{}) {
 	mstypes.CreateDB(params)
 	s.caches = mstypes.NewLogCaches(int(params["log_cache_size"].(float64)))
+	s.chainID = params["chain_id"].(*big.Int)
 	s.scanCache = mstypes.NewScanCache(
 		int(params["block_cache_size"].(float64)),
 		int(params["tx_cache_size"].(float64)),
+		s.chainID,
 	)
 	s.cacheSvcPort = params["cache_svc_port"].(string)
-	s.chainID = params["chain_id"].(*big.Int)
 
 	s.params = params
 }
@@ -157,6 +157,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		}
 
 		blockHash := block.Hash()
+		fmt.Printf(">>>>>>>>>>>>>>>>main/modules/storage/storage.go>>>>>>>>>>blockHash:%x\n", blockHash)
 		s.scanCache.BlockReceived(block, blockHash, mapReceipts)
 
 		t0 := time.Now()
@@ -286,8 +287,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		if len(block.Headers) > 0 {
 			data := block.Headers[0]
 			var header evmTypes.Header
-			err := evmrlp.DecodeBytes(data[1:], &header)
-
+			err := header.UnmarshalJSON(data[1:])
 			if err != nil {
 				rs.AddLog(log.LogLevel_Error, "block header decode err", zap.String("err", err.Error()))
 				return err
@@ -549,10 +549,11 @@ func (rs *Storage) getTransaction(height uint64, idx int) (*ethrpc.RPCTransactio
 	var tx *evmTypes.Transaction
 	intf.Router.Call("blockstore", "GetTransaction", &position, &tx)
 
-	msg, err := core.TransactionToMessage(tx, evmTypes.NewEIP155Signer(rs.chainID), nil)
+	msg, err := core.TransactionToMessage(tx, evmTypes.NewLondonSigner(rs.chainID), nil)
 	if err != nil {
 		return nil, err
 	}
+
 	v, s, r := tx.RawSignatureValues()
 	blockHash := evmCommon.Hash(receipt.BlockHash)
 	transactionindex := hexutil.Uint64(uint64(receipt.TransactionIndex))
@@ -561,7 +562,7 @@ func (rs *Storage) getTransaction(height uint64, idx int) (*ethrpc.RPCTransactio
 		BlockNumber:      (*hexutil.Big)(receipt.BlockNumber),
 		TransactionIndex: &transactionindex,
 
-		Type:     hexutil.Uint64(receipt.Type),
+		Type:     hexutil.Uint64(tx.Type()),
 		From:     evmCommon.Address(msg.From),
 		Gas:      hexutil.Uint64(receipt.GasUsed),
 		GasPrice: (*hexutil.Big)(tx.GasPrice()),
@@ -578,16 +579,17 @@ func (rs *Storage) getTransaction(height uint64, idx int) (*ethrpc.RPCTransactio
 func (rs *Storage) getQueryHeight(number int64) uint64 {
 	queryHeight := uint64(0)
 	if number < 0 {
-		switch number {
-		case ethrpc.BlockNumberLatest:
-			queryHeight = rs.lastHeight
-		case ethrpc.BlockNumberPending:
-			queryHeight = rs.lastHeight
-		case ethrpc.BlockNumberEarliest:
-			queryHeight = uint64(0)
-		default:
-			queryHeight = rs.lastHeight
-		}
+		// switch number {
+		// case ethrpc.BlockNumberLatest:
+		// 	queryHeight = rs.lastHeight
+		// case ethrpc.BlockNumberPending:
+		// 	queryHeight = rs.lastHeight
+		// case ethrpc.BlockNumberEarliest:
+		// 	queryHeight = uint64(0)
+		// default:
+		// 	queryHeight = rs.lastHeight
+		// }
+		queryHeight = rs.lastHeight
 	} else {
 		queryHeight = uint64(number)
 	}
@@ -609,23 +611,26 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*et
 		}
 
 		ethheader := evmTypes.Header{}
-		err := evmrlp.DecodeBytes(block.Headers[i][1:], &ethheader)
+		err := ethheader.UnmarshalJSON(block.Headers[i][1:])
 		if err != nil {
 			rs.AddLog(log.LogLevel_Error, "block header decode err", zap.String("err", err.Error()))
 			return nil, err
 		}
-		header = evmTypes.Header{
-			ParentHash:  evmCommon.Hash(ethheader.ParentHash),
-			Number:      ethheader.Number,
-			Time:        ethheader.Time,
-			Difficulty:  ethheader.Difficulty,
-			Coinbase:    evmCommon.Address(ethheader.Coinbase),
-			Root:        evmCommon.Hash(ethheader.Root),
-			GasUsed:     ethheader.GasUsed,
-			TxHash:      evmCommon.Hash(ethheader.TxHash),
-			ReceiptHash: evmCommon.Hash(ethheader.ReceiptHash),
-			GasLimit:    ethheader.GasLimit,
-		}
+		header = ethheader
+		// header = evmTypes.Header{
+		// 	ParentHash:  evmCommon.Hash(ethheader.ParentHash),
+		// 	Number:      ethheader.Number,
+		// 	Time:        ethheader.Time,
+		// 	Difficulty:  ethheader.Difficulty,
+		// 	Coinbase:    evmCommon.Address(ethheader.Coinbase),
+		// 	Root:        evmCommon.Hash(ethheader.Root),
+		// 	GasUsed:     ethheader.GasUsed,
+		// 	TxHash:      evmCommon.Hash(ethheader.TxHash),
+		// 	ReceiptHash: evmCommon.Hash(ethheader.ReceiptHash),
+		// 	GasLimit:    ethheader.GasLimit,
+		// 	Extra:       ethheader.Extra,
+
+		// }
 	}
 
 	rpcBlock := ethrpc.RPCBlock{

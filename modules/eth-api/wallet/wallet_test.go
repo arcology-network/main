@@ -41,7 +41,7 @@ func TestSign(t *testing.T) {
 		new(big.Int).SetUint64(1),
 		[]byte{1},
 	)
-	signer := ethtyp.NewEIP155Signer(new(big.Int).SetUint64(1))
+	signer := ethtyp.NewLondonSigner(new(big.Int).SetUint64(1))
 	h := signer.Hash(tx)
 	signature, _ := ethcrp.Sign(h[:], privateKey)
 	signedTx, _ := tx.WithSignature(signer, signature)
@@ -53,8 +53,7 @@ func TestSign(t *testing.T) {
 
 	tx2 := new(ethtyp.Transaction)
 	ethrlp.DecodeBytes(buf.Bytes(), tx2)
-	// msg, _ := tx2.AsMessage(ethtyp.NewEIP155Signer(new(big.Int).SetUint64(1)))
-	msg, _ := core.TransactionToMessage(tx2, ethtyp.NewEIP155Signer(new(big.Int).SetUint64(1)), nil)
+	msg, _ := core.TransactionToMessage(tx2, ethtyp.NewLondonSigner(new(big.Int).SetUint64(1)), nil)
 	t.Log(
 		msg.From.Hex(),
 		msg.To.Hex(),

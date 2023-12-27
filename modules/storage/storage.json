@@ -26,10 +26,8 @@
             }
         },
         "storage.initializer": {
-            "account_file": "../config/af",
-            "storage_url_path": "./url/",
-            "storage_url_shards": 128,
-            "storage_url_depts": 2
+            "genesis_file": "/home/weizp/work/configs/genesis.json",
+            "storage_db_path": "/home/weizp/monacos/urlfiles"
             
         },
         "storage.metrics": {},

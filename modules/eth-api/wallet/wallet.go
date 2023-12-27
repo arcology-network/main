@@ -16,7 +16,7 @@ import (
 type Wallet struct {
 	accounts []string
 	keys     []*ecdsa.PrivateKey
-	signer   ethtyp.EIP155Signer
+	signer   ethtyp.Signer
 	findkeys map[ethcmn.Address]*ecdsa.PrivateKey
 }
 
@@ -34,7 +34,7 @@ func NewWallet(chainId *big.Int, privateKeys []string) *Wallet {
 	return &Wallet{
 		accounts: accounts,
 		keys:     keys,
-		signer:   ethtyp.NewEIP155Signer(chainId),
+		signer:   ethtyp.NewLondonSigner(chainId),
 		findkeys: findkeys,
 	}
 }
