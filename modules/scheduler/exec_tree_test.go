@@ -11,17 +11,17 @@ import (
 func TestExecTreeBasic(t *testing.T) {
 	tree := newExecTree()
 	sequences := []*cmntyp.ExecutingSequence{
-		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
+		cmntyp.NewExecutingSequence([]*cmntyp.StandardTransaction{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{1}),
 			},
 		}, true),
-		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
+		cmntyp.NewExecutingSequence([]*cmntyp.StandardTransaction{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{2}),
 			},
 		}, true),
-		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
+		cmntyp.NewExecutingSequence([]*cmntyp.StandardTransaction{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{3}),
 			},
@@ -29,12 +29,12 @@ func TestExecTreeBasic(t *testing.T) {
 				TxHash: evmCommon.BytesToHash([]byte{4}),
 			},
 		}, false),
-		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
+		cmntyp.NewExecutingSequence([]*cmntyp.StandardTransaction{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{5}),
 			},
 		}, true),
-		cmntyp.NewExecutingSequence([]*cmntyp.StandardMessage{
+		cmntyp.NewExecutingSequence([]*cmntyp.StandardTransaction{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{6}),
 			},

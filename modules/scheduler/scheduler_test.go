@@ -24,7 +24,7 @@ func TestSchedulerEmptyBlock(t *testing.T) {
 
 	b1 := &block{
 		timestamp: new(big.Int).SetUint64(100),
-		msgs:      []*cmntyp.StandardMessage{},
+		msgs:      []*cmntyp.StandardTransaction{},
 		height:    1,
 	}
 	schd.OnMessageArrived(b1.getMsgs())
@@ -555,11 +555,11 @@ func runBlock(
 		)
 	}
 
-	stdMsgs := make([]*cmntyp.StandardMessage, len(msgs))
+	stdMsgs := make([]*cmntyp.StandardTransaction, len(msgs))
 	for i := range msgs {
-		stdMsgs[i] = &cmntyp.StandardMessage{
-			TxHash: evmCommon.BytesToHash([]byte{byte(i + 1)}),
-			Native: &msgs[i],
+		stdMsgs[i] = &cmntyp.StandardTransaction{
+			TxHash:        evmCommon.BytesToHash([]byte{byte(i + 1)}),
+			NativeMessage: &msgs[i],
 		}
 	}
 
@@ -588,7 +588,7 @@ func runBlock(
 
 type block struct {
 	timestamp *big.Int
-	msgs      []*cmntyp.StandardMessage
+	msgs      []*cmntyp.StandardTransaction
 	height    uint64
 
 	execResponse    []*cmntyp.ExecutorResponses
@@ -613,9 +613,9 @@ func (b *block) getMsgs() []*actor.Message {
 		},
 		{
 			Name: actor.MsgMessagersReaped,
-			Data: cmntyp.SendingStandardMessages{
-				Data: cmntyp.StandardMessages(b.msgs).EncodeToBytes(),
-			},
+			// Data: cmntyp.SendingStandardMessages{
+			// 	Data: cmntyp.StandardMessages(b.msgs).EncodeToBytes(),
+			// },
 			Height: b.height,
 		},
 	}

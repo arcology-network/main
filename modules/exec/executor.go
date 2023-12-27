@@ -114,10 +114,10 @@ func (exec *Executor) Inputs() ([]string, bool) {
 
 func (exec *Executor) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgPrecedingList:     1,   // To collect preceding EuResults.
-		actor.MsgExecuted:          1,   // To commit GeneralUrl.
-		actor.MsgReceipts:          100, // Exec results.
-		actor.MsgReceiptHashList:   100, // Exec results.
+		actor.MsgPrecedingList: 1,   // To collect preceding EuResults.
+		actor.MsgExecuted:      1,   // To commit GeneralUrl.
+		actor.MsgReceipts:      100, // Exec results.
+		// actor.MsgReceiptHashList:   100, // Exec results.
 		actor.MsgEuResults:         100, // Exec results.
 		actor.MsgTxAccessRecords:   100, // Access records for arbitrator.
 		actor.MsgTxsExecuteResults: 1,   // To wake up rpc service.
@@ -284,13 +284,13 @@ func (exec *Executor) collectResults() {
 	exec.MsgBroker.Send(actor.MsgTxsExecuteResults, responses, exec.height, exec.requestId)
 }
 
-func toJobSequence(msgs []*types.StandardMessage, ids []uint32) []*execution.StandardMessage {
+func toJobSequence(msgs []*types.StandardTransaction, ids []uint32) []*execution.StandardMessage {
 	nmsgs := make([]*execution.StandardMessage, len(msgs))
 	for i, msg := range msgs {
-		msg.Native.SkipAccountChecks = true
+		msg.NativeMessage.SkipAccountChecks = true
 		nmsgs[i] = &execution.StandardMessage{
 			TxHash: msg.TxHash,
-			Native: msg.Native,
+			Native: msg.NativeMessage,
 			Source: msg.Source,
 			ID:     uint64(ids[i]),
 		}
@@ -309,7 +309,7 @@ func (exec *Executor) startExec() {
 					for j := range task.Sequence.Msgs {
 						job := execution.JobSequence{
 							ID:        uint32(j),
-							StdMsgs:   toJobSequence([]*types.StandardMessage{task.Sequence.Msgs[j]}, []uint32{task.Sequence.Txids[j]}),
+							StdMsgs:   toJobSequence([]*types.StandardTransaction{task.Sequence.Msgs[j]}, []uint32{task.Sequence.Txids[j]}),
 							ApiRouter: exec.apis[index],
 						}
 
@@ -414,7 +414,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	if counter > 0 {
 		exec.MsgBroker.Send(actor.MsgReceipts, &sendingReceipts)
 		receiptHashList := exec.toReceiptsHash(&sendingReceipts)
-		exec.MsgBroker.Send(actor.MsgReceiptHashList, receiptHashList)
+		// exec.MsgBroker.Send(actor.MsgReceiptHashList, receiptHashList)
 		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgReceiptHashList", zap.Int("receiptHashList", len(receiptHashList.TxHashList)))
 	}
 }

@@ -23,7 +23,7 @@ type Pool struct {
 	SourceStat   map[cmntyp.TxSource]*TxSourceStatistics
 	StateDB      vm.StateDB
 
-	CherryPickResult []*cmntyp.StandardMessage
+	CherryPickResult []*cmntyp.StandardTransaction
 	Waitings         map[evmCommon.Hash]int
 	ClearList        []string
 }
@@ -45,18 +45,18 @@ func NewPool(db interfaces.Datastore, obsoleteTime uint64, closeCheck bool) *Poo
 
 }
 
-func (p *Pool) Add(txs []*cmntyp.StandardMessage, src cmntyp.TxSource, height uint64) []*cmntyp.StandardMessage {
+func (p *Pool) Add(txs []*cmntyp.StandardTransaction, src cmntyp.TxSource, height uint64) []*cmntyp.StandardTransaction {
 	if src.IsForWaitingList() {
 		fmt.Printf("[Pool.Add] Receive msgs from %s, len(p.Waitings) = %d\n", src, len(p.Waitings))
 		return p.checkWaitingList(txs)
 	}
 
-	bySender := make(map[string][]*cmntyp.StandardMessage)
+	bySender := make(map[string][]*cmntyp.StandardTransaction)
 	uncheckedHashes := make([]string, 0, len(txs))
 	uncheckedValues := make([]interface{}, 0, len(txs))
 	for i := range txs {
-		if !txs[i].Native.SkipAccountChecks && !p.CloseCheck {
-			bySender[string(txs[i].Native.From.Bytes())] = append(bySender[string(txs[i].Native.From.Bytes())], txs[i])
+		if !txs[i].NativeMessage.SkipAccountChecks && !p.CloseCheck {
+			bySender[string(txs[i].NativeMessage.From.Bytes())] = append(bySender[string(txs[i].NativeMessage.From.Bytes())], txs[i])
 		} else {
 			uncheckedHashes = append(uncheckedHashes, string(txs[i].TxHash.Bytes()))
 			uncheckedValues = append(uncheckedValues, txs[i])
@@ -67,7 +67,7 @@ func (p *Pool) Add(txs []*cmntyp.StandardMessage, src cmntyp.TxSource, height ui
 
 	senders := make([]string, 0, len(bySender))
 	updates := make([]interface{}, 0, len(bySender))
-	replaced := make([][]*cmntyp.StandardMessage, len(bySender))
+	replaced := make([][]*cmntyp.StandardTransaction, len(bySender))
 	for k, v := range bySender {
 		senders = append(senders, k)
 		updates = append(updates, v)
@@ -82,14 +82,14 @@ func (p *Pool) Add(txs []*cmntyp.StandardMessage, src cmntyp.TxSource, height ui
 		} else {
 			txSender = origin.(*TxSender)
 		}
-		replaced[index] = txSender.Add(value.([]*cmntyp.StandardMessage), p.SourceStat[src], height)
+		replaced[index] = txSender.Add(value.([]*cmntyp.StandardTransaction), p.SourceStat[src], height)
 		return txSender
 	})
 
 	hashes := uncheckedHashes
 	values := uncheckedValues
 	for _, u := range updates {
-		updated := u.([]*cmntyp.StandardMessage)
+		updated := u.([]*cmntyp.StandardTransaction)
 		for i := range updated {
 			if updated[i] == nil {
 				continue
@@ -112,16 +112,16 @@ func (p *Pool) Add(txs []*cmntyp.StandardMessage, src cmntyp.TxSource, height ui
 	return p.checkWaitingList(txs)
 }
 
-func (p *Pool) Reap(limit int) []*cmntyp.StandardMessage {
+func (p *Pool) Reap(limit int) []*cmntyp.StandardTransaction {
 	shardedResults := p.TxBySender.Traverse(func(key string, value interface{}) (interface{}, interface{}) {
 		txSender := value.(*TxSender)
 		return value, txSender.Reap()
 	})
 
-	results := make([]*cmntyp.StandardMessage, 0, limit)
+	results := make([]*cmntyp.StandardTransaction, 0, limit)
 	for _, shard := range shardedResults {
 		for _, result := range shard {
-			txs := result.([]*cmntyp.StandardMessage)
+			txs := result.([]*cmntyp.StandardTransaction)
 			results = append(results, txs...)
 			if len(results) >= limit {
 				return results[:limit]
@@ -133,25 +133,25 @@ func (p *Pool) Reap(limit int) []*cmntyp.StandardMessage {
 		uncheckedHashes := p.TxUnchecked.Keys()
 		uncheckedTxs := p.TxUnchecked.BatchGet(uncheckedHashes[:cmncmn.Min(limit-len(results), len(uncheckedHashes))])
 		for _, tx := range uncheckedTxs {
-			results = append(results, tx.(*cmntyp.StandardMessage))
+			results = append(results, tx.(*cmntyp.StandardTransaction))
 		}
 	}
 	return results
 }
 
-func (p *Pool) QueryByHash(hash evmCommon.Hash) *cmntyp.StandardMessage {
+func (p *Pool) QueryByHash(hash evmCommon.Hash) *cmntyp.StandardTransaction {
 	keys := make([]string, 1)
 	keys[0] = string(hash.Bytes())
 	txs := p.TxByHash.BatchGet(keys)
 	if txs[0] != nil {
-		return txs[0].(*cmntyp.StandardMessage)
+		return txs[0].(*cmntyp.StandardTransaction)
 	} else {
 		return nil
 	}
 }
 
-func (p *Pool) CherryPick(hashes []evmCommon.Hash) []*cmntyp.StandardMessage {
-	p.CherryPickResult = make([]*cmntyp.StandardMessage, len(hashes))
+func (p *Pool) CherryPick(hashes []evmCommon.Hash) []*cmntyp.StandardTransaction {
+	p.CherryPickResult = make([]*cmntyp.StandardTransaction, len(hashes))
 	p.Waitings = make(map[evmCommon.Hash]int)
 	keys := make([]string, len(hashes))
 	for i, hash := range hashes {
@@ -162,7 +162,7 @@ func (p *Pool) CherryPick(hashes []evmCommon.Hash) []*cmntyp.StandardMessage {
 	txs := p.TxByHash.BatchGet(keys)
 	for i, tx := range txs {
 		if tx != nil {
-			p.CherryPickResult[i] = tx.(*cmntyp.StandardMessage)
+			p.CherryPickResult[i] = tx.(*cmntyp.StandardTransaction)
 		} else {
 			p.Waitings[hashes[i]] = i
 		}
@@ -192,7 +192,7 @@ func (p *Pool) Clean(height uint64) {
 	hashes := make([]string, 0, p.TxByHash.Size())
 	for _, shard := range shardedResults {
 		for _, result := range shard {
-			txs := result.([]*cmntyp.StandardMessage)
+			txs := result.([]*cmntyp.StandardTransaction)
 			for _, tx := range txs {
 				hashes = append(hashes, string(tx.TxHash.Bytes()))
 			}
@@ -207,7 +207,7 @@ func (p *Pool) Clean(height uint64) {
 	p.TxUnchecked.BatchSet(p.ClearList, values)
 }
 
-func (p *Pool) checkWaitingList(txs []*cmntyp.StandardMessage) []*cmntyp.StandardMessage {
+func (p *Pool) checkWaitingList(txs []*cmntyp.StandardTransaction) []*cmntyp.StandardTransaction {
 	if len(p.Waitings) > 0 {
 		for _, tx := range txs {
 			if index, ok := p.Waitings[tx.TxHash]; ok {

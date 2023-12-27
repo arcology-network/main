@@ -280,14 +280,14 @@ func initAccounts(db interfaces.Datastore, from, to int) {
 	url.SaveToDB()
 }
 
-func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardMessage) {
+func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardTransaction) {
 	url := ccurl.NewConcurrentUrl(db)
 	// stateDB := adaptor.NewStateDBV2(nil, db, url)
 	api := ccapi.NewAPI(url)
 	stateDB := eth.NewImplStateDB(api)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := range txs {
-		address := evmCommon.BytesToAddress(txs[i].Native.From.Bytes())
+		address := evmCommon.BytesToAddress(txs[i].NativeMessage.From.Bytes())
 		stateDB.SetNonce(address, 0)
 	}
 	_, transitions := url.ExportAll()
@@ -298,8 +298,8 @@ func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardMessage) {
 	url.SaveToDB()
 }
 
-func genUncheckedTxs(from, to int) []*cmntyp.StandardMessage {
-	txs := make([]*cmntyp.StandardMessage, to-from)
+func genUncheckedTxs(from, to int) []*cmntyp.StandardTransaction {
+	txs := make([]*cmntyp.StandardTransaction, to-from)
 	for i := from; i < to; i++ {
 		hash := evmCommon.BytesToHash([]byte{byte(i / 256), byte(i % 256)})
 		msg := core.NewMessage(
@@ -313,16 +313,16 @@ func genUncheckedTxs(from, to int) []*cmntyp.StandardMessage {
 			nil,
 			false,
 		)
-		txs[i-from] = &cmntyp.StandardMessage{
-			TxHash: hash,
-			Native: &msg,
+		txs[i-from] = &cmntyp.StandardTransaction{
+			TxHash:        hash,
+			NativeMessage: &msg,
 		}
 	}
 	return txs
 }
 
-func genCheckedTxs(from, to int, nonce uint64, gasPrice uint64) []*cmntyp.StandardMessage {
-	txs := make([]*cmntyp.StandardMessage, to-from)
+func genCheckedTxs(from, to int, nonce uint64, gasPrice uint64) []*cmntyp.StandardTransaction {
+	txs := make([]*cmntyp.StandardTransaction, to-from)
 	for i := from; i < to; i++ {
 		hash := evmCommon.BytesToHash([]byte{byte(i / 256), byte(i % 256), byte(nonce), byte(gasPrice % 256)})
 		msg := core.NewMessage(
@@ -336,9 +336,9 @@ func genCheckedTxs(from, to int, nonce uint64, gasPrice uint64) []*cmntyp.Standa
 			nil,
 			true,
 		)
-		txs[i-from] = &cmntyp.StandardMessage{
-			TxHash: hash,
-			Native: &msg,
+		txs[i-from] = &cmntyp.StandardTransaction{
+			TxHash:        hash,
+			NativeMessage: &msg,
 		}
 	}
 	return txs

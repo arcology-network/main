@@ -1,14 +1,11 @@
 package receipthashing
 
 import (
-	"time"
-
-	"github.com/arcology-network/common-lib/mhasher"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
-	"go.uber.org/zap"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/trie"
 )
 
 const (
@@ -27,13 +24,14 @@ func NewCalculateRoothash(concurrency int, groupid string) actor.IWorkerEx {
 }
 
 func (cr *CalculateRoothash) Inputs() ([]string, bool) {
-	return []string{actor.MsgSelectedReceiptsHash, actor.MsgInclusive}, true
+	return []string{actor.MsgSelectedReceipts, actor.MsgInclusive}, true
 }
 
 func (cr *CalculateRoothash) Outputs() map[string]int {
 	return map[string]int{
 		actor.MsgRcptHash: 1,
 		actor.MsgGasUsed:  1,
+		actor.MsgBloom:    1,
 	}
 }
 
@@ -46,7 +44,7 @@ func (cr *CalculateRoothash) Stop() {
 
 func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 	var inclusiveList *types.InclusiveList
-	var selectedReceipts *map[evmCommon.Hash]*types.ReceiptHash
+	var selectedReceipts []*evmTypes.Receipt
 	for _, v := range msgs {
 		switch v.Name {
 		case actor.MsgInclusive:
@@ -55,52 +53,51 @@ func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 			if isnil {
 				return err
 			}
-		case actor.MsgSelectedReceiptsHash:
-			selectedReceipts = v.Data.(*map[evmCommon.Hash]*types.ReceiptHash)
-			isnil, err := cr.IsNil(selectedReceipts, "selectedReceipts")
-			if isnil {
-				return err
+		case actor.MsgSelectedReceipts:
+			for _, item := range v.Data.([]interface{}) {
+				selectedReceipts = append(selectedReceipts, item.(*evmTypes.Receipt))
 			}
+
 		}
 	}
 	cr.CheckPoint("start calculate rcpthash")
-	hash, gas := cr.gatherReceipts(inclusiveList, selectedReceipts)
+	hash, bloom, gas := cr.gatherReceipts(inclusiveList, selectedReceipts)
 	cr.MsgBroker.Send(actor.MsgRcptHash, &hash)
 	cr.MsgBroker.Send(actor.MsgGasUsed, gas)
+	cr.MsgBroker.Send(actor.MsgBloom, bloom)
 	cr.CheckPoint("rcpthash calculate completed")
 	return nil
 }
 
-func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, receipts *map[evmCommon.Hash]*types.ReceiptHash) (evmCommon.Hash, uint64) {
-	begintime := time.Now()
-	datas := make([][]byte, 0, len(inclusiveList.HashList))
+func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, receipts []*evmTypes.Receipt) (evmCommon.Hash, evmTypes.Bloom, uint64) {
 	var gasused uint64 = 0
-	nilroot := evmCommon.Hash{}
+	nilroot := evmTypes.EmptyReceiptsHash
+	bloom := evmTypes.Bloom{}
 	if inclusiveList == nil || receipts == nil {
-		return nilroot, 0
+		return nilroot, bloom, 0
 	}
+
+	receiptslist := map[evmCommon.Hash]*evmTypes.Receipt{}
+	for _, recp := range receipts {
+		receiptslist[recp.TxHash] = recp
+	}
+
+	selectedReceipts := make([]*evmTypes.Receipt, 0, len(receipts))
 	for i, hash := range inclusiveList.HashList {
 		if inclusiveList.Successful[i] {
-
-			if rcpt, ok := (*receipts)[*hash]; ok {
+			if rcpt, ok := receiptslist[*hash]; ok {
 				if rcpt != nil {
-					datas = append(datas, rcpt.Receipthash.Bytes())
+					selectedReceipts = append(selectedReceipts, rcpt)
 					gasused += rcpt.GasUsed
 				}
 			}
 		}
 	}
-	roothash := evmCommon.Hash{}
-	if len(datas) > 0 {
-		// src := bytes.Join(datas, []byte(""))
-		// totallen := len(src)
-		roothashbytes, err := mhasher.Roothash(datas, mhasher.HashType_256)
-		if err != nil {
-			cr.AddLog(log.LogLevel_Error, "make roothash err ", zap.String("err", err.Error()))
-			return nilroot, 0
-		}
-		roothash = evmCommon.BytesToHash(roothashbytes)
-		cr.AddLog(log.LogLevel_Info, "calculate recept roothash ", zap.Duration("times", time.Now().Sub(begintime)))
+	receiptHash := evmTypes.EmptyReceiptsHash
+
+	if len(selectedReceipts) > 0 {
+		receiptHash = evmTypes.DeriveSha(evmTypes.Receipts(selectedReceipts), trie.NewStackTrie(nil))
+		bloom = evmTypes.CreateBloom(receipts)
 	}
-	return roothash, gasused
+	return receiptHash, bloom, gasused
 }

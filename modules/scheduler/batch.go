@@ -28,7 +28,7 @@ func newBatch(context *processContext, sequences []*cmntyp.ExecutingSequence) *b
 
 		if !seq.Parallel {
 			msgsToExec[seq.SequenceId] = &schtyp.Message{
-				Message: &cmntyp.StandardMessage{
+				Message: &cmntyp.StandardTransaction{
 					TxHash: seq.SequenceId,
 				},
 			}
@@ -102,8 +102,8 @@ func (b *batch) createsequenceId2Hashes() map[evmCommon.Hash][]evmCommon.Hash {
 	for _, seq := range b.sequences {
 		lst := make([]evmCommon.Hash, 0, len(seq.Msgs))
 		for _, msg := range seq.Msgs {
-			if msg.Native.To != nil {
-				b.context.txHash2Callee[msg.TxHash] = *msg.Native.To
+			if msg.NativeMessage.To != nil {
+				b.context.txHash2Callee[msg.TxHash] = *msg.NativeMessage.To
 			}
 			lst = append(lst, msg.TxHash)
 		}
@@ -120,8 +120,8 @@ func (b *batch) setMsgPrecedings() []*evmCommon.Hash {
 
 	for _, seq := range b.sequences {
 		for _, msg := range seq.Msgs {
-			if msg.Native.To != nil {
-				b.context.txHash2Callee[msg.TxHash] = *msg.Native.To
+			if msg.NativeMessage.To != nil {
+				b.context.txHash2Callee[msg.TxHash] = *msg.NativeMessage.To
 			}
 			executed = append(executed, &msg.TxHash)
 		}

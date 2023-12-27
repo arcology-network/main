@@ -6,21 +6,21 @@ import (
 )
 
 type Message struct {
-	Message          *types.StandardMessage
+	Message          *types.StandardTransaction
 	Precedings       *[]*evmCommon.Hash
 	PrecedingHash    evmCommon.Hash
 	DirectPrecedings *[]*evmCommon.Hash
 	// IsSpawned        bool
 }
 
-func (msg Message) FromStandardMessage(stdMsg *types.StandardMessage) *Message {
+func (msg Message) FromStandardMessage(stdMsg *types.StandardTransaction) *Message {
 	// return &Message{Message: stdMsg, IsSpawned: false}
 	return &Message{Message: stdMsg}
 }
 
 type Messages []*Message
 
-func (msgs Messages) FromStandardMessages(stdMsgs []*types.StandardMessage) []*Message {
+func (msgs Messages) FromStandardMessages(stdMsgs []*types.StandardTransaction) []*Message {
 	schedMegs := make([]*Message, 0, len(stdMsgs))
 	for i, schedMeg := range schedMegs {
 		schedMegs[i] = schedMeg.FromStandardMessage(stdMsgs[i])

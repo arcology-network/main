@@ -29,8 +29,8 @@ type Scheduler struct {
 
 	// Data structures used in one block.
 	context       *processContext
-	transfers     []*types.StandardMessage
-	contractCalls []*types.StandardMessage
+	transfers     []*types.StandardTransaction
+	contractCalls []*types.StandardTransaction
 
 	// Data structures used all the time.
 	contractDict map[evmCommon.Address]struct{}
@@ -47,8 +47,8 @@ func NewScheduler(concurrency int, groupId string) actor.IWorkerEx {
 		schd := &Scheduler{
 			schdEngine:    schdEngine,
 			context:       createProcessContext(),
-			transfers:     make([]*types.StandardMessage, 0, 50000),
-			contractCalls: make([]*types.StandardMessage, 0, 50000),
+			transfers:     make([]*types.StandardTransaction, 0, 50000),
+			contractCalls: make([]*types.StandardTransaction, 0, 50000),
 			contractDict:  make(map[evmCommon.Address]struct{}),
 		}
 		schd.Set(concurrency, groupId)
@@ -107,7 +107,7 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 		}
 	})
 
-	var stdMsgs []*types.StandardMessage
+	var stdMsgs []*types.StandardTransaction
 	for _, msg := range msgs {
 		switch msg.Name {
 		case actor.MsgBlockStart:
@@ -115,7 +115,7 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 		case actor.MsgMessagersReaped:
 			schd.CheckPoint("received messagersReaped")
 
-			stdMsgs = msg.Data.([]*types.StandardMessage)
+			stdMsgs = msg.Data.([]*types.StandardTransaction)
 			fmt.Printf("start new schedule height:%v\n", msg.Height)
 		}
 	}
@@ -198,17 +198,17 @@ func (schd *Scheduler) SetParallelism(
 	return nil
 }
 
-func (schd *Scheduler) splitMessagesByType(msgs []*types.StandardMessage) {
+func (schd *Scheduler) splitMessagesByType(msgs []*types.StandardTransaction) {
 	schd.transfers = schd.transfers[:0]
 	schd.contractCalls = schd.contractCalls[:0]
 
 	for _, msg := range msgs {
-		if msg.Native.To == nil {
+		if msg.NativeMessage.To == nil {
 			schd.transfers = append(schd.transfers, msg)
 			continue
 		}
 
-		if _, ok := schd.contractDict[*msg.Native.To]; ok {
+		if _, ok := schd.contractDict[*msg.NativeMessage.To]; ok {
 			schd.contractCalls = append(schd.contractCalls, msg)
 		} else {
 			schd.transfers = append(schd.transfers, msg)

@@ -136,9 +136,9 @@ func runExecClientTestCase(
 	worker := &workerMock{}
 	worker.Init("mock worker", streamer.NewStatefulStreamer())
 
-	msgs := make([]*types.StandardMessage, numMsgs)
+	msgs := make([]*types.StandardTransaction, numMsgs)
 	for i := range msgs {
-		msgs[i] = &types.StandardMessage{}
+		msgs[i] = &types.StandardTransaction{}
 	}
 	ids := make([]uint32, len(msgs))
 	client := NewExecClient(executors, 100)

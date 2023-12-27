@@ -45,13 +45,13 @@ func TestScheduler(t *testing.T) {
 	fmt.Printf("hash5=%v\n", hash5)
 	fmt.Printf("hash6=%v\n", hash6)
 
-	msgs := []*types.StandardMessage{
-		{Source: 0, Native: &ethMsg_serial_0, TxHash: hash1},
-		{Source: 1, Native: &ethMsg_serial_1, TxHash: hash2},
-		{Source: 1, Native: &ethMsg_serial_2, TxHash: hash3},
-		{Source: 1, Native: &ethMsg_serial_3, TxHash: hash4},
-		{Source: 1, Native: &ethMsg_serial_4, TxHash: hash5},
-		{Source: 1, Native: &ethMsg_serial_5, TxHash: hash6},
+	msgs := []*types.StandardTransaction{
+		{Source: 0, NativeMessage: &ethMsg_serial_0, TxHash: hash1},
+		{Source: 1, NativeMessage: &ethMsg_serial_1, TxHash: hash2},
+		{Source: 1, NativeMessage: &ethMsg_serial_2, TxHash: hash3},
+		{Source: 1, NativeMessage: &ethMsg_serial_3, TxHash: hash4},
+		{Source: 1, NativeMessage: &ethMsg_serial_4, TxHash: hash5},
+		{Source: 1, NativeMessage: &ethMsg_serial_5, TxHash: hash6},
 	}
 	callees, txids := GetCallees(msgs)
 	fmt.Printf("callees=%v,txids=%v\n", callees, txids)
@@ -116,12 +116,12 @@ func TestSchedule(t *testing.T) {
 	fmt.Printf("hash5=%v\n", hash5)
 	fmt.Printf("hash6=%v\n", hash6)
 
-	msgs := []*types.StandardMessage{
-		{Source: 0, Native: &ethMsg_serial_0, TxHash: hash1},
-		{Source: 1, Native: &ethMsg_serial_1, TxHash: hash2},
+	msgs := []*types.StandardTransaction{
+		{Source: 0, NativeMessage: &ethMsg_serial_0, TxHash: hash1},
+		{Source: 1, NativeMessage: &ethMsg_serial_1, TxHash: hash2},
 		//{Source: 1, Native: &ethMsg_serial_2, TxHash: hash3},
-		{Source: 1, Native: &ethMsg_serial_3, TxHash: hash4},
-		{Source: 1, Native: &ethMsg_serial_4, TxHash: hash5},
+		{Source: 1, NativeMessage: &ethMsg_serial_3, TxHash: hash4},
+		{Source: 1, NativeMessage: &ethMsg_serial_4, TxHash: hash5},
 		//{Source: 1, Native: &ethMsg_serial_5, TxHash: hash6},
 	}
 
@@ -156,17 +156,17 @@ func TestScheduleProfermance(t *testing.T) {
 
 	from := evmCommon.HexToAddress("001111e68297aae01347f6ce0ff21d5f72d3fa2a")
 
-	msgs := make([]*types.StandardMessage, 0, 50000)
+	msgs := make([]*types.StandardTransaction, 0, 50000)
 
 	ds_token_count := 16568
 	start := 0
 	for i := 0; i < ds_token_count; i++ {
 		idx := start + i + 1
 		native := core.NewMessage(from, &ds_address, uint64(idx), big.NewInt(int64(idx)), uint64(idx*10), big.NewInt(int64(idx)), []byte{0, 1}, nil, false)
-		msgs = append(msgs, &types.StandardMessage{
-			Source: 0,
-			Native: &native,
-			TxHash: types.RlpHash(&native),
+		msgs = append(msgs, &types.StandardTransaction{
+			Source:        0,
+			NativeMessage: &native,
+			TxHash:        types.RlpHash(&native),
 		})
 	}
 	pk_count := 16638
@@ -174,10 +174,10 @@ func TestScheduleProfermance(t *testing.T) {
 	for i := 0; i < pk_count; i++ {
 		idx := start + i + 1
 		native := core.NewMessage(from, &kittyCore, uint64(idx), big.NewInt(int64(idx)), uint64(idx*10), big.NewInt(int64(idx)), []byte{0, 1}, nil, false)
-		msgs = append(msgs, &types.StandardMessage{
-			Source: 0,
-			Native: &native,
-			TxHash: types.RlpHash(&native),
+		msgs = append(msgs, &types.StandardTransaction{
+			Source:        0,
+			NativeMessage: &native,
+			TxHash:        types.RlpHash(&native),
 		})
 	}
 	transfer_count := 16794
@@ -185,10 +185,10 @@ func TestScheduleProfermance(t *testing.T) {
 	for i := 0; i < transfer_count; i++ {
 		idx := start + i + 1
 		native := core.NewMessage(from, &transfer, uint64(idx), big.NewInt(int64(idx)), uint64(idx*10), big.NewInt(int64(idx)), []byte{0, 1}, nil, false)
-		msgs = append(msgs, &types.StandardMessage{
-			Source: 0,
-			Native: &native,
-			TxHash: types.RlpHash(&native),
+		msgs = append(msgs, &types.StandardTransaction{
+			Source:        0,
+			NativeMessage: &native,
+			TxHash:        types.RlpHash(&native),
 		})
 	}
 	scheduler, err := Start("history.binn")
@@ -222,17 +222,17 @@ func TestScheduleCase(t *testing.T) {
 
 	from := evmCommon.HexToAddress("001111e68297aae01347f6ce0ff21d5f72d3fa2a")
 
-	msgs := make([]*types.StandardMessage, 0, 50000)
+	msgs := make([]*types.StandardTransaction, 0, 50000)
 
 	ds_token_count := 0
 	start := 0
 	for i := 0; i < ds_token_count; i++ {
 		idx := start + i + 1
 		native := core.NewMessage(from, &addr1, uint64(idx), big.NewInt(int64(idx)), uint64(idx*10), big.NewInt(int64(idx)), []byte{0, 1}, nil, false)
-		msgs = append(msgs, &types.StandardMessage{
-			Source: 0,
-			Native: &native,
-			TxHash: types.RlpHash(&native),
+		msgs = append(msgs, &types.StandardTransaction{
+			Source:        0,
+			NativeMessage: &native,
+			TxHash:        types.RlpHash(&native),
 		})
 	}
 	pk_count := 10
@@ -240,10 +240,10 @@ func TestScheduleCase(t *testing.T) {
 	for i := 0; i < pk_count; i++ {
 		idx := start + i + 1
 		native := core.NewMessage(from, &addr2, uint64(idx), big.NewInt(int64(idx)), uint64(idx*10), big.NewInt(int64(idx)), []byte{0, 1}, nil, false)
-		msgs = append(msgs, &types.StandardMessage{
-			Source: 0,
-			Native: &native,
-			TxHash: types.RlpHash(&native),
+		msgs = append(msgs, &types.StandardTransaction{
+			Source:        0,
+			NativeMessage: &native,
+			TxHash:        types.RlpHash(&native),
 		})
 	}
 	transfer_count := 10
@@ -251,10 +251,10 @@ func TestScheduleCase(t *testing.T) {
 	for i := 0; i < transfer_count; i++ {
 		idx := start + i + 1
 		native := core.NewMessage(from, &addr3, uint64(idx), big.NewInt(int64(idx)), uint64(idx*10), big.NewInt(int64(idx)), []byte{0, 1}, nil, false)
-		msgs = append(msgs, &types.StandardMessage{
-			Source: 0,
-			Native: &native,
-			TxHash: types.RlpHash(&native),
+		msgs = append(msgs, &types.StandardTransaction{
+			Source:        0,
+			NativeMessage: &native,
+			TxHash:        types.RlpHash(&native),
 		})
 	}
 	scheduler, err := Start("history.binn")

@@ -25,7 +25,7 @@ func TestExecSvcBasic(t *testing.T) {
 		Data: &types.ExecutorRequest{
 			Sequences: []*types.ExecutingSequence{
 				{
-					Msgs: []*types.StandardMessage{
+					Msgs: []*types.StandardTransaction{
 						{},
 					},
 					Parallel: true,
@@ -58,14 +58,14 @@ func TestExecSvcMakeSnapshot(t *testing.T) {
 		Data: &types.ExecutorRequest{
 			Sequences: []*types.ExecutingSequence{
 				{
-					Msgs: []*types.StandardMessage{
+					Msgs: []*types.StandardTransaction{
 						{},
 					},
 					Parallel: true,
 					Txids:    []uint32{1},
 				},
 				{
-					Msgs: []*types.StandardMessage{
+					Msgs: []*types.StandardTransaction{
 						{},
 					},
 					Parallel: true,

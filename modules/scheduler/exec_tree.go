@@ -11,7 +11,7 @@ type branch struct {
 	layers [][]evmCommon.Hash
 }
 
-func newBranch(id evmCommon.Hash, msgs []*cmntyp.StandardMessage) *branch {
+func newBranch(id evmCommon.Hash, msgs []*cmntyp.StandardTransaction) *branch {
 	layer := make([]evmCommon.Hash, len(msgs))
 	for i, m := range msgs {
 		layer[i] = m.TxHash
@@ -39,7 +39,7 @@ func (tree *execTree) createBranches(sequences []*cmntyp.ExecutingSequence) {
 	for _, seq := range sequences {
 		if seq.Parallel {
 			for _, msg := range seq.Msgs {
-				tree.id2Branch[msg.TxHash] = newBranch(msg.TxHash, []*cmntyp.StandardMessage{msg})
+				tree.id2Branch[msg.TxHash] = newBranch(msg.TxHash, []*cmntyp.StandardTransaction{msg})
 				tree.txHash2BranchId[msg.TxHash] = msg.TxHash
 			}
 		} else {

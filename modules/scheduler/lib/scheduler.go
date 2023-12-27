@@ -59,19 +59,19 @@ func Start(filename string) (*Scheduler, string) {
 	return singleton, initErr
 }
 
-func GetCallees(msgs []*types.StandardMessage) ([]byte, []uint32) {
+func GetCallees(msgs []*types.StandardTransaction) ([]byte, []uint32) {
 	callees := make([][]byte, len(msgs))
 	txIds := make([]uint32, len(msgs))
 	worker := func(start, end, idx int, args ...interface{}) {
-		msgs := args[0].([]interface{})[0].([]*types.StandardMessage)
+		msgs := args[0].([]interface{})[0].([]*types.StandardTransaction)
 		callees := args[0].([]interface{})[1].([][]byte)
 		txIds := args[0].([]interface{})[2].([]uint32)
 		for i := start; i < end; i++ {
-			to := msgs[i].Native.To
+			to := msgs[i].NativeMessage.To
 			if to == nil {
 				callees[i] = []byte(nilAddress.Hex()[2:])
 			} else {
-				callees[i] = []byte(msgs[i].Native.To.Hex()[2:])
+				callees[i] = []byte(msgs[i].NativeMessage.To.Hex()[2:])
 			}
 			pads := make([]byte, CALLEESIZE-len(callees[i]))
 			callees[i] = append(callees[i], pads...)
@@ -91,7 +91,7 @@ type Item struct {
 	branch int
 }
 
-func ParseResult(msgs []*types.StandardMessage, orderIDs []uint32, branches []uint32, generations []uint32) [][]*types.ExecutingSequence {
+func ParseResult(msgs []*types.StandardTransaction, orderIDs []uint32, branches []uint32, generations []uint32) [][]*types.ExecutingSequence {
 	count := len(msgs)
 	idx_id := make([]int, count)
 	idx_branche := make([]int, count)
@@ -152,13 +152,13 @@ func ParseResult(msgs []*types.StandardMessage, orderIDs []uint32, branches []ui
 	sequences := make([][]*types.ExecutingSequence, len(idxes))
 	for i, list := range idxes {
 		executingSequenceList := make([]*types.ExecutingSequence, 0, len(list))
-		parallels := make([]*types.StandardMessage, 0, len(msgs))
+		parallels := make([]*types.StandardTransaction, 0, len(msgs))
 		for _, ids := range list {
 			if len(ids) == 1 {
 				parallels = append(parallels, msgs[ids[0]])
 				continue
 			}
-			seqMsgs := make([]*types.StandardMessage, len(ids))
+			seqMsgs := make([]*types.StandardTransaction, len(ids))
 			for k, id := range ids {
 				seqMsgs[k] = msgs[id]
 			}
@@ -182,7 +182,7 @@ func ParseLog(buffer []byte) string {
 	}
 	return string(buffer[:rstsize])
 }
-func (s *Scheduler) Schedule(msgs []*types.StandardMessage, height uint64) ([][]*types.ExecutingSequence, string) {
+func (s *Scheduler) Schedule(msgs []*types.StandardTransaction, height uint64) ([][]*types.ExecutingSequence, string) {
 	if len(msgs) == 0 {
 		return [][]*types.ExecutingSequence{}, ""
 	}

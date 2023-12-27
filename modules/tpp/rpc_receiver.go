@@ -4,12 +4,10 @@ import (
 	"context"
 	"sync"
 
-	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/log"
 	tppTypes "github.com/arcology-network/main/modules/tpp/types"
-	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 var (
@@ -51,22 +49,15 @@ func (rr *RpcReceiver) OnMessageArrived(msgs []*actor.Message) error {
 }
 
 func (rr *RpcReceiver) ReceivedTransactionFromRpc(ctx context.Context, args *types.RawTransactionArgs, reply *types.RawTransactionReply) error {
-	txLen := 1
-	checks := make([]*tppTypes.CheckingTx, txLen)
-
 	if rr.LatestMessage == nil {
 		rr.LatestMessage = actor.NewMessage()
 	}
-	logid := rr.AddLog(log.LogLevel_Debug, "start parallelSend Txs")
+	logid := rr.AddLog(log.LogLevel_Debug, "to StandardTransactions")
 	interLog := rr.GetLogger(logid)
-	common.ParallelWorker(txLen, rr.Concurrency, tppTypes.CheckingTxHashWorker, [][]byte{args.Tx}, &checks, interLog)
 
-	pack := tppTypes.CheckingTxsPack{
-		Txs:        checks,
-		Src:        args.Src,
-		TxHashChan: make(chan evmCommon.Hash, 1),
-	}
-	rr.MsgBroker.Send(actor.MsgCheckingTxs, &pack)
+	pack := tppTypes.NewPack([][]byte{args.Tx}, args.Src, true, rr.Concurrency, interLog)
+
+	rr.MsgBroker.Send(actor.MsgCheckingTxs, pack)
 
 	reply.TxHash = <-pack.TxHashChan
 
