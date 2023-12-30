@@ -509,6 +509,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 
 	return nil
 }
+
 func (rs *Storage) getTransaction(height uint64, idx int) (*ethrpc.RPCTransaction, error) {
 	var receipt *evmTypes.Receipt
 	position := mstypes.Position{
@@ -545,6 +546,7 @@ func (rs *Storage) getTransaction(height uint64, idx int) (*ethrpc.RPCTransactio
 		S:        (*hexutil.Big)(s),
 	}, nil
 }
+
 func (rs *Storage) getQueryHeight(number int64) uint64 {
 	queryHeight := uint64(0)
 	if number < 0 {
@@ -563,11 +565,13 @@ func (rs *Storage) getQueryHeight(number int64) uint64 {
 	}
 	return queryHeight
 }
+
 func (rs *Storage) getBlockTxs(height uint64) int {
 	var block *types.MonacoBlock
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 	return len(block.Txs)
 }
+
 func (rs *Storage) getRpcBlock(height uint64, fulltx bool) (*ethrpc.RPCBlock, error) {
 	var block *types.MonacoBlock
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)

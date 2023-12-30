@@ -25,7 +25,8 @@ func (s *StorageDebug) Outputs() map[string]int {
 }
 
 func (*StorageDebug) OnStart() {}
-func (*StorageDebug) Stop()    {}
+
+func (*StorageDebug) Stop() {}
 
 func (s *StorageDebug) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {

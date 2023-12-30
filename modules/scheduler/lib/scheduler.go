@@ -182,6 +182,7 @@ func ParseLog(buffer []byte) string {
 	}
 	return string(buffer[:rstsize])
 }
+
 func (s *Scheduler) Schedule(msgs []*types.StandardMessage, height uint64) ([][]*types.ExecutingSequence, string) {
 	if len(msgs) == 0 {
 		return [][]*types.ExecutingSequence{}, ""

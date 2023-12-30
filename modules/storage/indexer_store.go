@@ -42,6 +42,7 @@ func (is *IndexerStore) Save(ctx context.Context, request *SaveIndexRequest, _ *
 	is.db.Add(request.Height, request.keys, request.IsSave)
 	return nil
 }
+
 func (is *IndexerStore) SaveBlockHash(ctx context.Context, request *SaveIndexBlockHashRequest, _ *int) error {
 	is.db.AddBlockHashHeight(request.Height, request.Hash, request.IsSave)
 	return nil

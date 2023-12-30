@@ -146,6 +146,7 @@ func GetAddress(config *cfg.Config) (*privval.FilePV, string, error) {
 	return pv, pk.Address().String(), nil
 
 }
+
 func initFilesWithConfig(config *cfg.Config, addr string, pv *privval.FilePV, appState json.RawMessage) error {
 
 	nodeKeyFile := config.NodeKeyFile()

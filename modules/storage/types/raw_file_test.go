@@ -22,6 +22,7 @@ func TestOp(t *testing.T) {
 		fmt.Printf("=====dir=%v\n", dir)
 	}
 }
+
 func TestRawFile(t *testing.T) {
 	filehandle := NewRawFiles("datas")
 

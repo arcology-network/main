@@ -21,10 +21,12 @@ func getBalancePath(addr string) string {
 	return connector.BalancePath(evmcommon.HexToAddress(addr))
 	//return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Balance)
 }
+
 func getNoncePath(addr string) string {
 	return connector.NoncePath(evmcommon.HexToAddress(addr))
 	// return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Nonce)
 }
+
 func getCodePath(addr string) string {
 	return connector.CodePath(evmcommon.HexToAddress(addr))
 	// return concurrenturl.NewPlatform().Builtins(addr, concurrenturl.Idx_PathKey_Code)

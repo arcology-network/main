@@ -10,12 +10,14 @@ import (
 func mock_chainId(ctx context.Context) (interface{}, error) {
 	return "0x539", nil
 }
+
 func mock_accounts(ctx context.Context) (interface{}, error) {
 	accounts := make([]string, 2)
 	accounts[0] = "0x77ddd8c0fd54f68d871355d62b6ee79ea7551e1c"
 	accounts[1] = "0x0047c4e79a35632d7c9cc3fafe79c554512f9c6c"
 	return accounts, nil
 }
+
 func mock_estimateGas(ctx context.Context, params []interface{}) (interface{}, error) {
 	data := getVal(params[0], "data")
 	if len(data) > 5000 {
@@ -25,6 +27,7 @@ func mock_estimateGas(ctx context.Context, params []interface{}) (interface{}, e
 	}
 
 }
+
 func mock_getBlockByNumber(ctx context.Context, params []interface{}) (interface{}, error) {
 	transactions := make([]string, 0)
 	uncles := make([]string, 0)
@@ -156,6 +159,7 @@ func mock_getTransactionReceipt(ctx context.Context, params []interface{}) (inte
 		}, nil
 	}
 }
+
 func mock_getTransactionCount(ctx context.Context, params []interface{}) (interface{}, error) {
 	if nonceadd {
 		return "0x1", nil
@@ -164,6 +168,7 @@ func mock_getTransactionCount(ctx context.Context, params []interface{}) (interf
 	}
 
 }
+
 func getVal(v interface{}, k string) string {
 	if m, ok := v.(map[string]interface{}); !ok {
 		return ""

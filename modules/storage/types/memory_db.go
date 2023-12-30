@@ -77,6 +77,7 @@ func (this *MemoryDB) BatchSet(keys []string, datas [][]byte) error {
 	this.db.BatchSet(keys, objs)
 	return nil
 }
+
 func (this *MemoryDB) Query(pattern string, condition func(string, string) bool) ([]string, [][]byte, error) {
 	return []string{}, [][]byte{}, nil
 }

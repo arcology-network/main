@@ -164,6 +164,7 @@ func (mock *EthereumAPIMock) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash,
 		Value:            (*hexutil.Big)(big.NewInt(0)),
 	}, nil
 }
+
 func (mock *EthereumAPIMock) GetTransactionByBlockNumberAndIndex(number int64, index int) (*ethrpc.RPCTransaction, error) {
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
@@ -185,36 +186,46 @@ func (mock *EthereumAPIMock) GetBlockTransactionCountByHash(hash ethcmn.Hash) (i
 
 	return 0, nil
 }
+
 func (mock *EthereumAPIMock) GetBlockTransactionCountByNumber(number int64) (int, error) {
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
 
 	return 0, nil
 }
+
 func (mock *EthereumAPIMock) GetUncleCountByBlockHash(hash ethcmn.Hash) (int, error) {
 	return 0x0, nil
 }
+
 func (mock *EthereumAPIMock) GetUncleCountByBlockNumber(number int64) (int, error) {
 	return 0x0, nil
 }
+
 func (mock *EthereumAPIMock) SubmitWork() (bool, error) {
 	return true, nil
 }
+
 func (mock *EthereumAPIMock) SubmitHashrate() (bool, error) {
 	return true, nil
 }
+
 func (mock *EthereumAPIMock) Hashrate() (int, error) {
 	return 0x3e6, nil
 }
+
 func (mock *EthereumAPIMock) GetWork() ([]string, error) {
 	return []string{}, nil
 }
+
 func (mock *EthereumAPIMock) ProtocolVersion() (int, error) {
 	return 10000 + 2, nil
 }
+
 func (mock *EthereumAPIMock) Syncing() (bool, error) {
 	return false, nil
 }
+
 func (mock *EthereumAPIMock) Proposer() (bool, error) {
 	return false, nil
 }
@@ -222,18 +233,23 @@ func (mock *EthereumAPIMock) Proposer() (bool, error) {
 func (mock *EthereumAPIMock) NewFilter(filter eth.FilterQuery) (ID, error) {
 	return NewID(), nil
 }
+
 func (mock *EthereumAPIMock) NewBlockFilter() (ID, error) {
 	return NewID(), nil
 }
+
 func (mock *EthereumAPIMock) NewPendingTransactionFilter() (ID, error) {
 	return NewID(), nil
 }
+
 func (mock *EthereumAPIMock) UninstallFilter(id ID) (bool, error) {
 	return true, nil
 }
+
 func (mock *EthereumAPIMock) GetFilterChanges(id ID) (interface{}, error) {
 	return nil, nil
 }
+
 func (mock *EthereumAPIMock) GetFilterLogs(id ID) ([]*ethtyp.Log, error) {
 	return []*ethtyp.Log{}, nil
 }

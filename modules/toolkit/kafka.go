@@ -22,10 +22,12 @@ func Newkafka(concurrency int, groupid string) actor.IWorkerEx {
 	ka.Set(concurrency, groupid)
 	return &ka
 }
+
 func (c *kafka) Config(params map[string]interface{}) {
 	c.queryHeight = uint64(params["queryheight"].(float64))
 	c.queryKey = params["querykey"].(string)
 }
+
 func (c *kafka) Inputs() ([]string, bool) {
 	return []string{actor.MsgEuResults}, false
 }

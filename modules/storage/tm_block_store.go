@@ -23,6 +23,7 @@ func NewTmBlockStore() *TmBlockStore {
 		// impl: store.NewBlockStore(db),
 	}
 }
+
 func (bs *TmBlockStore) Config(params map[string]interface{}) {
 	db, err := tmdb.NewDB(params["storage_tmblock_name"].(string), tmdb.GoLevelDBBackend, params["storage_tmblock_dir"].(string))
 	if err != nil {

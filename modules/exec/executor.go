@@ -335,6 +335,7 @@ func (exec *Executor) startExec() {
 		}(index)
 	}
 }
+
 func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, debug bool) {
 	counter := len(results)
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))

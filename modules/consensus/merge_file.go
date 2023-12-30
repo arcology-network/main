@@ -29,7 +29,7 @@ func merge(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-//filea+fileb->filec
+// filea+fileb->filec
 func MergeFile(filea, fileb, filec string) error {
 	file, err := os.OpenFile(filec, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0664)
 	if err != nil {
@@ -62,6 +62,7 @@ func MergeFile(filea, fileb, filec string) error {
 	file.Sync()
 	return nil
 }
+
 func AppendString(filename, content string) error {
 	file, err := os.OpenFile(filename, os.O_RDWR|os.O_APPEND|os.O_CREATE, 0664)
 	if err != nil {
@@ -79,6 +80,7 @@ func AppendString(filename, content string) error {
 
 	return nil
 }
+
 func WriteStringStart(templetefilename, filename, content string) error {
 	file, err := os.Open(templetefilename)
 	if err != nil {

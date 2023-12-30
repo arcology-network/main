@@ -24,6 +24,7 @@ func TestMsgHash(t *testing.T) {
 	hash, _ := msgHash(&msg)
 	t.Log(hash)
 }
+
 func TestID(t *testing.T) {
 	fmt.Printf("%v", NewID())
 }

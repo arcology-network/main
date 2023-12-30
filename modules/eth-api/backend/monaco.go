@@ -258,6 +258,7 @@ func (m *Monaco) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) 
 	}
 	return response.Data.(*ethrpc.RPCTransaction), nil
 }
+
 func (m *Monaco) GetTransactionByBlockNumberAndIndex(number int64, index int) (*ethrpc.RPCTransaction, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
@@ -284,6 +285,7 @@ func (m *Monaco) GetBlockTransactionCountByHash(hash ethcmn.Hash) (int, error) {
 	}
 	return response.Data.(int), nil
 }
+
 func (m *Monaco) GetBlockTransactionCountByNumber(number int64) (int, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
@@ -327,21 +329,27 @@ func msgHash(msg *core.Message) (evmCommon.Hash, error) {
 func (m *Monaco) GetUncleCountByBlockHash(hash ethcmn.Hash) (int, error) {
 	return 0x0, nil
 }
+
 func (m *Monaco) GetUncleCountByBlockNumber(number int64) (int, error) {
 	return 0x0, nil
 }
+
 func (m *Monaco) SubmitWork() (bool, error) {
 	return true, nil
 }
+
 func (m *Monaco) SubmitHashrate() (bool, error) {
 	return true, nil
 }
+
 func (m *Monaco) Hashrate() (int, error) {
 	return 0x3e6, nil
 }
+
 func (m *Monaco) GetWork() ([]string, error) {
 	return []string{}, nil
 }
+
 func (m *Monaco) ProtocolVersion() (int, error) {
 	return 10000 + 2, nil
 }
@@ -349,6 +357,7 @@ func (m *Monaco) ProtocolVersion() (int, error) {
 //	func (m *Monaco) Coinbase() (string, error) {
 //		return 10000 + 2, nil
 //	}
+
 func (m *Monaco) Syncing() (bool, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("consensus", "Query", &cmntyp.QueryRequest{
@@ -374,18 +383,23 @@ func (m *Monaco) Proposer() (bool, error) {
 func (m *Monaco) NewFilter(filter eth.FilterQuery) (ID, error) {
 	return m.filters.NewFilter(filter), nil
 }
+
 func (m *Monaco) NewBlockFilter() (ID, error) {
 	return m.filters.NewBlockFilter(), nil
 }
+
 func (m *Monaco) NewPendingTransactionFilter() (ID, error) {
 	return m.filters.NewPendingTransactionFilter(), nil
 }
+
 func (m *Monaco) UninstallFilter(id ID) (bool, error) {
 	return m.filters.UninstallFilter(id), nil
 }
+
 func (m *Monaco) GetFilterChanges(id ID) (interface{}, error) {
 	return m.filters.GetFilterChanges(id)
 }
+
 func (m *Monaco) GetFilterLogs(id ID) ([]*ethtyp.Log, error) {
 	crit, err := m.filters.GetFilterLogsCrit(id)
 	if err != nil {

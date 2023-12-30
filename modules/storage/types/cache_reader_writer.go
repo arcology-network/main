@@ -26,6 +26,7 @@ func GetBalance(ds interfaces.Datastore, addr string) (*big.Int, error) {
 	return balance, nil
 
 }
+
 func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
 	obj, err := ds.Retrive(getNoncePath(addr), new(commutative.Uint64))
 	if err != nil || obj == nil {
@@ -34,6 +35,7 @@ func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
 	nonce := obj.(*commutative.Uint64).Value().(*codec.Uint64).Get().(codec.Uint64)
 	return uint64(nonce), nil
 }
+
 func GetCode(ds interfaces.Datastore, addr string) ([]byte, error) {
 	obj, err := ds.Retrive(getCodePath(addr), new(noncommutative.Bytes))
 	if err != nil || obj == nil {

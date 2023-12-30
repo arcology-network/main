@@ -19,6 +19,7 @@ func NewBlockCaches(path string, cache int) *BlockCaches {
 		db:     NewRawFiles(path),
 	}
 }
+
 func (rc *BlockCaches) QueryTx(height uint64, idx int) *evmTypes.Transaction {
 	block := rc.Query(height)
 	if block == nil || idx >= len(block.Txs) {
@@ -31,6 +32,7 @@ func (rc *BlockCaches) QueryTx(height uint64, idx int) *evmTypes.Transaction {
 	}
 	return otx
 }
+
 func (rc *BlockCaches) Query(height uint64) *types.MonacoBlock {
 	heightstr := fmt.Sprintf("%v", height)
 	block := rc.caches.Query(heightstr)

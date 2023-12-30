@@ -52,6 +52,8 @@ type CostItem struct {
 
 type CostItems []CostItem
 
-func (cis CostItems) Len() int           { return len(cis) }
-func (cis CostItems) Swap(i, j int)      { cis[i], cis[j] = cis[j], cis[i] }
+func (cis CostItems) Len() int { return len(cis) }
+
+func (cis CostItems) Swap(i, j int) { cis[i], cis[j] = cis[j], cis[i] }
+
 func (cis CostItems) Less(i, j int) bool { return cis[i].cost > cis[j].cost }

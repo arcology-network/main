@@ -42,16 +42,19 @@ func NewWallet(chainId *big.Int, privateKeys []string) *Wallet {
 func (w *Wallet) Accounts() []string {
 	return w.accounts
 }
+
 func TextAndHash(data []byte) ([]byte, string) {
 	msg := fmt.Sprintf("\x19Ethereum Signed Message:\n%d%s", len(data), string(data))
 	hasher := sha3.NewLegacyKeccak256()
 	hasher.Write([]byte(msg))
 	return hasher.Sum(nil), msg
 }
+
 func TextHash(data []byte) []byte {
 	hash, _ := TextAndHash(data)
 	return hash
 }
+
 func (w *Wallet) Sign(acct ethcmn.Address, data []byte) ([]byte, error) {
 	key, ok := w.findkeys[acct]
 	if !ok {

@@ -96,6 +96,7 @@ func (b *batch) process(execTree *execTree) *batch {
 
 	return nil
 }
+
 func (b *batch) createsequenceId2Hashes() map[evmCommon.Hash][]evmCommon.Hash {
 	seq2lst := make(map[evmCommon.Hash][]evmCommon.Hash, len(b.sequences))
 

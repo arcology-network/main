@@ -79,6 +79,7 @@ func getTimeStr(timestamp *big.Int) string {
 	}
 	return "0 seconds ago"
 }
+
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {

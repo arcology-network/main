@@ -439,6 +439,7 @@ func getTransactionByBlockHashAndIndex(ctx context.Context, params []interface{}
 	}
 	return ToTransactionResponse(tx, options.ChainID), nil
 }
+
 func getTransactionByBlockNumberAndIndex(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
@@ -455,6 +456,7 @@ func getTransactionByBlockNumberAndIndex(ctx context.Context, params []interface
 	}
 	return ToTransactionResponse(tx, options.ChainID), nil
 }
+
 func getUncleCountByBlockHash(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
@@ -467,6 +469,7 @@ func getUncleCountByBlockHash(ctx context.Context, params []interface{}) (interf
 	}
 	return NumberToHex(txsNum), nil
 }
+
 func getUncleCountByBlockNumber(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
@@ -488,6 +491,7 @@ func submitWork(ctx context.Context) (interface{}, error) {
 	// }
 	return fmt.Sprintf("%v", true), nil
 }
+
 func submitHashrate(ctx context.Context) (interface{}, error) {
 
 	// ok, err := backend.SubmitHashrate()
@@ -496,6 +500,7 @@ func submitHashrate(ctx context.Context) (interface{}, error) {
 	// }
 	return fmt.Sprintf("%v", true), nil
 }
+
 func hashrate(ctx context.Context) (interface{}, error) {
 
 	// hashrate, err := backend.Hashrate()
@@ -504,6 +509,7 @@ func hashrate(ctx context.Context) (interface{}, error) {
 	// }
 	return NumberToHex(options.Hashrate), nil
 }
+
 func getWork(ctx context.Context) (interface{}, error) {
 
 	// works, err := backend.GetWork()
@@ -512,6 +518,7 @@ func getWork(ctx context.Context) (interface{}, error) {
 	// }
 	return []string{}, nil
 }
+
 func protocolVersion(ctx context.Context) (interface{}, error) {
 
 	// version, err := backend.ProtocolVersion()
@@ -520,6 +527,7 @@ func protocolVersion(ctx context.Context) (interface{}, error) {
 	// }
 	return fmt.Sprintf("%v", options.ProtocolVersion), nil
 }
+
 func coinbase(ctx context.Context) (interface{}, error) {
 	return options.Coinbase, nil
 }
@@ -551,9 +559,11 @@ func signTransaction(ctx context.Context, params []interface{}) (interface{}, er
 	}
 	return fmt.Sprintf("%x", rawTx), nil
 }
+
 func feeHistory(ctx context.Context) (interface{}, error) {
 	return ethrpc.FeeHistoryResult{}, nil
 }
+
 func syncing(ctx context.Context) (interface{}, error) {
 	ok, err := backend.Syncing()
 	if err != nil {
@@ -561,6 +571,7 @@ func syncing(ctx context.Context) (interface{}, error) {
 	}
 	return fmt.Sprintf("%v", ok), nil
 }
+
 func mining(ctx context.Context) (interface{}, error) {
 	ok, err := backend.Proposer()
 	if err != nil {
@@ -589,6 +600,7 @@ func newBlockFilter(ctx context.Context, params []interface{}) (interface{}, err
 	}
 	return id, nil
 }
+
 func newPendingTransactionFilter(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := backend.NewPendingTransactionFilter()
 	if err != nil {
@@ -596,6 +608,7 @@ func newPendingTransactionFilter(ctx context.Context, params []interface{}) (int
 	}
 	return id, nil
 }
+
 func uninstallFilter(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := ToID(params[0])
 	if err != nil {
@@ -619,6 +632,7 @@ func getFilterChanges(ctx context.Context, params []interface{}) (interface{}, e
 	}
 	return results, nil
 }
+
 func getFilterLogs(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := ToID(params[0])
 	if err != nil {
@@ -644,6 +658,7 @@ func txpoolContent(ctx context.Context) (interface{}, error) {
 	}
 	return blockResult, nil
 }
+
 func traceTransaction(ctx context.Context) (interface{}, error) {
 	return nil, nil
 }

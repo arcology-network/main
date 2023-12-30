@@ -64,12 +64,15 @@ const (
 func (sc *ScanCache) GetAllTabs() []uint64 {
 	return sc.tabs
 }
+
 func (sc *ScanCache) GetTabs(style int) uint64 {
 	return sc.tabs[style]
 }
+
 func (sc *ScanCache) SetTabs(style int, val uint64) {
 	sc.tabs[style] = val
 }
+
 func (sc *ScanCache) BlockReceived(block *types.MonacoBlock, hash []byte, receipts map[evmCommon.Hash]*evmTypes.Receipt) error {
 	sc.lock.Lock()
 	defer sc.lock.Unlock()
@@ -115,6 +118,7 @@ func (sc *ScanCache) BlockReceived(block *types.MonacoBlock, hash []byte, receip
 	}
 	return nil
 }
+
 func formatHex(hex string) string {
 	if !strings.HasPrefix(hex, "0x") {
 		hex = "0x" + hex
@@ -122,6 +126,7 @@ func formatHex(hex string) string {
 	nhex := hex[:7] + "..." + hex[len(hex)-4:]
 	return strings.ToLower(nhex)
 }
+
 func (sc *ScanCache) GetTransaction(tx []byte, height uint64, time *big.Int, receipts map[evmCommon.Hash]*evmTypes.Receipt) (*Transaction, error) {
 	txType := tx[0]
 	txReal := tx[1:]
@@ -160,16 +165,19 @@ func (sc *ScanCache) GetTransaction(tx []byte, height uint64, time *big.Int, rec
 	}
 	return nil, errors.New("transaction type not defined")
 }
+
 func (sc *ScanCache) GetLatestBlocks() []*Block {
 	sc.lock.Lock()
 	defer sc.lock.Unlock()
 	return sc.blocks
 }
+
 func (sc *ScanCache) GetLatestTxs() []*Transaction {
 	sc.lock.Lock()
 	defer sc.lock.Unlock()
 	return sc.transactions
 }
+
 func (sc *ScanCache) GetSize() (int, int) {
 	sc.lock.Lock()
 	defer sc.lock.Unlock()

@@ -76,6 +76,7 @@ func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
 	}
 	return nil
 }
+
 func (a *EuResultsAggreSelector) SendMsg(selectedData *[]*interface{}) {
 	if selectedData != nil {
 		euResults := make([]*types.AccessRecord, len(*selectedData))

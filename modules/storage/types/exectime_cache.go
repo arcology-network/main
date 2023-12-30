@@ -15,6 +15,7 @@ func NewExectimeCaches(cache int) *ExectimeCaches {
 		caches: NewDataCache(cache),
 	}
 }
+
 func (ec *ExectimeCaches) GetKey(height uint64) string {
 	return fmt.Sprintf("statisticalInformation-%v", height)
 }

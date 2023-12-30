@@ -148,9 +148,11 @@ func (c *Consensus) Query(ctx context.Context, request *types.QueryRequest, resp
 func (c *Consensus) Proposer(isporposer bool) {
 	c.isproposer = isporposer
 }
+
 func (c *Consensus) Syncing(syncing bool) {
 	c.syncing = syncing
 }
+
 func (c *Consensus) Reap(maxBytes int64, maxGas int64) (txs [][]byte, hashes [][]byte) {
 	c.AddLog(log.LogLevel_Debug, "enter Reap", zap.Uint64("height", c.LatestMessage.Height))
 	if c.cachedMetaBlock != nil {
@@ -183,6 +185,7 @@ func (c *Consensus) Reap(maxBytes int64, maxGas int64) (txs [][]byte, hashes [][
 	c.AddLog(log.LogLevel_Debug, "return Reap", zap.Int("hashes", len(hashes)))
 	return
 }
+
 func (c *Consensus) AddToMempool(txs [][]byte, src string) {
 	c.AddLog(log.LogLevel_Info, "AddToMempool", zap.Int("txs", len(txs)))
 	groups := c.parseGroups(txs)
@@ -218,6 +221,7 @@ func (c *Consensus) parseGroups(txs [][]byte) [][][]byte {
 	}
 	return groups
 }
+
 func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.Time, hashes [][]byte) []byte {
 	latestMsg := actor.Message{
 		Msgid:  log.Logger.GetLogId(),
