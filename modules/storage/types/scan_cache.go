@@ -22,6 +22,7 @@ type Block struct {
 	Hash      string
 	GasUsed   uint64
 }
+
 type Transaction struct {
 	TxHash   string
 	Height   uint64
@@ -33,6 +34,7 @@ type Transaction struct {
 	GasLimit uint64
 	GasPrice *big.Int
 }
+
 type ScanCache struct {
 	chainid      *big.Int
 	lock         sync.RWMutex

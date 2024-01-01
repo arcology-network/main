@@ -39,6 +39,8 @@ require (
 	golang.org/x/crypto v0.13.0
 )
 
+require github.com/hashicorp/go-memdb v1.3.4 // indirect
+
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
 	github.com/DataDog/zstd v1.5.2 // indirect

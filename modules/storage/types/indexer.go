@@ -3,8 +3,8 @@ package types
 import (
 	"fmt"
 
-	"github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/codec"
+	filedb "github.com/arcology-network/common-lib/filedb"
 	evmCommon "github.com/arcology-network/evm/common"
 )
 
@@ -33,16 +33,17 @@ func (p *Position) Decode(data []byte) *Position {
 	return p
 }
 
+// difference with DataCache
 type Indexer struct {
 	Caches       *DataCache
 	CachesHeight *DataCache
-	Db           *cachedstorage.FileDB
+	Db           *filedb.FileDB
 
 	objChan  chan *SaveObject
 	exitChan chan bool
 }
 
-func NewIndexer(filedb *cachedstorage.FileDB, cacheSize int) *Indexer {
+func NewIndexer(filedb *filedb.FileDB, cacheSize int) *Indexer {
 	indexer := Indexer{
 		Caches:       NewDataCache(cacheSize),
 		CachesHeight: NewDataCache(cacheSize),
@@ -70,7 +71,6 @@ func (indexer *Indexer) QueryBlockHashHeight(hash string) uint64 {
 }
 
 func (indexer *Indexer) AddBlockHashHeight(height uint64, hash string, isSave bool) {
-
 	indexer.CachesHeight.Add(height, []string{hash}, []interface{}{height})
 	if isSave {
 		indexer.Db.Set(indexer.GetHashHeightKey(hash), codec.Uint64(height).Encode())
@@ -78,6 +78,7 @@ func (indexer *Indexer) AddBlockHashHeight(height uint64, hash string, isSave bo
 
 }
 
+// This function retrieves the height of its containing block and the index within the block based on the transaction hash.
 func (indexer *Indexer) QueryPosition(hash string) *Position {
 	position := indexer.Caches.Query(hash)
 	if position != nil {
@@ -121,8 +122,9 @@ func (indexer *Indexer) Add(height uint64, keys []string, isSave bool) {
 	}
 }
 
+// tx-hash-at-height
 func (indexer *Indexer) GetHashesInBlockKey(height uint64) string {
-	return fmt.Sprintf("hashesInBlock-%v", height)
+	return fmt.Sprintf("hashesInBlock-%v", height) // tx-hashes-in-block:
 }
 
 func (indexer *Indexer) GetHashHeightKey(hash string) string {
