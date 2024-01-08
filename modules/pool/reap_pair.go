@@ -7,7 +7,6 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/trie"
 )
 
 type ReapPair struct {
@@ -42,14 +41,8 @@ func NewReapPair(maxReap int, chainId *big.Int) *ReapPair {
 	}
 }
 
-func (r *ReapPair) ChangeSigner(signerType int) {
-	switch signerType {
-	case types.Signer_London:
-		r.Signer = evmTypes.NewLondonSigner(r.ChainID)
-	case types.Signer_Cancun:
-		r.Signer = evmTypes.NewCancunSigner(r.ChainID)
-	}
-
+func (r *ReapPair) ChangeSigner(signerType uint8) {
+	r.Signer = types.GetSigner(signerType, r.ChainID)
 }
 
 func (r *ReapPair) Reset() {
@@ -150,7 +143,9 @@ func (r *ReapPair) Calculate() (bool, *types.BlockResult) {
 	for i, tx := range *r.Opcaches {
 		txs[i] = tx.NativeTransaction
 	}
-	block := evmTypes.NewBlockWithWithdrawals(&header, txs, []*evmTypes.Header{}, *r.Receipts, r.Withdrawals, trie.NewStackTrie(nil))
+	// block := evmTypes.NewBlockWithWithdrawals(&header, txs, []*evmTypes.Header{}, *r.Receipts, r.Withdrawals, trie.NewStackTrie(nil))
+	block := evmTypes.NewBlockWithHeader(&header)
+	block.AttachBody(txs, []*evmTypes.Header{}, r.Withdrawals)
 	fmt.Printf(">>>>>>>>>>>>>>>>>>>main/modules/pool/reap_pair.go>>>>>>>>>>>blockhash:%x,number:%v,mblockhash:%x\n", block.Hash(), block.Number(), r.MBlock.Hash())
 	return true, &types.BlockResult{
 		Block: block,

@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/ethrpc"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 	wal "github.com/arcology-network/main/modules/eth-api/wallet"
@@ -749,7 +750,6 @@ func forkchoiceUpdatedV2(ctx context.Context, params []interface{}) (interface{}
 	if err != nil {
 		return nil, err
 	}
-	fmt.Printf(">>>>>>>main/modules/eth-api/api.go>>>>>>>>>>>>>11111111111>>>>>>>>len:%v>>>>>>\n", len(params))
 	var payloadAttributes *engine.PayloadAttributes
 	if len(params) > 1 && params[1] != nil {
 		payloadAttributes, err = ParseJsonParam[engine.PayloadAttributes](params[1], "payloadAttributes")
@@ -757,7 +757,6 @@ func forkchoiceUpdatedV2(ctx context.Context, params []interface{}) (interface{}
 			return nil, err
 		}
 	}
-	fmt.Printf(">>>>>>>main/modules/eth-api/api.go>>>>>>>>>>>>>22222222222>>>>>>>>>>>>>>\n")
 	return backend.ForkchoiceUpdatedV2(*update, payloadAttributes, options.ChainID)
 }
 
@@ -783,6 +782,42 @@ func exchangeTransitionConfigurationV1(ctx context.Context, params []interface{}
 	return backend.SignalSuperchainV1(signal)
 }
 
+func getProof(ctx context.Context, params []interface{}) (interface{}, error) {
+	address, err := ToAddress(params[0])
+	if err != nil {
+		return nil, jsonrpc.InvalidParams("invalid address given %v", params[0])
+	}
+	keys, err := ToKeys(params[1])
+	if err != nil {
+		return nil, jsonrpc.InvalidParams("invalid keys given %v", params[1])
+	}
+	blockTag, err := ToHash(params[2])
+	if err != nil {
+		return nil, jsonrpc.InvalidParams("invalid blockTag given %v", params[2])
+	}
+	request := &types.RequestProof{
+		Address:  address,
+		Keys:     keys,
+		BlockTag: blockTag,
+	}
+	return backend.GetProof(request)
+}
+func ToKeys(param interface{}) ([]common.Hash, error) {
+	if params, ok := param.([]interface{}); !ok {
+		return []common.Hash{}, errors.New("unexpected data type given,address")
+	} else {
+		keys := make([]common.Hash, len(params))
+		for i := range keys {
+			key, err := ToHash(params[i])
+			if err != nil {
+				return []common.Hash{}, errors.New("unexpected data type given,hash")
+			}
+			keys[i] = key
+		}
+		return keys, nil
+	}
+}
+
 func startJsonRpc() {
 	filters := internal.NewFilters()
 
@@ -804,69 +839,6 @@ func startJsonRpc() {
 			return next(ctx, params)
 		}
 	})
-
-	/*
-		server.Register(jsonrpc.Methods{
-			"net_version":               version,
-			"eth_chainId":               chainId, //mock_chainId, //
-			"eth_blockNumber":           blockNumber,
-			"eth_getBlockByNumber":      getBlockByNumber, //mock_getBlockByNumber, //
-			"eth_getBlockByHash":        getBlockByHash,
-			"eth_getTransactionCount":   getTransactionCount, //mock_getTransactionCount, //
-			"eth_getCode":               getCode,
-			"eth_getBalance":            getBalance,
-			"eth_getStorageAt":          getStorageAt,
-			"eth_accounts":              accounts,    //mock_accounts,    //
-			"eth_estimateGas":           estimateGas, //mock_estimateGas, //
-			"eth_gasPrice":              gasPrice,
-			"eth_sendTransaction":       sendTransaction,       //mock_sendTransaction,       //
-			"eth_getTransactionReceipt": getTransactionReceipt, //mock_getTransactionReceipt, //
-			"eth_getTransactionByHash":  getTransactionByHash,  //mock_getTransactionByHash,  //
-			"eth_sendRawTransaction":    sendRawTransaction,
-			"eth_call":                  call,
-			"eth_getLogs":               getLogs,
-
-			"eth_getBlockTransactionCountByHash":      getBlockTransactionCountByHash,
-			"eth_getBlockTransactionCountByNumber":    getBlockTransactionCountByNumber,
-			"eth_getTransactionByBlockHashAndIndex":   getTransactionByBlockHashAndIndex,
-			"eth_getTransactionByBlockNumberAndIndex": getTransactionByBlockNumberAndIndex,
-			"eth_getUncleCountByBlockHash":            getUncleCountByBlockHash,
-			"eth_getUncleCountByBlockNumber":          getUncleCountByBlockNumber,
-			"eth_submitWork":                          submitWork,
-			"eth_submitHashrate":                      submitHashrate,
-			"eth_hashrate":                            hashrate,
-			"eth_getWork":                             getWork,
-			"eth_protocolVersion":                     protocolVersion,
-			"eth_coinbase":                            coinbase,
-
-			"eth_sign":            sign,
-			"eth_signTransaction": signTransaction,
-			"eth_feeHistory":      feeHistory,
-			"eth_syncing":         syncing,
-			"eth_mining":          mining,
-
-			"eth_newFilter":                   newFilter,
-			"eth_newBlockFilter":              newBlockFilter,
-			"eth_newPendingTransactionFilter": newPendingTransactionFilter,
-			"eth_uninstallFilter":             uninstallFilter,
-			"eth_getFilterChanges":            getFilterChanges,
-			"eth_getFilterLogs":               getFilterLogs,
-
-			"web3_clientVersion":     clientVersion,
-			"txpool_content":         txpoolContent,
-			"debug_traceTransaction": traceTransaction,
-
-			"eth_getBlockReceipts":     getBlockReceipts,
-			"eth_getHeaderByHash":      getHeaderByHash,
-			"eth_getHeaderByNumber":    getHeaderByNumber,
-			"eth_maxPriorityFeePerGas": maxPriorityFeePerGas,
-
-			// "engine_forkchoiceUpdatedV2":               forkchoiceUpdatedV2,
-			// "engine_getPayloadV2":                      getPayloadV2,
-			// "engine_newPayloadV2":                      newPayloadV2,
-			// "engine_exchangeTransitionConfigurationV1": exchangeTransitionConfigurationV1,
-		})
-	*/
 
 	server.Register(methods)
 
@@ -936,4 +908,6 @@ var methods = map[string]jsonrpc.MethodFunc{
 	"eth_getHeaderByHash":      getHeaderByHash,
 	"eth_getHeaderByNumber":    getHeaderByNumber,
 	"eth_maxPriorityFeePerGas": maxPriorityFeePerGas,
+
+	"eth_getProof": getProof,
 }

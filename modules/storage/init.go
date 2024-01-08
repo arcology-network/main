@@ -60,4 +60,5 @@ func init() {
 	intf.Factory.Register("storage.schdstore", func(concurrency int, groupId string) interface{} {
 		return NewSchdStore(concurrency, groupId)
 	})
+
 }

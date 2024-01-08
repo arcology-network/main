@@ -11,6 +11,7 @@ import (
 	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/component-lib/ethrpc"
 	intf "github.com/arcology-network/component-lib/interface"
+	ccdb "github.com/arcology-network/concurrenturl/storage"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
@@ -42,25 +43,33 @@ func NewMonaco(filters *Filters) *Monaco {
 	}
 }
 
+func (api *Monaco) GetProof(rq *cmntyp.RequestProof) (*ccdb.AccountResult, error) {
+	var response cmntyp.QueryResult
+	err := intf.Router.Call("state_query", "QueryState", &cmntyp.QueryRequest{
+		QueryType: cmntyp.QueryType_Proof,
+		Data:      rq,
+	}, &response)
+	if err != nil {
+		return nil, err
+	}
+	return response.Data.(*ccdb.AccountResult), nil
+}
+
 // ForkchoiceUpdatedV2 is equivalent to V1 with the addition of withdrawals in the payload attributes.
 func (api *Monaco) ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadAttributes *engine.PayloadAttributes, chainid uint64) (engine.ForkChoiceResponse, error) {
 	api.forkchoiceLock.Lock()
 	defer api.forkchoiceLock.Unlock()
-	fmt.Printf(">>>>>>>>>>>>>>main/modules/eth-api/backend/monaco.go>>>>>1111>>>>>>>\n")
 	valid := func(id *engine.PayloadID) engine.ForkChoiceResponse {
 		return engine.ForkChoiceResponse{
 			PayloadStatus: engine.PayloadStatusV1{Status: engine.VALID, LatestValidHash: &update.HeadBlockHash},
 			PayloadID:     id,
 		}
 	}
-	fmt.Printf(">>>>>>>>>>>>>>main/modules/eth-api/backend/monaco.go>>>>>2222>>>>>>>\n")
 	// If payload generation was requested, create a new block to be potentially
 	// sealed by the beacon client. The payload will be requested later, and we
 	// will replace it arbitrarily many times in between.
 	if payloadAttributes != nil {
-		// if api.eth.BlockChain().Config().Optimism != nil && payloadAttributes.GasLimit == nil {
-		// 	return engine.STATUS_INVALID, engine.InvalidPayloadAttributes.With(errors.New("gasLimit parameter is required"))
-		// }
+
 		transactions := make(types.Transactions, 0, len(payloadAttributes.Transactions))
 		for i, otx := range payloadAttributes.Transactions {
 			var tx types.Transaction
@@ -200,7 +209,7 @@ func (m *Monaco) GetHeaderByNumber(number int64) (*ethrpc.RPCBlock, error) {
 	return response.Data.(*ethrpc.RPCBlock), nil
 }
 
-func (m *Monaco) GetHeaderByHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
+func GetHeaderFromHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_HeaderByHash,
@@ -212,6 +221,10 @@ func (m *Monaco) GetHeaderByHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
 		return nil, err
 	}
 	return response.Data.(*ethrpc.RPCBlock), nil
+}
+
+func (m *Monaco) GetHeaderByHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
+	return GetHeaderFromHash(hash)
 }
 
 func (m *Monaco) GetCode(address ethcmn.Address, number int64) ([]byte, error) {

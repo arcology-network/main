@@ -4,6 +4,7 @@
         "envs": {
             "generate_apc_handle": true,
             "generate_url_update": false,
+            "generate_acct_root": false,
             "init_db": false,
             "cached": false,
             "no_op":true
@@ -14,6 +15,7 @@
             "nonce_url": {
                 "generate_apc_handle": "__env__",
                 "generate_url_update": "__env__",
+                "generate_acct_root": "__env__",
                 "init_db": "__env__",
                 "cached": "__env__"
             },

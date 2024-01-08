@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 
@@ -353,6 +354,9 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		accesses := indexer.Univalues(common.Clone(result.Transitions())).To(indexer.ITCAccess{})
 		transitions := indexer.Univalues(common.Clone(result.Transitions())).To(indexer.ITCTransition{})
 
+		fmt.Printf("==========================================================================\n")
+		transitions.Print()
+
 		if result.Receipt.Status == 0 {
 			failed++
 		}
@@ -371,6 +375,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		sendingAccessRecords[i] = &accessRecord
 
 		sendingReceipts[i] = result.Receipt
+		exec.AddLog(log.LogLevel_Debug, "****************execute receipt", zap.String("txhash", fmt.Sprintf("%x", result.Receipt.TxHash.Bytes())), zap.Uint64("status", result.Receipt.Status))
 
 		if result.Receipt.ContractAddress != nilAddress {
 			contractAddress = append(contractAddress, result.Receipt.ContractAddress)
@@ -413,44 +418,45 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 
 	if counter > 0 {
 		exec.MsgBroker.Send(actor.MsgReceipts, &sendingReceipts)
-		receiptHashList := exec.toReceiptsHash(&sendingReceipts)
+		// receiptHashList := exec.toReceiptsHash(&sendingReceipts)
 		// exec.MsgBroker.Send(actor.MsgReceiptHashList, receiptHashList)
-		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgReceiptHashList", zap.Int("receiptHashList", len(receiptHashList.TxHashList)))
+		// exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgReceiptHashList", zap.Int("receiptHashList", len(receiptHashList.TxHashList)))
 	}
 }
 
-func (e *Executor) toReceiptsHash(receipts *[]*evmTypes.Receipt) *types.ReceiptHashList {
-	// The following code were copied from exec v1.
-	rcptLength := 0
-	if receipts != nil {
-		rcptLength = len(*receipts)
-	}
+// func (e *Executor) toReceiptsHash(receipts *[]*evmTypes.Receipt) *types.ReceiptHashList {
+// 	// The following code were copied from exec v1.
+// 	rcptLength := 0
+// 	if receipts != nil {
+// 		rcptLength = len(*receipts)
+// 	}
 
-	if rcptLength == 0 {
-		return &types.ReceiptHashList{}
-	}
+// 	if rcptLength == 0 {
+// 		return &types.ReceiptHashList{}
+// 	}
 
-	receiptHashList := make([]evmCommon.Hash, rcptLength)
-	txHashList := make([]evmCommon.Hash, rcptLength)
-	gasUsedList := make([]uint64, rcptLength)
-	worker := func(start, end, idx int, args ...interface{}) {
-		receipts := args[0].([]interface{})[0].([]*evmTypes.Receipt)
-		receiptHashList := args[0].([]interface{})[1].([]evmCommon.Hash)
-		txHashList := args[0].([]interface{})[2].([]evmCommon.Hash)
-		gasUsedList := args[0].([]interface{})[3].([]uint64)
+// 	receiptHashList := make([]evmCommon.Hash, rcptLength)
+// 	txHashList := make([]evmCommon.Hash, rcptLength)
+// 	gasUsedList := make([]uint64, rcptLength)
+// 	worker := func(start, end, idx int, args ...interface{}) {
+// 		receipts := args[0].([]interface{})[0].([]*evmTypes.Receipt)
+// 		receiptHashList := args[0].([]interface{})[1].([]evmCommon.Hash)
+// 		txHashList := args[0].([]interface{})[2].([]evmCommon.Hash)
+// 		gasUsedList := args[0].([]interface{})[3].([]uint64)
 
-		for i := range receipts[start:end] {
-			idx := i + start
-			receipt := receipts[idx]
-			txHashList[idx] = receipt.TxHash
-			receiptHashList[idx] = types.RlpHash(receipt)
-			gasUsedList[idx] = receipt.GasUsed
-		}
-	}
-	common.ParallelWorker(len(*receipts), e.Concurrency, worker, *receipts, receiptHashList, txHashList, gasUsedList)
-	return &types.ReceiptHashList{
-		TxHashList:      txHashList,
-		ReceiptHashList: receiptHashList,
-		GasUsedList:     gasUsedList,
-	}
-}
+// 		for i := range receipts[start:end] {
+// 			idx := i + start
+// 			receipt := receipts[idx]
+// 			txHashList[idx] = receipt.TxHash
+// 			receiptHashList[idx] = types.RlpHash(receipt)
+// 			gasUsedList[idx] = receipt.GasUsed
+
+// 		}
+// 	}
+// 	common.ParallelWorker(len(*receipts), e.Concurrency, worker, *receipts, receiptHashList, txHashList, gasUsedList)
+// 	return &types.ReceiptHashList{
+// 		TxHashList:      txHashList,
+// 		ReceiptHashList: receiptHashList,
+// 		GasUsedList:     gasUsedList,
+// 	}
+// }

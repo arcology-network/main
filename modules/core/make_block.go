@@ -20,6 +20,7 @@ import (
 type MakeBlock struct {
 	actor.WorkerThread
 	SignerType uint8
+	ParentTime uint64
 }
 
 // return a Subscriber struct
@@ -94,12 +95,13 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 			}
 			txhash = *hash
 		case actor.MsgAcctHash:
-			hash := v.Data.(*evmCommon.Hash)
+			// hash := v.Data.(*evmCommon.Hash)
+			hash := v.Data.([32]byte)
 			isnil, err := m.IsNil(hash, "accthash")
 			if isnil {
 				return err
 			}
-			accthash = *hash
+			accthash = evmCommon.BytesToHash([]byte(hash[:]))
 			m.AddLog(log.LogLevel_Info, "received accthash", zap.String("accthash", fmt.Sprintf("%x", accthash)))
 		case actor.MsgRcptHash:
 			hash := v.Data.(*evmCommon.Hash)
@@ -140,14 +142,14 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	}
 
 	m.CheckPoint("start makeBlock")
-	m.AddLog(log.LogLevel_Info, "hashes", zap.String("Root", fmt.Sprintf("%x", accthash.Bytes())), zap.String("rcpthash", fmt.Sprintf("%x", rcpthash.Bytes())), zap.String("txhash", fmt.Sprintf("%x", txhash.Bytes())))
+	m.AddLog(log.LogLevel_Info, "hashes", zap.Uint64("gasused", gasused), zap.String("Root", fmt.Sprintf("%x", accthash.Bytes())), zap.String("rcpthash", fmt.Sprintf("%x", rcpthash.Bytes())), zap.String("txhash", fmt.Sprintf("%x", txhash.Bytes())))
 
 	// if len(txSelected) == 0 {
 	// 	txhash = evmTypes.EmptyTxsHash
 	// 	rcpthash = evmTypes.EmptyReceiptsHash
 	// }
 
-	header := CreateHerder(parentinfo, height, blockStart, accthash, gasused, txhash, rcpthash, blockParams, bloom, withDrawHash)
+	header := m.CreateHerder(parentinfo, height, blockStart, accthash, gasused, txhash, rcpthash, blockParams, bloom, withDrawHash)
 	block, err := CreateBlock(header, txSelected, m.SignerType)
 	if err != nil {
 		m.AddLog(log.LogLevel_Error, "block header eccode err", zap.String("err", err.Error()))
@@ -171,17 +173,28 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	m.MsgBroker.Send(actor.MsgParentInfo, currentinfo)
 	m.MsgBroker.Send(actor.MsgLocalParentInfo, currentinfo)
 	m.CheckPoint("send appHash")
+
+	m.ParentTime = header.Time
+
 	return nil
 }
 
-func CreateHerder(parentinfo *types.ParentInfo, height uint64, blockstart *actor.BlockStart, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, blockParams *types.BlockParams, bloom evmTypes.Bloom, withdrawhash *evmCommon.Hash) *evmTypes.Header {
+func (m *MakeBlock) CreateHerder(parentinfo *types.ParentInfo, height uint64, blockstart *actor.BlockStart, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, blockParams *types.BlockParams, bloom evmTypes.Bloom, withdrawhash *evmCommon.Hash) *evmTypes.Header {
 	excessBlobGas := eip4844.CalcExcessBlobGas(0, 0)
+	headtime := blockstart.Timestamp.Uint64()
+	if blockParams.Times > 0 {
+		headtime = blockParams.Times
+		if m.ParentTime >= headtime {
+			headtime = m.ParentTime + 1
+		}
+	}
+
 	header := evmTypes.Header{
 		ParentHash: parentinfo.ParentHash,
 		Number:     big.NewInt(common.Uint64ToInt64(height)),
 		GasLimit:   math.MaxUint32,
 
-		Time:        blockstart.Timestamp.Uint64(),
+		Time:        headtime,
 		Difficulty:  evmCommon.Big0,
 		Coinbase:    blockstart.Coinbase,
 		Root:        accthash,

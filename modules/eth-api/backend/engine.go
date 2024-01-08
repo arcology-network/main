@@ -47,7 +47,7 @@ type newPayloadResult struct {
 func getSealingBlock(params *generateParams, rawTxs [][]byte, chainID uint64) *newPayloadResult {
 	transactions := make([]*types.StandardTransaction, len(rawTxs))
 	for i, tx := range params.txs {
-		txhash := types.RlpHash(tx)
+		txhash := tx.Hash() //types.RlpHash(tx)
 		transactions[i] = &types.StandardTransaction{
 			TxHash:            txhash,
 			NativeTransaction: tx,
@@ -59,6 +59,7 @@ func getSealingBlock(params *generateParams, rawTxs [][]byte, chainID uint64) *n
 		BlockParam: &types.BlockParams{
 			Random:     params.random,
 			BeaconRoot: params.beaconRoot,
+			Times:      params.timestamp,
 		},
 		Withdrawals:  params.withdrawals,
 		Transactions: transactions,

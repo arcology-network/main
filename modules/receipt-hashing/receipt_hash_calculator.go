@@ -6,6 +6,7 @@ import (
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
+	"go.uber.org/zap"
 )
 
 const (
@@ -65,7 +66,7 @@ func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 	cr.MsgBroker.Send(actor.MsgRcptHash, &hash)
 	cr.MsgBroker.Send(actor.MsgGasUsed, gas)
 	cr.MsgBroker.Send(actor.MsgBloom, bloom)
-	cr.CheckPoint("rcpthash calculate completed")
+	cr.CheckPoint("rcpthash calculate completed", zap.Uint64("gas", gas))
 	return nil
 }
 

@@ -147,6 +147,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 				a.MsgBroker.Send(actor.MsgBlockParams, &types.BlockParams{
 					Random:     evmCommon.Hash{},
 					BeaconRoot: &evmCommon.Hash{},
+					Times:      0,
 				})
 				a.MsgBroker.Send(actor.MsgWithDrawHash, &evmTypes.EmptyWithdrawalsHash)
 			}

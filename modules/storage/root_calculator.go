@@ -65,8 +65,8 @@ func (rc *RootCalculator) OnMessageArrived(msgs []*actor.Message) error {
 			combined := msg.Data.(*actor.CombinerElements)
 			urlUpdate := combined.Get(actor.MsgUrlUpdate).Data.(*storage.UrlUpdate)
 			rc.lastRoot = calcRootHash(rc.merkle, rc.lastRoot, urlUpdate.Keys, urlUpdate.EncodedValues)
-			rc.MsgBroker.Send(actor.MsgAcctHash, &rc.lastRoot)
-			rc.CheckPoint("acchash calculate completed")
+			// rc.MsgBroker.Send(actor.MsgAcctHash, &rc.lastRoot)
+			// rc.CheckPoint("acchash calculate completed")
 		case actor.MsgBlockEnd:
 			rc.merkle.Clear()
 		}

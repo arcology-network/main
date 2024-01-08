@@ -4,6 +4,7 @@
         "envs": {
             "generate_apc_handle": false,
             "generate_url_update": true,
+            "generate_acct_root": true,
             "init_db": true,
             "cached":true
         }
@@ -13,16 +14,12 @@
             "general_url": {
                 "generate_apc_handle": "__env__",
                 "generate_url_update": "__env__",
+                "generate_acct_root": "__env__",
                 "init_db": "__env__",
                 "cached":"__env__"
             },
             "stateful_euresult_aggr_selector": {
                 "output": "executed"
-            }
-        },
-        "-storage.root_calculator-stateful_euresult_aggr_selector": {
-            "stateful_euresult_aggr_selector": {
-                "output": "listfulfilled"
             }
         },
         "storage.initializer": {

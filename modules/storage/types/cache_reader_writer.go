@@ -20,18 +20,18 @@ func GetBalance(ds interfaces.Datastore, addr string) (*big.Int, error) {
 		return big.NewInt(0), nil
 	}
 
-	ubalance := obj.(*commutative.U256).Value().(*codec.Uint256)
-	uubalance := uint256.Int(*ubalance) //.ToBig()
-	balance := uubalance.ToBig()
-	return balance, nil
-
+	balance := obj.(*commutative.U256).Value().(uint256.Int)
+	// uubalance := uint256.Int(*ubalance) //.ToBig()
+	// balance := uubalance.ToBig()
+	// return balance, nil
+	return (&balance).ToBig(), nil
 }
 func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
 	obj, err := ds.Retrive(getNoncePath(addr), new(commutative.Uint64))
 	if err != nil || obj == nil {
 		return 0, err
 	}
-	nonce := obj.(*commutative.Uint64).Value().(*codec.Uint64).Get().(codec.Uint64)
+	nonce := obj.(*commutative.Uint64).Value().(uint64)
 	return uint64(nonce), nil
 }
 func GetCode(ds interfaces.Datastore, addr string) ([]byte, error) {

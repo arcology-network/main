@@ -3,7 +3,9 @@ package backend
 import (
 	"math/big"
 
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/ethrpc"
+	ccdb "github.com/arcology-network/concurrenturl/storage"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -67,4 +69,6 @@ type EthereumAPI interface {
 	GetPayloadV2(payloadID engine.PayloadID) (*engine.ExecutionPayloadEnvelope, error)
 	NewPayloadV2(params engine.ExecutableData) (engine.PayloadStatusV1, error)
 	SignalSuperchainV1(signal *catalyst.SuperchainSignal) (params.ProtocolVersion, error)
+
+	GetProof(rq *types.RequestProof) (*ccdb.AccountResult, error)
 }

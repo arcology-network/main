@@ -5,7 +5,9 @@ import (
 	"math/big"
 	"sync"
 
+	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/component-lib/ethrpc"
+	ccdb "github.com/arcology-network/concurrenturl/storage"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -38,6 +40,10 @@ func NewEthereumAPIMock(chainID *big.Int) EthereumAPI {
 			MixDigest:  ethcmn.HexToHash("1234567890123456789012345678901234567890123456789012345678901234"),
 		},
 	}
+}
+
+func (mock *EthereumAPIMock) GetProof(rq *types.RequestProof) (*ccdb.AccountResult, error) {
+	return &ccdb.AccountResult{}, nil
 }
 
 func (mock *EthereumAPIMock) ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadAttributes *engine.PayloadAttributes, chainid uint64) (engine.ForkChoiceResponse, error) {

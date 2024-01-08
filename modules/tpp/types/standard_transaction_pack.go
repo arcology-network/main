@@ -28,7 +28,7 @@ func ToStdTransaction(tx []byte, txfrom byte) (*types.StandardTransaction, error
 		if err := otx.UnmarshalBinary(txReal); err != nil {
 			return nil, err
 		}
-		txhash := types.RlpHash(otx)
+		txhash := otx.Hash() //types.RlpHash(otx)
 
 		checkingTx := types.StandardTransaction{
 			TxHash:            txhash,

@@ -16,6 +16,13 @@
             "protocol_version": 10002,
             "hash_rate": 998,
             "chain_id": "__global__"
+        },
+        "state_query": {}
+    },
+    "interfaces": [
+        {
+            "name": "state_query",
+            "service": "state_query"
         }
-    }
+    ]
 }

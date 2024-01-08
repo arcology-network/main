@@ -2,6 +2,7 @@ package storage
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
@@ -39,6 +40,8 @@ type Initializer struct {
 	storage_db_path string
 
 	SignerType uint8
+
+	proof *ccdb.MerkleProof
 }
 
 func NewInitializer(concurrency int, groupId string) actor.IWorkerEx {
@@ -46,6 +49,7 @@ func NewInitializer(concurrency int, groupId string) actor.IWorkerEx {
 	w.Set(concurrency, groupId)
 	w.SignerType = types.Signer_London
 	return w
+
 }
 
 func (i *Initializer) Inputs() ([]string, bool) {
@@ -79,11 +83,6 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		Timestamp: big.NewInt(int64(genesis.Timestamp)),
 		Coinbase:  genesis.Coinbase,
 		Extra:     genesis.ExtraData,
-	}
-
-	addr := evmCommon.HexToAddress("aB01a3BfC5de6b5Fc481e18F274ADBdbA9B111f0")
-	if acc, ok := genesis.Alloc[addr]; ok {
-		fmt.Printf(">>>>>>>>>>>>>main/modules/storage/initializer.go>>>>> balance:%v\n", acc.Balance)
 	}
 
 	var db interfaces.Datastore
@@ -178,6 +177,13 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		}
 	}
 
+	ddb := db.(*ccdb.EthDataStore)
+	proof, err := ccdb.NewMerkleProof(ddb.EthDB(), ddb.Root()) // db.(*ccdb.EthDataStore)
+	if err != nil {
+		panic("MerkleProof create failed")
+	}
+	i.proof = proof
+
 	intf.Router.Call("urlstore", "Init", db, &na)
 
 	return []*actor.Message{
@@ -196,6 +202,23 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			Data:   blockStart,
 		},
 	}
+}
+
+func (i *Initializer) QueryState(ctx context.Context, request *types.QueryRequest, response *types.QueryResult) error {
+	switch request.QueryType {
+	case types.QueryType_Proof:
+		rq := request.Data.(*types.RequestProof)
+		keys := make([]string, len(rq.Keys))
+		for i := range keys {
+			keys[i] = fmt.Sprintf("%x", rq.Keys[i].Bytes())
+		}
+		result, err := i.proof.GetProof(fmt.Sprintf("%x", rq.Address.Bytes()), keys)
+		if err != nil {
+			return err
+		}
+		response.Data = result
+	}
+	return nil
 }
 
 func (i *Initializer) OnStart() {}
