@@ -69,7 +69,6 @@ func (ma *MessageAssembler) Serve() {
 		if uint32(len(ma.pendings[p.Header.ID])) == ma.pendings[p.Header.ID][0].Header.TotalPackageCount {
 			var m protocol.Message
 			m.FromPackages(ma.pendings[p.Header.ID])
-			// fmt.Printf("new message, id = %v, len = %v\n", m.ID, len(m.Data))
 			delete(ma.pendings, p.Header.ID)
 			ma.out <- &m
 		}

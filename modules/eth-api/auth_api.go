@@ -25,8 +25,8 @@ func startAuthJsonRpc() {
 	server := jsonrpc.New()
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
 		return func(ctx context.Context, params interface{}) (interface{}, error) {
-			method := jsonrpc.MethodFromContext(ctx)
-			fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
+			// method := jsonrpc.MethodFromContext(ctx)
+			// fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
 			return next(ctx, params)
 		}
 	})

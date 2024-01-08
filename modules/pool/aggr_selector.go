@@ -30,9 +30,9 @@ type AggrSelector struct {
 	state        int
 	height       uint64
 
-	reapcmd  *ReapPair
-	chainID  *big.Int
-	resultch chan *types.BlockResult
+	opAdaptor *OpAdaptor
+	chainID   *big.Int
+	resultch  chan *types.BlockResult
 
 	noOp bool //no opnode
 }
@@ -94,7 +94,7 @@ func (a *AggrSelector) Config(params map[string]interface{}) {
 		a.closeCheck = params["close_check"].(bool)
 	}
 	a.chainID = params["chain_id"].(*big.Int)
-	a.reapcmd = NewReapPair(a.maxReap, a.chainID)
+	a.opAdaptor = NewOpAdaptor(a.maxReap, a.chainID)
 	a.noOp = params["no_op"].(bool)
 }
 
@@ -102,7 +102,7 @@ func (a *AggrSelector) OnStart() {
 }
 
 func (a *AggrSelector) reap(height uint64) {
-	reaped := a.pool.Reap(a.reapcmd.ReapSize)
+	reaped := a.pool.Reap(a.opAdaptor.ReapSize)
 	a.send(reaped, true, height)
 	a.state = poolStateCherryPick
 	a.AddLog(log.LogLevel_Info, "Reap done, switch to poolStateCherryPick")
@@ -129,7 +129,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 				a.pool.Clean(msg.Height)
 				a.AddLog(log.LogLevel_Info, fmt.Sprintf("Clear pool on height %d", msg.Height))
 			}
-			a.reapcmd.Reset()
+			a.opAdaptor.Reset()
 			a.state = poolStateReap
 			a.height = msg.Height + 1
 		}
@@ -152,13 +152,13 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 				a.MsgBroker.Send(actor.MsgWithDrawHash, &evmTypes.EmptyWithdrawalsHash)
 			}
 
-			if a.reapcmd.AddReapCommand() {
+			if a.opAdaptor.AddReapCommand() {
 				a.reap(msg.Height)
 			}
 		case actor.MsgOpCommand:
 			oprequest := msg.Data.(*types.OpRequest)
 			a.AddLog(log.LogLevel_Debug, "oprequest received", zap.Int("oprequest.Transactions", len(oprequest.Transactions)), zap.Int("oprequest.Withdrawals", len(oprequest.Withdrawals)))
-			if a.reapcmd.AddOpCommand(oprequest.Transactions, oprequest.Withdrawals) {
+			if a.opAdaptor.AddOpCommand(oprequest.Transactions, oprequest.Withdrawals) {
 				a.reap(msg.Height)
 			}
 		}
@@ -178,7 +178,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 			for i := range list {
 				list[i] = *msg.Data.(*types.ReapingList).List[i]
 			}
-			reaped := a.pool.CherryPick(a.reapcmd.ClipReapList(list))
+			reaped := a.pool.CherryPick(a.opAdaptor.ClipReapList(list))
 			if reaped != nil {
 				a.send(reaped, false, msg.Height)
 				a.state = resultCollect
@@ -192,15 +192,13 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 			for _, item := range msg.Data.([]interface{}) {
 				receipts = append(receipts, item.(*evmTypes.Receipt))
 			}
-			fmt.Printf(">>>>>>>>>>>>>>>>main/modules/pool/aggr_selector.go>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n")
-			if ok, result := a.reapcmd.AddReceipts(receipts); ok {
+			if ok, result := a.opAdaptor.AddReceipts(receipts); ok {
 				a.returnResult(result)
 			}
 
 		case actor.MsgPendingBlock:
 			block := msg.Data.(*types.MonacoBlock)
-			fmt.Printf("<<<<<<<<<<<<<<<main/modules/pool/aggr_selector.go<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n")
-			if ok, result := a.reapcmd.AddBlock(block); ok {
+			if ok, result := a.opAdaptor.AddBlock(block); ok {
 				a.returnResult(result)
 			}
 		}
@@ -218,10 +216,10 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 
 		a.MsgBroker.Send(actor.MsgMetaBlock, &types.MetaBlock{
 			Txs:      [][]byte{},
-			Hashlist: a.reapcmd.AppendList(hashes),
+			Hashlist: a.opAdaptor.AppendList(hashes),
 		}, height)
 	} else {
-		msgs, transactions, txs := a.reapcmd.ReapEnd(reaped)
+		msgs, transactions, txs := a.opAdaptor.ReapEnd(reaped)
 		a.MsgBroker.Send(actor.MsgMessagersReaped, msgs, height)
 		a.CheckPoint("send messagersReaped", zap.Int("msgs", len(msgs)))
 		txhash := evmTypes.EmptyTxsHash

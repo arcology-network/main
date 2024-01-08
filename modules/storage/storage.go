@@ -151,7 +151,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		}
 
 		blockHash := block.Hash()
-		fmt.Printf(">>>>>>>>>>>>>>>>main/modules/storage/storage.go>>>>>>>>>>blockHash:%x\n", blockHash)
+
 		s.scanCache.BlockReceived(block, blockHash, mapReceipts)
 
 		t0 := time.Now()

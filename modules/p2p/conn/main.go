@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/arcology-network/main/modules/p2p/conn/config"
@@ -72,7 +71,7 @@ func main() {
 	watcher, err := config.NewPeerConfigWatcher(serverCfg.ZooKeeper.Servers, serverCfg.ZooKeeper.PeerConfigRoot, func(configs []*config.PeerConfig) {
 		var peersToServe []*config.PeerConfig
 		for _, cfg := range configs {
-			fmt.Printf("%v\n", cfg)
+
 			if cfg.AssignTo == serverCfg.Server.SID {
 				peersToServe = append(peersToServe, cfg)
 			}

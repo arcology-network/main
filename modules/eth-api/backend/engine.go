@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -107,7 +106,6 @@ func buildPayload(args *miner.BuildPayloadArgs, rawTxs [][]byte, chainid uint64)
 	payload.full = empty.block
 	payload.fullFees = empty.fees
 
-	fmt.Printf(">>>>>>>>>>main/modules/eth-api/backend/engine.go>>>>>>>>>>>buildPayload blockHash:%x,number:%v\n", payload.empty.Hash(), payload.empty.Number())
 	return payload, nil
 	// }
 

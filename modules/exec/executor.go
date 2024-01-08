@@ -354,7 +354,6 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		accesses := indexer.Univalues(common.Clone(result.Transitions())).To(indexer.ITCAccess{})
 		transitions := indexer.Univalues(common.Clone(result.Transitions())).To(indexer.ITCTransition{})
 
-		fmt.Printf("==========================================================================\n")
 		transitions.Print()
 
 		if result.Receipt.Status == 0 {

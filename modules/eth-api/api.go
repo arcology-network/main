@@ -30,7 +30,6 @@ import (
 func LoadCfg(tomfile string, conf interface{}) {
 	_, err := toml.DecodeFile(tomfile, conf)
 	if err != nil {
-		fmt.Printf("err=%v\n", err)
 		panic("load conf err :" + err.Error())
 	}
 }
@@ -356,7 +355,6 @@ func getBlockReceipts(ctx context.Context, params []interface{}) (interface{}, e
 	for i := range receipts {
 		tx, err := backend.GetTransactionByHash(receipts[i].TxHash)
 		if err != nil {
-			fmt.Printf("<<<<<<<<<<<<<<<<getTransactionByHash err:%v\n", err)
 			return nil, jsonrpc.InternalError(err)
 		}
 		allfields[i] = marshalReceipt(receipts[i], tx)
@@ -390,7 +388,6 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 
 	tx, err := backend.GetTransactionByHash(hash)
 	if err != nil {
-		fmt.Printf("<<<<<<<<<<<<<<<<getTransactionByHash err:%v\n", err)
 		return nil, jsonrpc.InternalError(err)
 	}
 
@@ -834,8 +831,8 @@ func startJsonRpc() {
 	server := jsonrpc.New()
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
 		return func(ctx context.Context, params interface{}) (interface{}, error) {
-			method := jsonrpc.MethodFromContext(ctx)
-			fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
+			// method := jsonrpc.MethodFromContext(ctx)
+			// fmt.Printf("***********************************************method: %v \t params:%v \n", method, params)
 			return next(ctx, params)
 		}
 	})

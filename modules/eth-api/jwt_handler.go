@@ -136,7 +136,6 @@ func NewJWTAuth(jwtsecret [32]byte) rpc.HTTPAuth {
 		if err != nil {
 			return fmt.Errorf("failed to create JWT token: %w", err)
 		}
-		fmt.Printf("Authorization:%v\n", "Bearer "+s)
 		h.Set("Authorization", "Bearer "+s)
 		return nil
 	}
