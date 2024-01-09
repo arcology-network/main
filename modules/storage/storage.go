@@ -39,8 +39,7 @@ type Storage struct {
 	lastHeight   uint64
 	chainID      *big.Int
 
-	params     map[string]interface{}
-	signerType uint8
+	params map[string]interface{}
 }
 
 // return a Subscriber struct
@@ -81,7 +80,6 @@ func (s *Storage) Config(params map[string]interface{}) {
 
 	s.params = params
 
-	s.signerType = types.Signer_London
 }
 
 func (s *Storage) OnStart() {

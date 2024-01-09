@@ -247,11 +247,11 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			response.Data = nil
 			return errors.New("hash not found")
 		}
-		block, err := rs.getRpcBlock(position.Height, false, true)
+		block, signerType, err := rs.getRpcBlock(position.Height, false, true)
 		if err != nil {
 			return err
 		}
-		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), position.Height, uint64(position.IdxInBlock), block.Header.BaseFee)
+		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), position.Height, uint64(position.IdxInBlock), block.Header.BaseFee, signerType)
 		if err != nil {
 			return err
 		}
@@ -260,7 +260,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		request := request.Data.(*types.RequestBlockEth)
 		queryHeight := rs.getQueryHeight(request.Number)
 
-		rpcBlock, err := rs.getRpcBlock(queryHeight, request.FullTx, false)
+		rpcBlock, _, err := rs.getRpcBlock(queryHeight, request.FullTx, false)
 		if err != nil {
 			return err
 		}
@@ -269,7 +269,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		request := request.Data.(*types.RequestBlockEth)
 		queryHeight := rs.getQueryHeight(request.Number)
 
-		rpcBlock, err := rs.getRpcBlock(queryHeight, false, true)
+		rpcBlock, _, err := rs.getRpcBlock(queryHeight, false, true)
 		if err != nil {
 			return err
 		}
@@ -279,7 +279,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		hash := string(request.Hash.Bytes())
 		var height uint64
 		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
-		rpcBlock, err := rs.getRpcBlock(height, false, true)
+		rpcBlock, _, err := rs.getRpcBlock(height, false, true)
 		if err != nil {
 			return err
 		}
@@ -289,7 +289,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		hash := string(request.Hash.Bytes())
 		var height uint64
 		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
-		rpcBlock, err := rs.getRpcBlock(height, request.FullTx, false)
+		rpcBlock, _, err := rs.getRpcBlock(height, request.FullTx, false)
 		if err != nil {
 			return err
 		}
@@ -311,11 +311,11 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		hash := string(request.Hash.Bytes())
 		var height uint64
 		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
-		block, err := rs.getRpcBlock(height, false, true)
+		block, signerType, err := rs.getRpcBlock(height, false, true)
 		if err != nil {
 			return err
 		}
-		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), height, uint64(request.Index), block.Header.BaseFee)
+		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), height, uint64(request.Index), block.Header.BaseFee, signerType)
 		if err != nil {
 			return err
 		}
@@ -323,11 +323,12 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 	case types.QueryType_TxByNumberAndIdx:
 		request := request.Data.(*types.RequestBlockEth)
 		height := rs.getQueryHeight(request.Number)
-		block, err := rs.getRpcBlock(height, false, true)
+		block, signerType, err := rs.getRpcBlock(height, false, true)
 		if err != nil {
 			return err
 		}
-		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), height, uint64(request.Index), block.Header.BaseFee)
+
+		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), height, uint64(request.Index), block.Header.BaseFee, signerType)
 		if err != nil {
 			return err
 		}
@@ -337,7 +338,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 	return nil
 }
 
-func (rs *Storage) getTransactionByPosition(blockHash evmCommon.Hash, height uint64, idx uint64, baseFee *big.Int) (*ethrpc.RPCTransaction, error) {
+func (rs *Storage) getTransactionByPosition(blockHash evmCommon.Hash, height uint64, idx uint64, baseFee *big.Int, SignerType uint8) (*ethrpc.RPCTransaction, error) {
 	position := mstypes.Position{
 		Height:     height,
 		IdxInBlock: int(idx),
@@ -346,7 +347,7 @@ func (rs *Storage) getTransactionByPosition(blockHash evmCommon.Hash, height uin
 	var tx *evmTypes.Transaction
 	intf.Router.Call("blockstore", "GetTransaction", &position, &tx)
 
-	signer := types.GetSigner(rs.signerType, rs.chainID)
+	signer := types.MakeSigner(SignerType, rs.chainID)
 	from, _ := evmTypes.Sender(signer, tx)
 	v, r, s := tx.RawSignatureValues()
 	result := &ethrpc.RPCTransaction{
@@ -468,7 +469,7 @@ func (rs *Storage) getBlockTxs(height uint64) int {
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 	return len(block.Txs)
 }
-func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*ethrpc.RPCBlock, error) {
+func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*ethrpc.RPCBlock, uint8, error) {
 	var block *types.MonacoBlock
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 
@@ -482,7 +483,7 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*et
 		err := ethheader.UnmarshalJSON(block.Headers[i][1:])
 		if err != nil {
 			rs.AddLog(log.LogLevel_Error, "block header decode err", zap.String("err", err.Error()))
-			return nil, err
+			return nil, 0, err
 		}
 		header = ethheader
 	}
@@ -491,14 +492,14 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*et
 		Header: &header,
 	}
 	if onlyHeader {
-		return &rpcBlock, nil
+		return &rpcBlock, block.Signer, nil
 	}
 	if fulltx {
 		transactions := make([]interface{}, len(block.Txs))
 		for i := range block.Txs {
-			rpctransaction, err := rs.getTransactionByPosition(header.Hash(), height, uint64(i), header.BaseFee)
+			rpctransaction, err := rs.getTransactionByPosition(header.Hash(), height, uint64(i), header.BaseFee, block.Signer)
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 			transactions[i] = rpctransaction
 		}
@@ -513,5 +514,5 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*et
 		}
 		rpcBlock.Transactions = hashes
 	}
-	return &rpcBlock, nil
+	return &rpcBlock, block.Signer, nil
 }

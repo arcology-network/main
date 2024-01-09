@@ -16,6 +16,7 @@ import (
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
 	"go.uber.org/zap"
 )
@@ -42,6 +43,7 @@ const (
 	poolStateReap
 	poolStateCherryPick
 	resultCollect
+	poolStateInit
 )
 
 var (
@@ -54,7 +56,7 @@ func NewAggrSelector(concurrency int, groupid string) actor.IWorkerEx {
 
 	initRpcOnce.Do(func() {
 		rpcInstance = &AggrSelector{
-			state:    poolStateClean,
+			state:    poolStateInit,
 			resultch: make(chan *types.BlockResult, 1),
 		}
 		rpcInstance.(*AggrSelector).Set(concurrency, groupid)
@@ -72,6 +74,7 @@ func (a *AggrSelector) Inputs() ([]string, bool) {
 		actor.MsgOpCommand,
 		actor.MsgSelectedReceipts,
 		actor.MsgPendingBlock,
+		actor.MsgChainConfig,
 	}, false
 }
 
@@ -84,6 +87,7 @@ func (a *AggrSelector) Outputs() map[string]int {
 		actor.MsgBlockParams:     1,
 		actor.MsgTxHash:          1,
 		actor.MsgWithDrawHash:    1,
+		actor.MsgSignerType:      1,
 	}
 }
 
@@ -120,6 +124,13 @@ func (a *AggrSelector) returnResult(result *types.BlockResult) {
 func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	switch a.state {
+	case poolStateInit:
+		switch msg.Name {
+		case actor.MsgChainConfig:
+			a.opAdaptor.SetConfig(msg.Data.(*params.ChainConfig))
+			a.opAdaptor.ChangeSigner(msg.Height)
+			a.state = poolStateClean
+		}
 	case poolStateClean:
 		switch msg.Name {
 		case actor.MsgNonceReady:
@@ -228,12 +239,16 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 		}
 		a.MsgBroker.Send(actor.MsgSelectedTx, txs, height)
 		a.MsgBroker.Send(actor.MsgTxHash, &txhash, height)
+		a.MsgBroker.Send(actor.MsgSignerType, a.opAdaptor.SignerType, height)
 		a.CheckPoint("send selectedtx", zap.String("txhash", fmt.Sprintf("%x", txhash)))
 	}
 }
 
 func (a *AggrSelector) GetStateDefinitions() map[int][]string {
 	return map[int][]string{
+		poolStateInit: {
+			actor.MsgChainConfig,
+		},
 		poolStateClean: {
 			actor.MsgNonceReady,
 		},

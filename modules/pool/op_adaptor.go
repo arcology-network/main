@@ -6,6 +6,7 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 type OpAdaptor struct {
@@ -15,6 +16,7 @@ type OpAdaptor struct {
 	ChainID    *big.Int
 	Signer     evmTypes.Signer
 	SignerType uint8
+	config     *params.ChainConfig
 
 	//request process
 	ReapCommand bool
@@ -35,13 +37,16 @@ func NewOpAdaptor(maxReap int, chainId *big.Int) *OpAdaptor {
 		ReapSize:    maxReap,
 		MaxReap:     maxReap,
 		ChainID:     chainId,
-		Signer:      evmTypes.NewLondonSigner(chainId),
-		SignerType:  types.Signer_London,
 	}
 }
 
-func (oa *OpAdaptor) ChangeSigner(signerType uint8) {
-	oa.Signer = types.GetSigner(signerType, oa.ChainID)
+func (oa *OpAdaptor) SetConfig(config *params.ChainConfig) {
+	oa.config = config
+}
+
+func (oa *OpAdaptor) ChangeSigner(height uint64) {
+	oa.SignerType = types.GetSignerType(big.NewInt(int64(height)), oa.config)
+	oa.Signer = types.MakeSigner(oa.SignerType, oa.ChainID)
 }
 
 func (oa *OpAdaptor) Reset() {
@@ -120,6 +125,10 @@ func (oa *OpAdaptor) ReapEnd(reaped []*types.StandardTransaction) ([]*types.Stan
 // *****************************************************************************
 func (oa *OpAdaptor) AddBlock(block *types.MonacoBlock) (bool, *types.BlockResult) {
 	oa.MBlock = block
+
+	//change signer from next block
+	oa.ChangeSigner(block.Height)
+
 	return oa.Calculate()
 }
 func (oa *OpAdaptor) AddReceipts(receipts []*evmTypes.Receipt) (bool, *types.BlockResult) {

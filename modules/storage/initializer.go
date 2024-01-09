@@ -2,7 +2,6 @@ package storage
 
 import (
 	"bytes"
-	"context"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
@@ -39,15 +38,12 @@ type Initializer struct {
 	genesisFile     string
 	storage_db_path string
 
-	SignerType uint8
-
 	proof *ccdb.MerkleProof
 }
 
 func NewInitializer(concurrency int, groupId string) actor.IWorkerEx {
 	w := &Initializer{}
 	w.Set(concurrency, groupId)
-	w.SignerType = types.Signer_London
 	return w
 
 }
@@ -58,9 +54,10 @@ func (i *Initializer) Inputs() ([]string, bool) {
 
 func (i *Initializer) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgInitDB:    1,
-		actor.MsgStorageUp: 1,
-		actor.MsgCoinbase:  1,
+		actor.MsgInitDB:      1,
+		actor.MsgStorageUp:   1,
+		actor.MsgCoinbase:    1,
+		actor.MsgChainConfig: 1,
 	}
 }
 
@@ -103,7 +100,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 
 		evmblock := genesis.ToBlock()
 
-		block, err := core.CreateBlock(evmblock.Header(), [][]byte{}, i.SignerType)
+		block, err := core.CreateBlock(evmblock.Header(), [][]byte{}, types.GetSignerType(big.NewInt(height), genesis.Config))
 		if err != nil {
 			panic("Create genesis block err!")
 		}
@@ -177,13 +174,6 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		}
 	}
 
-	ddb := db.(*ccdb.EthDataStore)
-	proof, err := ccdb.NewMerkleProof(ddb.EthDB(), ddb.Root()) // db.(*ccdb.EthDataStore)
-	if err != nil {
-		panic("MerkleProof create failed")
-	}
-	i.proof = proof
-
 	intf.Router.Call("urlstore", "Init", db, &na)
 
 	return []*actor.Message{
@@ -201,24 +191,12 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			Height: uint64(height),
 			Data:   blockStart,
 		},
+		{
+			Name:   actor.MsgChainConfig,
+			Height: uint64(height),
+			Data:   genesis.Config,
+		},
 	}
-}
-
-func (i *Initializer) QueryState(ctx context.Context, request *types.QueryRequest, response *types.QueryResult) error {
-	switch request.QueryType {
-	case types.QueryType_Proof:
-		rq := request.Data.(*types.RequestProof)
-		keys := make([]string, len(rq.Keys))
-		for i := range keys {
-			keys[i] = fmt.Sprintf("%x", rq.Keys[i].Bytes())
-		}
-		result, err := i.proof.GetProof(fmt.Sprintf("%x", rq.Address.Bytes()), keys)
-		if err != nil {
-			return err
-		}
-		response.Data = result
-	}
-	return nil
 }
 
 func (i *Initializer) OnStart() {}

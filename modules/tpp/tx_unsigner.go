@@ -14,7 +14,7 @@ import (
 type TxUnsigner struct {
 	actor.WorkerThread
 	chainID    *big.Int
-	Signer     evmTypes.Signer
+	Signer     *evmTypes.Signer
 	SignerType uint8
 }
 
@@ -22,12 +22,11 @@ type TxUnsigner struct {
 func NewTxUnsigner(concurrency int, groupid string) actor.IWorkerEx {
 	unsigner := TxUnsigner{}
 	unsigner.Set(concurrency, groupid)
-	unsigner.SignerType = types.Signer_London
 	return &unsigner
 }
 
 func (c *TxUnsigner) Inputs() ([]string, bool) {
-	return []string{actor.MsgCheckingTxs}, false
+	return []string{actor.MsgCheckingTxs, actor.MsgSignerType}, false
 }
 
 func (c *TxUnsigner) Outputs() map[string]int {
@@ -38,7 +37,6 @@ func (c *TxUnsigner) Outputs() map[string]int {
 
 func (c *TxUnsigner) Config(params map[string]interface{}) {
 	c.chainID = params["chain_id"].(*big.Int)
-	c.Signer = evmTypes.NewLondonSigner(c.chainID)
 }
 
 func (c *TxUnsigner) OnStart() {}
@@ -46,10 +44,16 @@ func (c *TxUnsigner) OnStart() {}
 func (c *TxUnsigner) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
+		case actor.MsgSignerType:
+			c.SignerType = v.Data.(uint8)
+			signer := types.MakeSigner(c.SignerType, c.chainID)
+			c.Signer = &signer
 		case actor.MsgCheckingTxs:
 			stdPack := v.Data.(*types.StdTransactionPack)
-
-			common.ParallelWorker(len(stdPack.Txs), c.Concurrency, unSignTxs, stdPack.Txs, c.Signer, c.SignerType)
+			if c.Signer == nil {
+				return nil
+			}
+			common.ParallelWorker(len(stdPack.Txs), c.Concurrency, unSignTxs, stdPack.Txs, *c.Signer, c.SignerType)
 
 			c.MsgBroker.Send(actor.MsgMessager, stdPack)
 

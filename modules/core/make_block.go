@@ -19,7 +19,6 @@ import (
 
 type MakeBlock struct {
 	actor.WorkerThread
-	SignerType uint8
 	ParentTime uint64
 }
 
@@ -27,7 +26,6 @@ type MakeBlock struct {
 func NewMakeBlock(concurrency int, groupid string) actor.IWorkerEx {
 	in := MakeBlock{}
 	in.Set(concurrency, groupid)
-	in.SignerType = types.Signer_London
 	return &in
 }
 
@@ -43,6 +41,7 @@ func (m *MakeBlock) Inputs() ([]string, bool) {
 		actor.MsgBlockParams,
 		actor.MsgBloom,
 		actor.MsgWithDrawHash,
+		actor.MsgSignerType,
 	}, true
 }
 
@@ -73,8 +72,11 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	var blockStart *actor.BlockStart
 	var bloom evmTypes.Bloom
 	var withDrawHash *evmCommon.Hash
+	var SignerType uint8
 	for _, v := range msgs {
 		switch v.Name {
+		case actor.MsgSignerType:
+			SignerType = v.Data.(uint8)
 		case actor.MsgBlockStart:
 			blockStart = v.Data.(*actor.BlockStart)
 			// timestamp = bs.Timestamp
@@ -150,7 +152,7 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	// }
 
 	header := m.CreateHerder(parentinfo, height, blockStart, accthash, gasused, txhash, rcpthash, blockParams, bloom, withDrawHash)
-	block, err := CreateBlock(header, txSelected, m.SignerType)
+	block, err := CreateBlock(header, txSelected, SignerType)
 	if err != nil {
 		m.AddLog(log.LogLevel_Error, "block header eccode err", zap.String("err", err.Error()))
 		return err
