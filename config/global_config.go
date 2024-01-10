@@ -8,15 +8,15 @@ import (
 )
 
 type GlobalConfig struct {
-	ChainId         *big.Int                 `json:"chain_id"`
-	Kafka           map[string]string        `json:"kafka"`
-	Rpc             map[string]string        `json:"rpc"`
-	Zookeeper       string                   `json:"zookeeper"`
-	Concurrency     map[string]int           `json:"concurrency"`
-	ClusterName     string                   `json:"cluster_name"`
-	ClusterId       int                      `json:"cluster_id"`
-	LogConfigFile   string                   `json:"log_config_file"`
-	Coinbase        string                   `json:"coinbase"`
+	ChainId       *big.Int          `json:"chain_id"`
+	Kafka         map[string]string `json:"kafka"`
+	Rpc           map[string]string `json:"rpc"`
+	Zookeeper     string            `json:"zookeeper"`
+	Concurrency   map[string]int    `json:"concurrency"`
+	ClusterName   string            `json:"cluster_name"`
+	ClusterId     int               `json:"cluster_id"`
+	LogConfigFile string            `json:"log_config_file"`
+	// Coinbase        string                   `json:"coinbase"`
 	PersistentPeers string                   `json:"persistent_peers"`
 	RemoteCaches    string                   `json:"remote_caches"`
 	P2pPeers        []map[string]interface{} `json:"p2p.peers"`

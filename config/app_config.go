@@ -243,8 +243,8 @@ func (config *AppConfig) replaceEnv(params map[string]interface{}, globalConfig 
 				params[k] = globalConfig.ChainId
 			case "zookeeper":
 				params[k] = globalConfig.Zookeeper
-			case "coinbase":
-				params[k] = globalConfig.Coinbase
+			// case "coinbase":
+			// 	params[k] = globalConfig.Coinbase
 			case "persistent_peers":
 				params[k] = globalConfig.PersistentPeers
 			case "remote_caches":
