@@ -96,12 +96,12 @@
             "jwt_file": "/home/weizp/work/configs/jwt.txt",
             "debug": false,
             "retry_time": 60,
-            "coinbase": "__global__",
             "protocol_version": 10002,
             "hash_rate": 998,
             "chain_id": "__global__"
         },
         "state_query":{},
+        "coinbase":{},
         "make_block": {},
         "core.initializer": {},
         "scheduler": {
