@@ -3,7 +3,7 @@ package storage
 import (
 	"context"
 
-	"github.com/arcology-network/common-lib/cachedstorage"
+	"github.com/arcology-network/common-lib/storage/filedb"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 )
 
@@ -31,7 +31,7 @@ func NewIndexerStore() *IndexerStore {
 }
 
 func (is *IndexerStore) Config(params map[string]interface{}) {
-	filedb, err := cachedstorage.NewFileDB(params["storage_index_path"].(string), uint32(params["storage_index_shards"].(float64)), uint8(params["storage_index_depts"].(float64)))
+	filedb, err := filedb.NewFileDB(params["storage_index_path"].(string), uint32(params["storage_index_shards"].(float64)), uint8(params["storage_index_depts"].(float64)))
 	if err != nil {
 		panic("create filedb err!:" + err.Error())
 	}

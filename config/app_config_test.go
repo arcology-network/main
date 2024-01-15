@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/mock/kafka"
-	"github.com/arcology-network/component-lib/mock/rpc"
-	"github.com/arcology-network/component-lib/streamer"
+	"github.com/arcology-network/streamer/actor"
+	brokerpk "github.com/arcology-network/streamer/broker"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/mock/kafka"
+	"github.com/arcology-network/streamer/mock/rpc"
 	"github.com/spf13/viper"
 )
 
@@ -99,7 +99,7 @@ func loadConfig(t *testing.T, globalConfigFile, kafkaConfigFile, appConfigFile s
 
 	globalConfig := LoadGlobalConfig(globalConfigFile)
 	appConfig := LoadAppConfig(appConfigFile)
-	broker := streamer.NewStatefulStreamer()
+	broker := brokerpk.NewStatefulStreamer()
 	workers := appConfig.InitApp(broker, globalConfig)
 	t.Log(workers)
 	PrintWorkers(workers)
@@ -244,7 +244,7 @@ func TestGenerateArch(t *testing.T) {
 func writeArch(app string, file string) map[string]actor.IWorkerEx {
 	globalConfig := LoadGlobalConfig("./global.json")
 	appConfig := LoadAppConfig(app)
-	broker := streamer.NewStatefulStreamer()
+	broker := brokerpk.NewStatefulStreamer()
 	workers := appConfig.InitApp(broker, globalConfig)
 	kafkaConfig := LoadKafkaConfig("./kafka.json")
 	GenerateDot(workers, kafkaConfig, file)

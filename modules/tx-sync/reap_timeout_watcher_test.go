@@ -6,10 +6,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/streamer"
 	"github.com/arcology-network/main/modules/p2p"
+	"github.com/arcology-network/streamer/actor"
+	brokerpk "github.com/arcology-network/streamer/broker"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 type p2pMock struct{}
@@ -25,12 +25,12 @@ func rpcSetup() {
 
 func TestReapTimeoutWatcher(t *testing.T) {
 	rpcSetup()
-	broker := streamer.NewStatefulStreamer()
+	broker := brokerpk.NewStatefulStreamer()
 	rtw := NewReapTimeoutWatcher(1, "tester").(*ReapTimeoutWatcher)
 	rtw.Init("watcher", broker)
 	client := p2p.NewP2pClient(1, "client")
 	client.Init("client", broker)
-	broker.RegisterProducer(streamer.NewDefaultProducer("watcher", []string{actor.MsgP2pSent}, []int{1}))
+	broker.RegisterProducer(brokerpk.NewDefaultProducer("watcher", []string{actor.MsgP2pSent}, []int{1}))
 	broker.Serve()
 	rtw.OnStart()
 

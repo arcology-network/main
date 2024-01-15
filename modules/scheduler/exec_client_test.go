@@ -8,11 +8,11 @@ import (
 	"time"
 
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/log"
-	"github.com/arcology-network/component-lib/streamer"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
+	"github.com/arcology-network/streamer/actor"
+	brokerpk "github.com/arcology-network/streamer/broker"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -134,7 +134,7 @@ func runExecClientTestCase(
 	intf.Router.SetAvailableServices(executors)
 
 	worker := &workerMock{}
-	worker.Init("mock worker", streamer.NewStatefulStreamer())
+	worker.Init("mock worker", brokerpk.NewStatefulStreamer())
 
 	msgs := make([]*types.StandardTransaction, numMsgs)
 	for i := range msgs {

@@ -1,12 +1,14 @@
 package exec
 
 import (
+	eupk "github.com/arcology-network/eu"
+
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
 	ccurl "github.com/arcology-network/concurrenturl"
 	"github.com/arcology-network/concurrenturl/interfaces"
+	eucommon "github.com/arcology-network/eu/common"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
-	adaptor "github.com/arcology-network/vm-adaptor/execution"
+	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -17,7 +19,7 @@ type SnapshotDict interface {
 }
 
 type ExecutionImpl interface {
-	Init(eu *adaptor.EU, url *ccurl.ConcurrentUrl)
+	Init(eu *eupk.EU, url *ccurl.StateCommitter)
 	SetDB(db *interfaces.Datastore)
-	Exec(sequence *cmntyp.ExecutingSequence, config *adaptor.Config, logger *actor.WorkerThreadLogger, gatherExeclog bool) (*exetyp.ExecutionResponse, error)
+	Exec(sequence *cmntyp.ExecutingSequence, config *eucommon.Config, logger *actor.WorkerThreadLogger, gatherExeclog bool) (*exetyp.ExecutionResponse, error)
 }

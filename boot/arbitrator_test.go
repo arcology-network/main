@@ -8,15 +8,15 @@ import (
 	"time"
 
 	cmntypes "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/mock/kafka"
-	"github.com/arcology-network/component-lib/mock/rpc"
 	"github.com/arcology-network/concurrenturl/commutative"
-	"github.com/arcology-network/concurrenturl/interfaces"
 	"github.com/arcology-network/concurrenturl/noncommutative"
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	eushared "github.com/arcology-network/eu/shared"
 	"github.com/arcology-network/main/config"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/mock/kafka"
+	"github.com/arcology-network/streamer/mock/rpc"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -237,17 +237,17 @@ func runTestCase(t *testing.T, txGroups [][]*cmntypes.TxElement, records ...*acc
 		WorkThreadName: "unittester",
 	}
 
-	var txAccessRecords cmntypes.TxAccessRecordSet
+	var txAccessRecords eushared.TxAccessRecordSet
 	for _, record := range records {
-		univalues := []interfaces.Univalue{}
+		univalues := []*univaluepk.Univalue{}
 		for _, a := range record.accesses {
 
 			univalues = append(univalues, univaluepk.NewUnivalue(record.id, a.path, a.reads, a.writes, 0, a.value, nil))
 		}
-		txAccessRecords = append(txAccessRecords, &cmntypes.TxAccessRecords{
+		txAccessRecords = append(txAccessRecords, &eushared.TxAccessRecords{
 			Hash:     string(record.hash.Bytes()),
 			ID:       record.id,
-			Accesses: univaluepk.UnivaluesEncode(univalues),
+			Accesses: univaluepk.Univalues(univalues).Encode(), //univaluepk.UnivaluesEncode(univalues),
 		})
 	}
 

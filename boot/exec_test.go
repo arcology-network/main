@@ -16,7 +16,8 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 
-	adaptor "github.com/arcology-network/vm-adaptor/execution"
+	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	eucommon "github.com/arcology-network/eu/common"
 	"github.com/holiman/uint256"
 )
 
@@ -297,10 +298,10 @@ func formatValue(value interface{}) string {
 	return ""
 }
 
-func formatTransitions(transitions []interfaces.Univalue) string {
+func formatTransitions(transitions []univaluepk.Univalue) string {
 	var str string
 	for _, t := range transitions {
-		str += fmt.Sprintf("[%v:%v,%v,%v]%s%s\n", t.(interfaces.Univalue).GetTx(), t.(interfaces.Univalue).Reads(), t.(interfaces.Univalue).Writes(), t.(interfaces.Univalue).Preexist(), (*t.(interfaces.Univalue).GetPath()), formatValue(t.(interfaces.Univalue).Value()))
+		str += fmt.Sprintf("[%v:%v,%v,%v]%s%s\n", t.GetTx(), t.Reads(), t.Writes(), t.Preexist(), (*t.GetPath()), formatValue(t.Value()))
 	}
 	return str
 }
@@ -317,9 +318,9 @@ func (chain *fakeChain) Engine() consensus.Engine {
 	return nil
 }
 
-func MainConfig() *adaptor.Config {
+func MainConfig() *eucommon.Config {
 	vmConfig := vm.Config{}
-	cfg := &adaptor.Config{
+	cfg := &eucommon.Config{
 		ChainConfig: params.MainnetChainConfig,
 		VMConfig:    &vmConfig,
 		BlockNumber: new(big.Int).SetUint64(10000000),

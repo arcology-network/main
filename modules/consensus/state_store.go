@@ -1,11 +1,11 @@
 package consensus
 
 import (
-	intf "github.com/arcology-network/component-lib/interface"
 	tmstate "github.com/arcology-network/consensus-engine/proto/tendermint/state"
 	tmproto "github.com/arcology-network/consensus-engine/proto/tendermint/types"
 	"github.com/arcology-network/consensus-engine/state"
 	contyp "github.com/arcology-network/consensus-engine/types"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 type SaveABCIResponsesRequest struct {

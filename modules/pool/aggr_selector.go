@@ -9,10 +9,10 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/ethrpc"
-	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/concurrenturl/interfaces"
+	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/streamer/actor"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
@@ -314,7 +314,7 @@ func (a *AggrSelector) Query(ctx context.Context, request *types.QueryRequest, r
 		// transactionIndex := uint64(0)
 		v, s, r := otx.RawSignatureValues()
 		msg := st.NativeMessage
-		transaction := ethrpc.RPCTransaction{
+		transaction := mtypes.RPCTransaction{
 			// BlockHash:        evmCommon.Hash{},
 			// BlockNumber:      big.NewInt(0),
 			// TransactionIndex: &transactionIndex,

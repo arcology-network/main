@@ -6,9 +6,9 @@ import (
 
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/log"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"

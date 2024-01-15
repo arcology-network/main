@@ -4,10 +4,10 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
 	commutative "github.com/arcology-network/concurrenturl/commutative"
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	eushared "github.com/arcology-network/eu/shared"
+	"github.com/arcology-network/streamer/actor"
 )
 
 type kafka struct {
@@ -44,11 +44,12 @@ func (c *kafka) OnMessageArrived(msgs []*actor.Message) error {
 		switch v.Name {
 		case actor.MsgEuResults:
 			if v.Height == c.queryHeight {
-				data := v.Data.(*types.Euresults)
+				data := v.Data.(*eushared.Euresults)
 				if data != nil {
 					for i := range *data {
 						transitions := (*data)[i].Transitions
-						transitionData := univaluepk.UnivaluesDecode(transitions, func() interface{} { return &univaluepk.Univalue{} }, nil)
+
+						transitionData := univaluepk.Univalues{}.Decode(transitions).(univaluepk.Univalues)
 						size := 0
 
 						for j := range transitionData {

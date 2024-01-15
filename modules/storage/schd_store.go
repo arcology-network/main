@@ -9,9 +9,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/arcology-network/common-lib/transactional"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/common-lib/storage/transactional"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 

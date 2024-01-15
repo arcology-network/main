@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/ethrpc"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/log"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	mtypes "github.com/arcology-network/main/types"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/log"
 	evm "github.com/ethereum/go-ethereum"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -338,7 +338,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 	return nil
 }
 
-func (rs *Storage) getTransactionByPosition(blockHash evmCommon.Hash, height uint64, idx uint64, baseFee *big.Int, SignerType uint8) (*ethrpc.RPCTransaction, error) {
+func (rs *Storage) getTransactionByPosition(blockHash evmCommon.Hash, height uint64, idx uint64, baseFee *big.Int, SignerType uint8) (*mtypes.RPCTransaction, error) {
 	position := mstypes.Position{
 		Height:     height,
 		IdxInBlock: int(idx),
@@ -350,7 +350,7 @@ func (rs *Storage) getTransactionByPosition(blockHash evmCommon.Hash, height uin
 	signer := types.MakeSigner(SignerType, rs.chainID)
 	from, _ := evmTypes.Sender(signer, tx)
 	v, r, s := tx.RawSignatureValues()
-	result := &ethrpc.RPCTransaction{
+	result := &mtypes.RPCTransaction{
 		Type:     hexutil.Uint64(tx.Type()),
 		From:     from,
 		Gas:      hexutil.Uint64(tx.Gas()),
@@ -469,7 +469,7 @@ func (rs *Storage) getBlockTxs(height uint64) int {
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 	return len(block.Txs)
 }
-func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*ethrpc.RPCBlock, uint8, error) {
+func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*mtypes.RPCBlock, uint8, error) {
 	var block *types.MonacoBlock
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 
@@ -488,7 +488,7 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*et
 		header = ethheader
 	}
 
-	rpcBlock := ethrpc.RPCBlock{
+	rpcBlock := mtypes.RPCBlock{
 		Header: &header,
 	}
 	if onlyHeader {

@@ -5,15 +5,15 @@ import (
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 )
 
-var UnivaluePool *mempool.Mempool
-var RecordPool *mempool.Mempool
+var UnivaluePool *mempool.Mempool[univaluepk.Univalue]
+var RecordPool *mempool.Mempool[AccessRecord]
 
 func init() {
-	UnivaluePool = mempool.NewMempool("univalue", func() interface{} {
+	UnivaluePool = mempool.NewMempool[univaluepk.Univalue]("univalue", func() *univaluepk.Univalue {
 		return &univaluepk.Univalue{}
 	})
 
-	RecordPool = mempool.NewMempool("processed-result", func() interface{} {
+	RecordPool = mempool.NewMempool("processed-result", func() *AccessRecord {
 		return &AccessRecord{}
 	})
 

@@ -1,6 +1,8 @@
 module github.com/arcology-network/main
 
-go 1.21
+go 1.21.3
+
+toolchain go1.21.4
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.29.0
 
@@ -10,7 +12,7 @@ replace github.com/deliveroo/jsonrpc-go => github.com/cody-yang/jsonrpc-go v1.0.
 
 // replace github.com/deliveroo/jsonrpc-go => ../../cody-yang/jsonrpc-go/
 
-replace github.com/arcology-network/component-lib => ../component-lib/
+replace github.com/arcology-network/streamer => ../streamer/
 
 replace github.com/arcology-network/common-lib => ../common-lib/
 
@@ -22,11 +24,14 @@ replace github.com/arcology-network/consensus-engine => ../consensus-engine/
 
 replace github.com/ethereum/go-ethereum v1.13.1 => ../concurrent-evm/
 
+replace github.com/arcology-network/eu => ../eu
+
 require (
-	github.com/arcology-network/common-lib v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/component-lib v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/concurrenturl v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/consensus-engine v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/common-lib v1.9.0
+	github.com/arcology-network/concurrenturl v1.9.0
+	github.com/arcology-network/consensus-engine v1.9.0
+	github.com/arcology-network/eu v0.0.0-20231224215632-ab78ac9f31af
+	github.com/arcology-network/streamer v0.0.0-00010101000000-000000000000
 	github.com/arcology-network/vm-adaptor v0.0.0-00010101000000-000000000000
 )
 
@@ -42,7 +47,7 @@ require (
 	github.com/spf13/viper v1.14.0
 	github.com/tendermint/tm-db v0.6.4
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.16.0
+	golang.org/x/crypto v0.17.0
 )
 
 require (
@@ -290,7 +295,7 @@ require (
 
 require (
 	github.com/Microsoft/go-winio v0.6.1 // indirect
-	github.com/bits-and-blooms/bitset v1.7.0 // indirect
+	github.com/bits-and-blooms/bitset v1.10.0 // indirect
 	github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 // indirect
 	github.com/consensys/bavard v0.1.13 // indirect
 	github.com/consensys/gnark-crypto v0.12.1 // indirect
@@ -303,6 +308,7 @@ require (
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/graph-gophers/graphql-go v1.3.0 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
+	github.com/hashicorp/go-memdb v1.3.4 // indirect
 	github.com/holiman/billy v0.0.0-20230718173358-1c7e68d277a7 // indirect
 	github.com/influxdata/influxdb-client-go/v2 v2.4.0 // indirect
 	github.com/influxdata/line-protocol v0.0.0-20200327222509-2487e7298839 // indirect

@@ -6,11 +6,11 @@ import (
 	"math/big"
 
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/transactional"
+	"github.com/arcology-network/common-lib/storage/transactional"
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/log"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
@@ -83,12 +83,12 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 			// coinbase = bs.Coinbase
 			height = blockStart.Height
 		case actor.MsgSelectedTx:
-			datas := v.Data.([][]byte)
-			isnil, err := m.IsNil(datas, "txSelected")
+			data := v.Data.([][]byte)
+			isnil, err := m.IsNil(data, "txSelected")
 			if isnil {
 				return err
 			}
-			txSelected = datas // v.Data.([][]byte)
+			txSelected = data // v.Data.([][]byte)
 		case actor.MsgTxHash:
 			hash := v.Data.(*evmCommon.Hash)
 			isnil, err := m.IsNil(hash, "txhash")

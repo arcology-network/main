@@ -7,14 +7,14 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/storage"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
+	"github.com/arcology-network/main/components/storage"
 	strtyp "github.com/arcology-network/main/modules/storage/types"
+	mtypes "github.com/arcology-network/main/types"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 type UrlContainerGetRequest struct {
@@ -52,7 +52,7 @@ func (us *UrlStore) Init(ctx context.Context, db interfaces.Datastore, _ *int) e
 }
 
 func (us *UrlStore) Query(ctx context.Context, pattern *string, response *storage.QueryResponse) error {
-	keys, vals, err := us.db.Query(*pattern, cachedstorage.Under)
+	keys, vals, err := us.db.Query(*pattern, mtypes.Under)
 	if err != nil {
 		return err
 	}
@@ -63,11 +63,11 @@ func (us *UrlStore) Query(ctx context.Context, pattern *string, response *storag
 
 func (us *UrlStore) Get(ctx context.Context, keys *[]string, values *[][]byte) error {
 	objs := us.db.BatchRetrive(*keys, nil)
-	datas := make([][]byte, len(objs))
+	data := make([][]byte, len(objs))
 	for i := range *keys {
-		datas[i] = ccdb.Codec{}.Encode("", objs[i]) //urltyp.ToBytes(objs[i])
+		data[i] = ccdb.Codec{}.Encode("", objs[i]) //urltyp.ToBytes(objs[i])
 	}
-	*values = datas
+	*values = data
 	return nil
 }
 
@@ -143,7 +143,7 @@ func (us *UrlStore) ApplyData(ctx context.Context, request *cmntyp.SyncDataReque
 			func() {
 				values := make([]interface{}, len(urlUpdate.EncodedValues))
 				for i, v := range urlUpdate.EncodedValues {
-					values[i] = ccdb.Codec{}.Decode(v, nil) //urltyp.FromBytes(v)
+					values[i] = ccdb.Codec{}.Decode(v, nil)
 				}
 				us.db.BatchInject(urlUpdate.Keys, values)
 			},

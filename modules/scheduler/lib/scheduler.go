@@ -9,6 +9,7 @@ import (
 	"sync"
 	"unsafe"
 
+	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
@@ -83,7 +84,7 @@ func GetCallees(msgs []*types.StandardTransaction) ([]byte, []uint32) {
 	// for _, callee := range callees {
 	// 	fmt.Printf("calle=%v\n", callee)
 	// }
-	return common.Flatten(callees), txIds
+	return codec.Byteset(callees).Flatten(), txIds
 }
 
 type Item struct {
@@ -230,8 +231,9 @@ func PaddingRight(ones []*evmCommon.Address, twos []*evmCommon.Address) ([]byte,
 		padTwos[i] = append(padTwos[i], addrData...)
 		padTwos[i] = append(padTwos[i], pads...)
 	}
+	codec.Byteset(padOnes).Flatten()
 
-	return common.Flatten(padOnes), common.Flatten(padTwos)
+	return codec.Byteset(padOnes).Flatten(), codec.Byteset(padTwos).Flatten()
 }
 
 func (s *Scheduler) Update(ones []*evmCommon.Address, twos []*evmCommon.Address) string {

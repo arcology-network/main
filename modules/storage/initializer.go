@@ -8,28 +8,28 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/transactional"
+	"github.com/arcology-network/common-lib/storage/transactional"
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/storage"
 	ccurl "github.com/arcology-network/concurrenturl"
-	ccurlcommon "github.com/arcology-network/concurrenturl/common"
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	"github.com/arcology-network/consensus-engine/state"
+	"github.com/arcology-network/main/components/storage"
 	"github.com/arcology-network/main/modules/core"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/arcology-network/common-lib/merkle"
-	indexer "github.com/arcology-network/concurrenturl/indexer"
-	ccapi "github.com/arcology-network/vm-adaptor/api"
 	"github.com/arcology-network/vm-adaptor/eth"
 
+	"github.com/arcology-network/eu/cache"
+	apihandler "github.com/arcology-network/vm-adaptor/apihandler"
 	evmcore "github.com/ethereum/go-ethereum/core"
+
+	"github.com/arcology-network/common-lib/exp/array"
+	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 )
 
 type Initializer struct {
@@ -37,8 +37,6 @@ type Initializer struct {
 
 	genesisFile     string
 	storage_db_path string
-
-	proof *ccdb.MerkleProof
 }
 
 func NewInitializer(concurrency int, groupId string) actor.IWorkerEx {
@@ -132,6 +130,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			for i, v := range updates.EncodedValues {
 				values[i] = ccdb.Codec{}.Decode(v, nil) //urltyp.FromBytes(v)
 			}
+
 			db.BatchInject(updates.Keys, values)
 			fmt.Printf("[storage.Initializer] Recover urlupdate.\n")
 			return nil
@@ -206,44 +205,29 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 }
 
 func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis) (interfaces.Datastore, evmCommon.Hash) {
-	// db := ccdb.NewParallelEthMemDataStore()
 	db := ccdb.NewLevelDBDataStore(i.storage_db_path)
 
 	db.Inject(RootPrefix, commutative.NewPath())
 
 	transitions := i.createTransitions(db, genesis.Alloc) //i.generateTransitions(db, accounts)
-	url := ccurl.NewConcurrentUrl(db)
-	url.Import(common.Clone(transitions))
-	url.Sort()
-	url.Finalize([]uint32{0})
-	keys, values := url.KVs()
 
-	encodedValues := make([][]byte, 0, len(values))
-	for _, v := range values {
-		if v != nil {
-			univalue := v.(interfaces.Univalue)
-			data := ccdb.Codec{}.Encode("", univalue.Value())
-			encodedValues = append(encodedValues, data)
-		} else {
-			encodedValues = append(encodedValues, []byte{})
-		}
-	}
+	stateCommitter := ccurl.NewStorageCommitter(db)
 
-	merkle := indexer.NewAccountMerkle(ccurlcommon.NewPlatform(), indexer.RlpEncoder, merkle.Keccak256{}.Hash)
-	merkle.Import(common.Clone(transitions))
-	rootHash := calcRootHash(merkle, evmCommon.Hash{}, keys, encodedValues)
-	url.WriteToDbBuffer()
-	url.SaveToDB()
+	stateCommitter.Import(array.Clone(transitions))
+	stateCommitter.Sort()
+	stateCommitter.Finalize([]uint32{0})
+	rootHash, _, _ := stateCommitter.CopyToDbBuffer()
+	stateCommitter.Commit()
 	return db, rootHash
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-func (i *Initializer) createTransitions(db interfaces.Datastore, genesisAlloc evmcore.GenesisAlloc) []interfaces.Univalue {
+func (i *Initializer) createTransitions(db interfaces.Datastore, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
 	batch := 10
 	addresses := make([]evmCommon.Address, 0, batch)
 	index := 0
-	transitions := make([]interfaces.Univalue, 0, len(genesisAlloc)*10)
+	transitions := make([]*univaluepk.Univalue, 0, len(genesisAlloc)*10)
 	for addr, _ := range genesisAlloc {
 		if index%batch == 0 && index > 0 {
 			transitions = append(transitions, getTransition(db, addresses, genesisAlloc)...)
@@ -258,9 +242,10 @@ func (i *Initializer) createTransitions(db interfaces.Datastore, genesisAlloc ev
 	return transitions
 }
 
-func getTransition(db interfaces.Datastore, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []interfaces.Univalue {
-	url := ccurl.NewConcurrentUrl(db)
-	api := ccapi.NewAPI(url)
+func getTransition(db interfaces.Datastore, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
+	localCache := cache.NewWriteCache(db)
+	api := apihandler.NewAPIHandler(localCache)
+
 	stateDB := eth.NewImplStateDB(api)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for _, addr := range addresses {
@@ -277,7 +262,7 @@ func getTransition(db interfaces.Datastore, addresses []evmCommon.Address, genes
 		}
 
 	}
-	_, transitions := url.ExportAll()
+	_, transitions := localCache.ExportAll()
 
 	return transitions
 }

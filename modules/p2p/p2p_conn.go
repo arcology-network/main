@@ -6,12 +6,12 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/main/modules/p2p/conn/config"
 	"github.com/arcology-network/main/modules/p2p/conn/peer"
 	"github.com/arcology-network/main/modules/p2p/conn/protocol"
 	"github.com/arcology-network/main/modules/p2p/conn/server"
 	"github.com/arcology-network/main/modules/p2p/conn/status"
+	"github.com/arcology-network/streamer/actor"
 )
 
 type P2pConn struct {

@@ -7,14 +7,15 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/exp/array"
 	ctypes "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	kafkalib "github.com/arcology-network/component-lib/kafka/lib"
-	"github.com/arcology-network/component-lib/log"
 	arbitratorn "github.com/arcology-network/concurrenturl/arbitrator"
-	"github.com/arcology-network/concurrenturl/interfaces"
+	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	eu "github.com/arcology-network/eu"
 	"github.com/arcology-network/main/modules/arbitrator/types"
-	"github.com/arcology-network/vm-adaptor/execution"
+	"github.com/arcology-network/streamer/actor"
+	kafkalib "github.com/arcology-network/streamer/kafka/lib"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 )
@@ -109,7 +110,7 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	if resultSelected != nil && len(*resultSelected) > 0 {
 		rs.CheckPoint("Before detectConflict", zap.Int("tx nums", len(*resultSelected)))
 
-		gen := execution.NewGeneration(0, 0, nil)
+		gen := eu.NewGeneration(0, 0, nil)
 		conflicts := gen.Detect(parseRequests(params.TxsListGroup, resultSelected))
 		// conflicts.Print()
 		response.ConflictedList, response.CPairLeft, response.CPairRight = parseResult(params.TxsListGroup, conflicts)
@@ -120,19 +121,19 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	return nil
 }
 
-func parseRequests(txsListGroup [][]*ctypes.TxElement, results *[]*types.AccessRecord) ([][]uint32, [][]interfaces.Univalue) {
+func parseRequests(txsListGroup [][]*ctypes.TxElement, results *[]*types.AccessRecord) ([][]uint32, [][]*univaluepk.Univalue) {
 	mp := map[[32]byte]*types.AccessRecord{}
 	for _, result := range *results {
 		mp[result.TxHash] = result
 	}
 	groupIDs := make([][]uint32, len(txsListGroup))
-	records := make([][]interfaces.Univalue, len(txsListGroup))
+	records := make([][]*univaluepk.Univalue, len(txsListGroup))
 	for i, row := range txsListGroup {
 		ids := make([]uint32, 0, len(row))
-		transactations := []interfaces.Univalue{}
+		transactations := []*univaluepk.Univalue{}
 		for _, e := range row {
 			result := mp[[32]byte(e.TxHash.Bytes())]
-			ids = append(ids, common.Fill(make([]uint32, len(result.Accesses)), uint32(i))...)
+			ids = append(ids, array.Fill(make([]uint32, len(result.Accesses)), uint32(i))...)
 			transactations = append(transactations, result.Accesses...)
 		}
 		groupIDs[i] = ids

@@ -5,8 +5,8 @@ import (
 	"testing"
 
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/main/modules/storage"
+	"github.com/arcology-network/streamer/actor"
 )
 
 type schdStoreMock struct {

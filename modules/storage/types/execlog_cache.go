@@ -30,17 +30,17 @@ func (ec *ExeclogCaches) Save(height uint64, execlogs []string) {
 		return
 	}
 	keys := make([]string, len(execlogs))
-	datas := make([]interface{}, len(execlogs))
+	data := make([]interface{}, len(execlogs))
 	worker := func(start, end int, idx int, args ...interface{}) {
 		for i := start; i < end; i++ {
 			logs := types.ExecutingLogs{}
 			err := logs.UnMarshal(execlogs[i])
 			if err == nil {
 				keys[i] = string(logs.Txhash.Bytes())
-				datas[i] = &execlogs[i]
+				data[i] = &execlogs[i]
 			}
 		}
 	}
 	common.ParallelWorker(len(execlogs), ec.concurrency, worker)
-	ec.caches.Add(height, keys, datas)
+	ec.caches.Add(height, keys, data)
 }

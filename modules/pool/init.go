@@ -1,10 +1,10 @@
 package pool
 
 import (
-	"github.com/arcology-network/component-lib/actor"
-	aggr "github.com/arcology-network/component-lib/aggregator/v3"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/storage"
+	"github.com/arcology-network/main/components/storage"
+	"github.com/arcology-network/streamer/actor"
+	aggr "github.com/arcology-network/streamer/aggregator/v3"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 func init() {

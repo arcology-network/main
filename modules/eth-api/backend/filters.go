@@ -7,7 +7,7 @@ import (
 
 	ethcmn "github.com/ethereum/go-ethereum/common"
 
-	"github.com/arcology-network/component-lib/ethrpc"
+	mtypes "github.com/arcology-network/main/types"
 	eth "github.com/ethereum/go-ethereum"
 	ethtyp "github.com/ethereum/go-ethereum/core/types"
 )
@@ -64,7 +64,7 @@ func (f *Filter) append(height uint64, logs []*ethtyp.Log, blockhash ethcmn.Hash
 				filteredLogs = logs
 			}
 		}
-		finalLogs := ethrpc.FilteLogs(filteredLogs, f.Crit)
+		finalLogs := mtypes.FilteLogs(filteredLogs, f.Crit)
 		f.Logs = append(f.Logs, finalLogs...)
 	case FilterTypeBlock:
 		f.Hashes = append(f.Hashes, ethcmn.BytesToHash(blockhash[:]))
@@ -98,7 +98,7 @@ func (fs *Filters) SetTimeout(timeout time.Duration) {
 }
 
 func (fs *Filters) OnResultsArrived(height uint64, receipts []*ethtyp.Receipt, blockhash ethcmn.Hash) {
-	logs := ethrpc.ToLogs(receipts)
+	logs := mtypes.ToLogs(receipts)
 	for _, f := range fs.filters {
 		go f.append(height, logs, blockhash)
 	}

@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/ethrpc"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
+	mtypes "github.com/arcology-network/main/types"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -18,10 +18,10 @@ type EthereumAPI interface {
 	BlockNumber() (uint64, error)
 	// If fullTx is true, the actual type of RPCBlock.Transactions is []*RPCTransaction.
 	// If fullTx is false, the actual type of RPCBlock.Transactions is []ethcmn.Hash.
-	GetBlockByNumber(number int64, fullTx bool) (*ethrpc.RPCBlock, error)
-	GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*ethrpc.RPCBlock, error)
-	GetHeaderByNumber(number int64) (*ethrpc.RPCBlock, error)
-	GetHeaderByHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error)
+	GetBlockByNumber(number int64, fullTx bool) (*mtypes.RPCBlock, error)
+	GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*mtypes.RPCBlock, error)
+	GetHeaderByNumber(number int64) (*mtypes.RPCBlock, error)
+	GetHeaderByHash(hash ethcmn.Hash) (*mtypes.RPCBlock, error)
 	GetCode(address ethcmn.Address, number int64) ([]byte, error)
 	GetBalance(address ethcmn.Address, number int64) (*big.Int, error)
 	GetTransactionCount(address ethcmn.Address, number int64) (uint64, error)
@@ -30,7 +30,7 @@ type EthereumAPI interface {
 	EstimateGas(msg eth.CallMsg) (uint64, error)
 	GasPrice() (*big.Int, error)
 
-	GetTransactionByHash(hash ethcmn.Hash) (*ethrpc.RPCTransaction, error)
+	GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPCTransaction, error)
 
 	Call(msg eth.CallMsg) ([]byte, error)
 	SendRawTransaction(rawTx []byte) (ethcmn.Hash, error)
@@ -41,8 +41,8 @@ type EthereumAPI interface {
 	GetBlockTransactionCountByHash(hash ethcmn.Hash) (int, error)
 	GetBlockTransactionCountByNumber(number int64) (int, error)
 
-	GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) (*ethrpc.RPCTransaction, error)
-	GetTransactionByBlockNumberAndIndex(number int64, index int) (*ethrpc.RPCTransaction, error)
+	GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) (*mtypes.RPCTransaction, error)
+	GetTransactionByBlockNumberAndIndex(number int64, index int) (*mtypes.RPCTransaction, error)
 
 	GetUncleCountByBlockHash(hash ethcmn.Hash) (int, error)
 	GetUncleCountByBlockNumber(number int64) (int, error)

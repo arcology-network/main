@@ -2,8 +2,8 @@ package core
 
 import (
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 type Initializer struct {

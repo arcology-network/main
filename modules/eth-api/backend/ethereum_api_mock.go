@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/ethrpc"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
+	mtypes "github.com/arcology-network/main/types"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -66,12 +66,12 @@ func (mock *EthereumAPIMock) BlockNumber() (uint64, error) {
 	return mock.blockHeader.Number.Uint64(), nil
 }
 
-func (mock *EthereumAPIMock) GetBlockByNumber(number int64, fullTx bool) (*ethrpc.RPCBlock, error) {
+func (mock *EthereumAPIMock) GetBlockByNumber(number int64, fullTx bool) (*mtypes.RPCBlock, error) {
 	mock.blockGuard.Lock()
 	defer mock.blockGuard.Unlock()
 
 	var header *ethtyp.Header
-	if number == ethrpc.BlockNumberLatest {
+	if number == mtypes.BlockNumberLatest {
 		mock.blockHeader.Number.Add(mock.blockHeader.Number, new(big.Int).SetUint64(1))
 		header = mock.blockHeader
 	} else {
@@ -79,21 +79,21 @@ func (mock *EthereumAPIMock) GetBlockByNumber(number int64, fullTx bool) (*ethrp
 		header.Number.SetInt64(number)
 	}
 
-	return &ethrpc.RPCBlock{
+	return &mtypes.RPCBlock{
 		Header: ethtyp.CopyHeader(header),
 	}, nil
 }
 
-func (mock *EthereumAPIMock) GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*ethrpc.RPCBlock, error) {
+func (mock *EthereumAPIMock) GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*mtypes.RPCBlock, error) {
 	// TODO
 	return nil, nil
 }
 
-func (mock *EthereumAPIMock) GetHeaderByHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
+func (mock *EthereumAPIMock) GetHeaderByHash(hash ethcmn.Hash) (*mtypes.RPCBlock, error) {
 	// TODO
 	return nil, nil
 }
-func (mock *EthereumAPIMock) GetHeaderByNumber(number int64) (*ethrpc.RPCBlock, error) {
+func (mock *EthereumAPIMock) GetHeaderByNumber(number int64) (*mtypes.RPCBlock, error) {
 	// TODO
 	return nil, nil
 }
@@ -130,12 +130,12 @@ func (mock *EthereumAPIMock) GasPrice() (*big.Int, error) {
 	return new(big.Int).SetUint64(0xff), nil
 }
 
-func (mock *EthereumAPIMock) GetTransactionByHash(hash ethcmn.Hash) (*ethrpc.RPCTransaction, error) {
+func (mock *EthereumAPIMock) GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPCTransaction, error) {
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
 
 	ti := hexutil.Uint64(uint64(0))
-	return &ethrpc.RPCTransaction{
+	return &mtypes.RPCTransaction{
 		From:             ethcmn.HexToAddress("0x57de3b28c55095e5ca67a8e20fa9d7d5d9aef891"),
 		Gas:              0x1400,
 		GasPrice:         (*hexutil.Big)(big.NewInt(256)),
@@ -187,12 +187,12 @@ func (mock *EthereumAPIMock) GetLogs(filter eth.FilterQuery) ([]*ethtyp.Log, err
 	return []*ethtyp.Log{}, nil
 }
 
-func (mock *EthereumAPIMock) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) (*ethrpc.RPCTransaction, error) {
+func (mock *EthereumAPIMock) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) (*mtypes.RPCTransaction, error) {
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
 
 	ti := hexutil.Uint64(uint64(0))
-	return &ethrpc.RPCTransaction{
+	return &mtypes.RPCTransaction{
 		From:             ethcmn.HexToAddress("0x57de3b28c55095e5ca67a8e20fa9d7d5d9aef891"),
 		Gas:              0x1400,
 		GasPrice:         (*hexutil.Big)(big.NewInt(256)),
@@ -201,12 +201,12 @@ func (mock *EthereumAPIMock) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash,
 		Value:            (*hexutil.Big)(big.NewInt(0)),
 	}, nil
 }
-func (mock *EthereumAPIMock) GetTransactionByBlockNumberAndIndex(number int64, index int) (*ethrpc.RPCTransaction, error) {
+func (mock *EthereumAPIMock) GetTransactionByBlockNumberAndIndex(number int64, index int) (*mtypes.RPCTransaction, error) {
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
 
 	ti := hexutil.Uint64(uint64(0))
-	return &ethrpc.RPCTransaction{
+	return &mtypes.RPCTransaction{
 		From:             ethcmn.HexToAddress("0x57de3b28c55095e5ca67a8e20fa9d7d5d9aef891"),
 		Gas:              0x1400,
 		GasPrice:         (*hexutil.Big)(big.NewInt(256)),

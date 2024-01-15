@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	cmncmn "github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	// schdv1 "github.com/arcology-network/main/modules/scheduler"
 )

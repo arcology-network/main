@@ -8,12 +8,12 @@ import (
 
 	"github.com/arcology-network/common-lib/common"
 	types "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/log"
 	engine "github.com/arcology-network/main/modules/scheduler/lib"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	"github.com/arcology-network/main/modules/storage"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 )

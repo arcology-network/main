@@ -6,14 +6,15 @@ import (
 	"math/big"
 	"testing"
 
-	cstore "github.com/arcology-network/common-lib/cachedstorage"
+	badgerpk "github.com/arcology-network/common-lib/storage/badger"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	ccurl "github.com/arcology-network/concurrenturl"
 	ccurlcommon "github.com/arcology-network/concurrenturl/common"
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
-	ccapi "github.com/arcology-network/vm-adaptor/api"
+	"github.com/arcology-network/eu/cache"
+	apihandler "github.com/arcology-network/vm-adaptor/apihandler"
 	"github.com/arcology-network/vm-adaptor/eth"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -236,23 +237,9 @@ func TestPoolCleanObsolete(t *testing.T) {
 	}
 }
 
-func initdb(path string) (interfaces.Datastore, *cstore.ParaBadgerDB) {
-	badger := cstore.NewParaBadgerDB(path, ccurlcommon.Eth10AccountShard)
-	// db := cstore.NewDataStore(
-	// 	nil,
-	// 	cstore.NewCachePolicy(math.MaxUint64, 1),
-	// 	badger,
-	// 	// func(v interface{}) []byte { return urltyp.ToBytes(v) },
-	// 	// func(bytes []byte) interface{} { return urltyp.FromBytes(bytes) },
-	// 	// func(v interface{}) []byte {
-	// 	// 	return ccdb.Codec{}.Encode(v)
-	// 	// },
-	// 	// func(bytes []byte) interface{} {
-	// 	// 	return ccdb.Codec{}.Decode(bytes)
-	// 	// },
-	// 	ccdb.Rlp{}.Encode,
-	// 	ccdb.Rlp{}.Decode,
-	// )
+func initdb(path string) (interfaces.Datastore, *badgerpk.ParaBadgerDB) {
+	badger := badgerpk.NewParaBadgerDB(path, ccurlcommon.Eth10AccountShard)
+
 	db := ccdb.NewParallelEthMemDataStore()
 
 	db.Inject(ccurlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
@@ -260,11 +247,10 @@ func initdb(path string) (interfaces.Datastore, *cstore.ParaBadgerDB) {
 }
 
 func initAccounts(db interfaces.Datastore, from, to int) {
-	url := ccurl.NewConcurrentUrl(db)
-
-	api := ccapi.NewAPI(url)
+	localCache := cache.NewWriteCache(db)
+	api := apihandler.NewAPIHandler(localCache)
 	stateDB := eth.NewImplStateDB(api)
-
+	stateCommitter := ccurl.NewStorageCommitter(db)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := from; i < to; i++ {
 		address := evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)})
@@ -272,30 +258,30 @@ func initAccounts(db interfaces.Datastore, from, to int) {
 		stateDB.SetBalance(address, new(big.Int).SetUint64(100))
 		stateDB.SetNonce(address, 0)
 	}
-	_, transitions := url.ExportAll()
-	url.Import(transitions)
-	url.Sort()
-	url.Finalize([]uint32{0})
-	url.WriteToDbBuffer()
-	url.SaveToDB()
+	_, transitions := localCache.ExportAll()
+	stateCommitter.Import(transitions)
+	stateCommitter.Sort()
+	stateCommitter.Finalize([]uint32{0})
+	stateCommitter.CopyToDbBuffer()
+	stateCommitter.Commit()
 }
 
 func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardTransaction) {
-	url := ccurl.NewConcurrentUrl(db)
-	// stateDB := adaptor.NewStateDBV2(nil, db, url)
-	api := ccapi.NewAPI(url)
+	localCache := cache.NewWriteCache(db)
+	api := apihandler.NewAPIHandler(localCache)
 	stateDB := eth.NewImplStateDB(api)
+	stateCommitter := ccurl.NewStorageCommitter(db)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := range txs {
 		address := evmCommon.BytesToAddress(txs[i].NativeMessage.From.Bytes())
 		stateDB.SetNonce(address, 0)
 	}
-	_, transitions := url.ExportAll()
-	url.Import(transitions)
-	url.Sort()
-	url.Finalize([]uint32{0})
-	url.WriteToDbBuffer()
-	url.SaveToDB()
+	_, transitions := localCache.ExportAll()
+	stateCommitter.Import(transitions)
+	stateCommitter.Sort()
+	stateCommitter.Finalize([]uint32{0})
+	stateCommitter.CopyToDbBuffer()
+	stateCommitter.Commit()
 }
 
 func genUncheckedTxs(from, to int) []*cmntyp.StandardTransaction {

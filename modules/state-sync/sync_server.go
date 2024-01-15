@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/main/modules/p2p"
+	"github.com/arcology-network/streamer/actor"
 )
 
 type SyncServer struct {

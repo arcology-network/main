@@ -2,7 +2,7 @@ package statesync
 
 import (
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/streamer/actor"
 )
 
 type P2pClient interface {

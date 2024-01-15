@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/main/modules/p2p/conn/status"
 	"github.com/arcology-network/main/modules/p2p/gateway/config"
 	"github.com/arcology-network/main/modules/p2p/gateway/server"
 	"github.com/arcology-network/main/modules/p2p/gateway/slave"
+	"github.com/arcology-network/streamer/actor"
 )
 
 type P2pGateway struct {

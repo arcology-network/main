@@ -6,11 +6,12 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/concurrenturl/interfaces"
+	opadapter "github.com/arcology-network/concurrenturl/op"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	apifunc "github.com/arcology-network/main/modules/eth-api/backend"
+	"github.com/arcology-network/streamer/actor"
+	"github.com/arcology-network/streamer/log"
 	"go.uber.org/zap"
 )
 
@@ -21,8 +22,8 @@ var (
 
 type StateQuery struct {
 	actor.WorkerThread
-	store  *ccdb.EthDataStore
-	manage *ccdb.MerkleProofManager
+	// store  *ccdb.EthDataStore
+	provider *ccdb.ProofProvider
 }
 
 // return a Subscriber struct
@@ -60,14 +61,21 @@ func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
 		switch v.Name {
 		case actor.MsgApcHandle: //actor.MsgInitDB: //
 			ddb := (*v.Data.(*interfaces.Datastore)).(*ccdb.EthDataStore)
-			// ddb := *v.Data.(*ccdb.EthDataStore)
-			// proof, err := ccdb.NewMerkleProof(ddb.EthDB(), ddb.Root())
-			// if err != nil {
-			// 	panic("MerkleProof create failed")
-			// }
 
-			sq.store = ddb
-			sq.manage = ccdb.NewMerkleProofManager(10, ddb.EthDB())
+			// sq.store = ddb
+
+			roothash := ddb.Root()
+
+			// Initiate the proof cache, max size = 16
+			cache := ccdb.NewMerkleProofCache(16, ddb.EthDB())
+
+			var err error
+			// Get the proof provider by a root hash.
+			provider, err := cache.GetProofProvider(roothash)
+			if err != nil {
+				panic(err)
+			}
+			sq.provider = provider
 		}
 	}
 	return nil
@@ -89,20 +97,26 @@ func (sq *StateQuery) QueryState(ctx context.Context, request *types.QueryReques
 				return err
 			}
 		}
-		roothash := rpcblock.Header.Root.Bytes()
+		roothash := rpcblock.Header.Root
 		// roothash := sq.store.Root()
 		// proof, err := ccdb.NewMerkleProof(sq.store.EthDB(), [32]byte(roothash))
 		// if err != nil {
 		// 	return err
 		// }
 		// result, err := proof.GetProof(fmt.Sprintf("%x", rq.Address.Bytes()), keys)
-
-		result, err := sq.manage.GetProof([32]byte(roothash), fmt.Sprintf("%x", rq.Address.Bytes()), keys)
-
-		if err != nil {
+		accountResult, err := sq.provider.GetProof(rq.Address, keys)
+		if err := accountResult.Validate(roothash); err != nil {
+			sq.AddLog(log.LogLevel_Error, "accountResult Validate Failed", zap.Error(err))
 			return err
 		}
-		response.Data = result
+
+		// Convert to OP format and verify.
+		opProof := opadapter.Convertible(*accountResult).New() // To OP format
+		if err := opProof.Verify(roothash); err != nil {
+			sq.AddLog(log.LogLevel_Error, "accountResult Convert Failed", zap.Error(err))
+		}
+
+		response.Data = opProof
 	}
 	return nil
 }

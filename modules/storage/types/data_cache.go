@@ -9,7 +9,7 @@ const (
 )
 
 type DataCache struct {
-	Datas map[string]interface{}
+	Data map[string]interface{}
 
 	DataHeights []uint64
 	Indexer     map[uint64][]string
@@ -21,7 +21,7 @@ type DataCache struct {
 func NewDataCache(size int) *DataCache {
 	return &DataCache{
 		CacheSize:   size,
-		Datas:       map[string]interface{}{},
+		Data:        map[string]interface{}{},
 		DataHeights: []uint64{},
 		Indexer:     map[uint64][]string{},
 	}
@@ -30,7 +30,7 @@ func (caches *DataCache) Query(hash string) interface{} {
 	caches.lock.Lock()
 	defer caches.lock.Unlock()
 
-	if data, ok := caches.Datas[hash]; ok {
+	if data, ok := caches.Data[hash]; ok {
 		return data
 	}
 
@@ -41,15 +41,15 @@ func (caches *DataCache) QueryBlock(height uint64) []interface{} {
 	caches.lock.Lock()
 	defer caches.lock.Unlock()
 
-	datas := []interface{}{}
+	data := []interface{}{}
 	if hashes, ok := caches.Indexer[height]; ok {
 		for i := range hashes {
-			if data, ok := caches.Datas[hashes[i]]; ok {
-				datas = append(datas, data)
+			if v, ok := caches.Data[hashes[i]]; ok {
+				data = append(data, v)
 			}
 		}
-		if len(hashes) == len(datas) {
-			return datas
+		if len(hashes) == len(data) {
+			return data
 		}
 	}
 
@@ -67,7 +67,7 @@ func (caches *DataCache) GetHashes(height uint64) []string {
 	return []string{}
 }
 
-func (caches *DataCache) Add(height uint64, keys []string, datas []interface{}) {
+func (caches *DataCache) Add(height uint64, keys []string, data []interface{}) {
 	caches.lock.Lock()
 	defer caches.lock.Unlock()
 
@@ -83,7 +83,7 @@ func (caches *DataCache) Add(height uint64, keys []string, datas []interface{}) 
 		caches.DataHeights = append(caches.DataHeights, height)
 	}
 	for i, key := range keys {
-		caches.Datas[key] = datas[i]
+		caches.Data[key] = data[i]
 	}
 	caches.Indexer[height] = hashes
 
@@ -92,7 +92,7 @@ func (caches *DataCache) Add(height uint64, keys []string, datas []interface{}) 
 		delete(caches.Indexer, caches.DataHeights[0])
 		caches.DataHeights = caches.DataHeights[1:]
 		for _, key := range removeKeys {
-			delete(caches.Datas, key)
+			delete(caches.Data, key)
 		}
 	}
 }

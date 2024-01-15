@@ -8,13 +8,13 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/arcology-network/common-lib/cachedstorage"
-	"github.com/arcology-network/common-lib/transactional"
+	badgerpk "github.com/arcology-network/common-lib/storage/badger"
+	"github.com/arcology-network/common-lib/storage/transactional"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/storage"
 	ccurlcommon "github.com/arcology-network/concurrenturl/common"
+	"github.com/arcology-network/main/components/storage"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -42,7 +42,7 @@ type StateSyncStore struct {
 
 	state      int
 	sliceDB    KvDB
-	spDB       *cachedstorage.ParaBadgerDB
+	spDB       *badgerpk.ParaBadgerDB
 	spInterval uint64
 	status     *cmntyp.SyncStatus
 	sp         *cmntyp.SyncPoint
@@ -69,7 +69,7 @@ func TestOnlyNewStateSyncStore(concurrency int, groupId string) actor.IWorkerEx 
 	return store
 }
 
-func (store *StateSyncStore) TestOnlyGetSyncPointDB() *cachedstorage.ParaBadgerDB {
+func (store *StateSyncStore) TestOnlyGetSyncPointDB() *badgerpk.ParaBadgerDB {
 	return store.spDB
 }
 
@@ -88,7 +88,7 @@ func (store *StateSyncStore) Outputs() map[string]int {
 
 func (store *StateSyncStore) Config(params map[string]interface{}) {
 	store.sliceDB = transactional.NewSimpleFileDB(params["slice_db_root"].(string))
-	store.spDB = cachedstorage.NewParaBadgerDB(params["sync_point_root"].(string), ccurlcommon.Eth10AccountShard)
+	store.spDB = badgerpk.NewParaBadgerDB(params["sync_point_root"].(string), ccurlcommon.Eth10AccountShard)
 	store.spInterval = uint64(params["sync_point_interval"].(float64))
 }
 

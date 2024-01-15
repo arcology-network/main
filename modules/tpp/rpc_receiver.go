@@ -5,9 +5,9 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/log"
 	tppTypes "github.com/arcology-network/main/modules/tpp/types"
+	"github.com/arcology-network/streamer/actor"
+	"github.com/arcology-network/streamer/log"
 )
 
 var (

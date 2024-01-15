@@ -7,7 +7,7 @@ import (
 	"reflect"
 	"testing"
 
-	cachedstorage "github.com/arcology-network/common-lib/cachedstorage"
+	"github.com/arcology-network/common-lib/storage/filedb"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -29,7 +29,7 @@ func newReceipt(height uint64, idx, idxInBlock int) *evmTypes.Receipt {
 }
 
 func TestReceiptCache(t *testing.T) {
-	filedb, err := cachedstorage.NewFileDB("index", 16, 2)
+	filedb, err := filedb.NewFileDB("index", 16, 2)
 	if err != nil {
 		panic("create filedb err!:" + err.Error())
 	}

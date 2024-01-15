@@ -66,12 +66,12 @@ func (this *MemoryDB) BatchGet(keys []string) ([][]byte, error) {
 	return results, nil
 }
 
-func (this *MemoryDB) BatchSet(keys []string, datas [][]byte) error {
+func (this *MemoryDB) BatchSet(keys []string, data [][]byte) error {
 	this.mutex.Lock()
 	defer this.mutex.Unlock()
 
-	objs := make([]interface{}, len(datas))
-	for i, data := range datas {
+	objs := make([]interface{}, len(data))
+	for i, data := range data {
 		objs[i] = data
 	}
 	this.db.BatchSet(keys, objs)

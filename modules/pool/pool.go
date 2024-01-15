@@ -6,12 +6,13 @@ import (
 	cmncmn "github.com/arcology-network/common-lib/common"
 	ccmap "github.com/arcology-network/common-lib/container/map"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	url "github.com/arcology-network/concurrenturl"
 	"github.com/arcology-network/concurrenturl/interfaces"
-	ccapi "github.com/arcology-network/vm-adaptor/api"
 	"github.com/arcology-network/vm-adaptor/eth"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
+
+	"github.com/arcology-network/eu/cache"
+	apihandler "github.com/arcology-network/vm-adaptor/apihandler"
 )
 
 type Pool struct {
@@ -29,9 +30,8 @@ type Pool struct {
 }
 
 func NewPool(db interfaces.Datastore, obsoleteTime uint64, closeCheck bool) *Pool {
-
-	url := url.NewConcurrentUrl(db)
-	api := ccapi.NewAPI(url)
+	localCache := cache.NewWriteCache(db)
+	api := apihandler.NewAPIHandler(localCache)
 
 	return &Pool{
 		ObsoleteTime: obsoleteTime,

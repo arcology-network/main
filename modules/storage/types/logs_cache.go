@@ -3,14 +3,14 @@ package types
 import (
 	"sync"
 
-	"github.com/arcology-network/component-lib/ethrpc"
+	mtypes "github.com/arcology-network/main/types"
 	evm "github.com/ethereum/go-ethereum"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type LogCaches struct {
-	Caches       []*ethrpc.LogCache
+	Caches       []*mtypes.LogCache
 	CacheSize    int
 	LatestHeight uint64
 	lock         sync.RWMutex
@@ -20,7 +20,7 @@ func NewLogCaches(size int) *LogCaches {
 	return &LogCaches{
 		CacheSize:    size,
 		LatestHeight: 0,
-		Caches:       make([]*ethrpc.LogCache, 0, size),
+		Caches:       make([]*mtypes.LogCache, 0, size),
 	}
 }
 
@@ -59,17 +59,17 @@ func (lc *LogCaches) Query(filter evm.FilterQuery) []*evmTypes.Log {
 			}
 		}
 	}
-	return ethrpc.FilteLogs(logs, filter)
+	return mtypes.FilteLogs(logs, filter)
 }
 
 func (lc *LogCaches) Add(height uint64, receipts []*evmTypes.Receipt) {
 	lc.lock.Lock()
 	defer lc.lock.Unlock()
-	logs := ethrpc.ToLogs(receipts)
+	logs := mtypes.ToLogs(receipts)
 	if len(logs) == 0 {
 		return
 	}
-	cache := ethrpc.LogCache{
+	cache := mtypes.LogCache{
 		Logs:      logs,
 		Height:    height,
 		BlockHash: evmCommon.Hash(receipts[0].BlockHash),

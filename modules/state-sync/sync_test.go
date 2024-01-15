@@ -8,8 +8,8 @@ import (
 	"time"
 
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/streamer"
+	"github.com/arcology-network/streamer/actor"
+	brokerpk "github.com/arcology-network/streamer/broker"
 )
 
 type syncer struct{}
@@ -20,16 +20,16 @@ func (s *syncer) Consume(data interface{}) {
 
 func TestBasic(t *testing.T) {
 	// 1 to 3 sync.
-	broker := streamer.NewStatefulStreamer()
-	broker.RegisterProducer(streamer.NewDefaultProducer(
+	broker := brokerpk.NewStatefulStreamer()
+	broker.RegisterProducer(brokerpk.NewDefaultProducer(
 		"syncClient",
 		[]string{actor.MsgStateSyncDone},
 		[]int{1},
 	))
-	broker.RegisterConsumer(streamer.NewDefaultConsumer(
+	broker.RegisterConsumer(brokerpk.NewDefaultConsumer(
 		"syncer",
 		[]string{actor.MsgStateSyncDone},
-		streamer.NewDisjunctions(&syncer{}, 1),
+		brokerpk.NewDisjunctions(&syncer{}, 1),
 	))
 	broker.Serve()
 

@@ -1,7 +1,7 @@
 package toolkit
 
 import (
-	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/streamer/actor"
 )
 
 func init() {

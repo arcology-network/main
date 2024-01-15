@@ -7,11 +7,11 @@ import (
 
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/log"
-	"github.com/arcology-network/component-lib/streamer"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
+	"github.com/arcology-network/streamer/actor"
+	brokerpk "github.com/arcology-network/streamer/broker"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -97,17 +97,17 @@ func TestExecSvcMakeSnapshot(t *testing.T) {
 	time.Sleep(time.Second)
 }
 
-func setup(tb testing.TB) (*streamer.StatefulStreamer, *mockWorker) {
+func setup(tb testing.TB) (*brokerpk.StatefulStreamer, *mockWorker) {
 	log.InitLog("exec-svc.log", "./log.toml", "tester", "tester", 0)
 	// config.MainConfig = &config.Monaco{
 	// 	ChainId: new(big.Int),
 	// }
-	broker := streamer.NewStatefulStreamer()
+	broker := brokerpk.NewStatefulStreamer()
 
 	intf.RPCCreator = func(serviceAddr, basepath string, zkAddrs []string, rcvrs, fns []interface{}) {}
 	rpc := NewRpcService(4, "rpc").(*RpcService)
 	rpcActor := actor.NewActorEx("rpc", broker, rpc)
-	rpcActor.Connect(streamer.NewDisjunctions(rpcActor, 1))
+	rpcActor.Connect(brokerpk.NewDisjunctions(rpcActor, 1))
 	intf.Router.Register("executor-1", rpc, "rpc-server-addr", "zk-server-addr")
 
 	execImpl := NewExecutor(1, "exec-impl").(*Executor)
@@ -117,11 +117,11 @@ func setup(tb testing.TB) (*streamer.StatefulStreamer, *mockWorker) {
 	baseWorker.OnStart()
 	// execImpl.eus[0] = &mockExecutionImpl{}
 	execImplActor := actor.NewActorEx("exec-impl", broker, baseWorker)
-	execImplActor.Connect(streamer.NewDisjunctions(execImplActor, 1))
+	execImplActor.Connect(brokerpk.NewDisjunctions(execImplActor, 1))
 
 	mock := newMockWorker(4, "mock").(*mockWorker)
 	mockActor := actor.NewActorEx("mock", broker, mock)
-	mockActor.Connect(streamer.NewDisjunctions(mockActor, 1))
+	mockActor.Connect(brokerpk.NewDisjunctions(mockActor, 1))
 	broker.Serve()
 
 	// var db interfaces.Datastore = cachedstorage.NewDataStore(

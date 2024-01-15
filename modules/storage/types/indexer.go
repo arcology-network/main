@@ -3,8 +3,8 @@ package types
 import (
 	"fmt"
 
-	"github.com/arcology-network/common-lib/cachedstorage"
 	"github.com/arcology-network/common-lib/codec"
+	"github.com/arcology-network/common-lib/storage/filedb"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -14,8 +14,8 @@ type Position struct {
 }
 
 type SaveObject struct {
-	keys  []string
-	datas [][]byte
+	keys []string
+	data [][]byte
 }
 
 func (p *Position) Encode() []byte {
@@ -36,13 +36,13 @@ func (p *Position) Decode(data []byte) *Position {
 type Indexer struct {
 	Caches       *DataCache
 	CachesHeight *DataCache
-	Db           *cachedstorage.FileDB
+	Db           *filedb.FileDB
 
 	objChan  chan *SaveObject
 	exitChan chan bool
 }
 
-func NewIndexer(filedb *cachedstorage.FileDB, cacheSize int) *Indexer {
+func NewIndexer(filedb *filedb.FileDB, cacheSize int) *Indexer {
 	indexer := Indexer{
 		Caches:       NewDataCache(cacheSize),
 		CachesHeight: NewDataCache(cacheSize),
@@ -99,7 +99,7 @@ func (indexer *Indexer) QueryPosition(hash string) *Position {
 func (indexer *Indexer) Add(height uint64, keys []string, isSave bool) {
 	hashs := make([]byte, len(keys)*evmCommon.HashLength)
 	positions := make([]interface{}, len(keys))
-	datas := make([][]byte, len(keys))
+	data := make([][]byte, len(keys))
 	for i, _ := range keys {
 		p := Position{
 			Height:     height,
@@ -107,7 +107,7 @@ func (indexer *Indexer) Add(height uint64, keys []string, isSave bool) {
 		}
 		positions[i] = &p
 		if isSave {
-			datas[i] = p.Encode()
+			data[i] = p.Encode()
 		}
 
 		copy(hashs[i*evmCommon.HashLength:], []byte(keys[i]))
@@ -115,7 +115,7 @@ func (indexer *Indexer) Add(height uint64, keys []string, isSave bool) {
 	indexer.Caches.Add(height, keys, positions)
 
 	if isSave {
-		indexer.Db.BatchSet(keys, datas)
+		indexer.Db.BatchSet(keys, data)
 		indexer.Db.Set(indexer.GetHashesInBlockKey(height), hashs)
 	}
 }
@@ -128,33 +128,33 @@ func (indexer *Indexer) GetHashHeightKey(hash string) string {
 }
 
 func (indexer *Indexer) GetBlockHashesByHeightFromDb(height uint64) []string {
-	datas, err := indexer.Db.Get(indexer.GetHashesInBlockKey(height))
+	data, err := indexer.Db.Get(indexer.GetHashesInBlockKey(height))
 	if err != nil {
 		return []string{}
 	}
 
-	counter := len(datas) / evmCommon.HashLength
+	counter := len(data) / evmCommon.HashLength
 	hashes := make([]string, counter)
 	for i := range hashes {
-		data := datas[i*evmCommon.HashLength : (i+1)*evmCommon.HashLength]
+		data := data[i*evmCommon.HashLength : (i+1)*evmCommon.HashLength]
 		hashes[i] = string(data)
 	}
 	return hashes
 }
 
 func (indexer *Indexer) GetBlockHashesByHeightFromCache(height uint64) []string {
-	datas := indexer.Caches.GetHashes(height)
-	if len(datas) == 0 {
-		datas = indexer.GetBlockHashesByHeightFromDb(height)
-		indexer.Add(height, datas, false)
+	data := indexer.Caches.GetHashes(height)
+	if len(data) == 0 {
+		data = indexer.GetBlockHashesByHeightFromDb(height)
+		indexer.Add(height, data, false)
 	}
-	if len(datas) == 0 {
+	if len(data) == 0 {
 		return []string{}
 	}
 
-	hashes := make([]string, len(datas))
+	hashes := make([]string, len(data))
 	for i := range hashes {
-		hashes[i] = fmt.Sprintf("%x", []byte(datas[i]))
+		hashes[i] = fmt.Sprintf("%x", []byte(data[i]))
 	}
 	return hashes
 }

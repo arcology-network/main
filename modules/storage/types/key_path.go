@@ -11,10 +11,10 @@ const (
 	nthread = 4
 )
 
-var connector *eth.EthCCurlConnector
+var connector *eth.EthPathBuilder //eth.EthCCurlConnector
 
 func init() {
-	connector = &eth.EthCCurlConnector{}
+	connector = &eth.EthPathBuilder{}
 }
 
 func getBalancePath(addr string) string {

@@ -14,9 +14,9 @@ import (
 
 	"github.com/BurntSushi/toml"
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/ethrpc"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 	wal "github.com/arcology-network/main/modules/eth-api/wallet"
+	mtypes "github.com/arcology-network/main/types"
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
 	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
@@ -170,7 +170,7 @@ func RPCMarshalHeader(head *ethtyp.Header) map[string]interface{} {
 	}
 	return result
 }
-func parseBlock(block *ethrpc.RPCBlock, isTransaction bool) interface{} {
+func parseBlock(block *mtypes.RPCBlock, isTransaction bool) interface{} {
 
 	uncles := make([]string, 0)
 	header := block.Header
@@ -203,9 +203,9 @@ func parseBlock(block *ethrpc.RPCBlock, isTransaction bool) interface{} {
 	// }
 
 	if isTransaction {
-		transactions := make([]*ethrpc.RPCTransaction, len(block.Transactions))
+		transactions := make([]*mtypes.RPCTransaction, len(block.Transactions))
 		for i := range block.Transactions {
-			transactions[i] = AttachChainId(block.Transactions[i].(*ethrpc.RPCTransaction), options.ChainID)
+			transactions[i] = AttachChainId(block.Transactions[i].(*mtypes.RPCTransaction), options.ChainID)
 		}
 		blockResult["transactions"] = transactions
 	} else {
@@ -393,7 +393,7 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 
 	return marshalReceipt(receipt, tx), nil
 }
-func marshalReceipt(receipt *ethtyp.Receipt, tx *ethrpc.RPCTransaction) map[string]interface{} {
+func marshalReceipt(receipt *ethtyp.Receipt, tx *mtypes.RPCTransaction) map[string]interface{} {
 	fields := map[string]interface{}{
 		"blockHash":         receipt.BlockHash,
 		"blockNumber":       hexutil.Uint64(receipt.BlockNumber.Uint64()),
@@ -644,7 +644,7 @@ func signTransaction(ctx context.Context, params []interface{}) (interface{}, er
 	return fmt.Sprintf("%x", rawTx), nil
 }
 func feeHistory(ctx context.Context) (interface{}, error) {
-	return ethrpc.FeeHistoryResult{}, nil
+	return mtypes.FeeHistoryResult{}, nil
 }
 func syncing(ctx context.Context) (interface{}, error) {
 	ok, err := backend.Syncing()

@@ -8,10 +8,10 @@ import (
 
 	cmncmn "github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/ethrpc"
-	intf "github.com/arcology-network/component-lib/interface"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
+	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
@@ -165,7 +165,7 @@ func (m *Monaco) BlockNumber() (uint64, error) {
 	return response.Data.(uint64), nil
 }
 
-func (m *Monaco) GetBlockByNumber(number int64, fullTx bool) (*ethrpc.RPCBlock, error) {
+func (m *Monaco) GetBlockByNumber(number int64, fullTx bool) (*mtypes.RPCBlock, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_Block_Eth,
@@ -177,10 +177,10 @@ func (m *Monaco) GetBlockByNumber(number int64, fullTx bool) (*ethrpc.RPCBlock, 
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*ethrpc.RPCBlock), nil
+	return response.Data.(*mtypes.RPCBlock), nil
 }
 
-func (m *Monaco) GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*ethrpc.RPCBlock, error) {
+func (m *Monaco) GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*mtypes.RPCBlock, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_BlocByHash,
@@ -192,10 +192,10 @@ func (m *Monaco) GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*ethrpc.RPCBlock
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*ethrpc.RPCBlock), nil
+	return response.Data.(*mtypes.RPCBlock), nil
 }
 
-func (m *Monaco) GetHeaderByNumber(number int64) (*ethrpc.RPCBlock, error) {
+func (m *Monaco) GetHeaderByNumber(number int64) (*mtypes.RPCBlock, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_HeaderByNumber,
@@ -206,10 +206,10 @@ func (m *Monaco) GetHeaderByNumber(number int64) (*ethrpc.RPCBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*ethrpc.RPCBlock), nil
+	return response.Data.(*mtypes.RPCBlock), nil
 }
 
-func GetHeaderFromHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
+func GetHeaderFromHash(hash ethcmn.Hash) (*mtypes.RPCBlock, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_HeaderByHash,
@@ -220,10 +220,10 @@ func GetHeaderFromHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*ethrpc.RPCBlock), nil
+	return response.Data.(*mtypes.RPCBlock), nil
 }
 
-func (m *Monaco) GetHeaderByHash(hash ethcmn.Hash) (*ethrpc.RPCBlock, error) {
+func (m *Monaco) GetHeaderByHash(hash ethcmn.Hash) (*mtypes.RPCBlock, error) {
 	return GetHeaderFromHash(hash)
 }
 
@@ -298,7 +298,7 @@ func (m *Monaco) GasPrice() (*big.Int, error) {
 	return new(big.Int).SetUint64(0xff), nil
 }
 
-func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*ethrpc.RPCTransaction, error) {
+func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPCTransaction, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_Transaction,
@@ -313,7 +313,7 @@ func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*ethrpc.RPCTransaction,
 			return nil, err
 		}
 	}
-	return response.Data.(*ethrpc.RPCTransaction), nil
+	return response.Data.(*mtypes.RPCTransaction), nil
 }
 
 func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
@@ -413,7 +413,7 @@ func (m *Monaco) GetLogs(filter eth.FilterQuery) ([]*types.Log, error) {
 	return response.Data.([]*types.Log), nil
 }
 
-func (m *Monaco) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) (*ethrpc.RPCTransaction, error) {
+func (m *Monaco) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) (*mtypes.RPCTransaction, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_TxByHashAndIdx,
@@ -425,9 +425,9 @@ func (m *Monaco) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) 
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*ethrpc.RPCTransaction), nil
+	return response.Data.(*mtypes.RPCTransaction), nil
 }
-func (m *Monaco) GetTransactionByBlockNumberAndIndex(number int64, index int) (*ethrpc.RPCTransaction, error) {
+func (m *Monaco) GetTransactionByBlockNumberAndIndex(number int64, index int) (*mtypes.RPCTransaction, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_TxByNumberAndIdx,
@@ -439,7 +439,7 @@ func (m *Monaco) GetTransactionByBlockNumberAndIndex(number int64, index int) (*
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*ethrpc.RPCTransaction), nil
+	return response.Data.(*mtypes.RPCTransaction), nil
 }
 
 func (m *Monaco) GetBlockTransactionCountByHash(hash ethcmn.Hash) (int, error) {

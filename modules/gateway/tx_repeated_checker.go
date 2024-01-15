@@ -2,11 +2,11 @@ package gateway
 
 import (
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/log"
-	"github.com/arcology-network/component-lib/storage"
+	"github.com/arcology-network/main/components/storage"
 	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 

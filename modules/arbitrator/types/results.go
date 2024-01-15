@@ -2,14 +2,13 @@ package types
 
 import (
 	"github.com/arcology-network/common-lib/mempool"
-	ctypes "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/concurrenturl/interfaces"
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	eushared "github.com/arcology-network/eu/shared"
 )
 
-func Decode(ars *ctypes.TxAccessRecords, recordPool, uniPool *mempool.Mempool) *AccessRecord {
-	record := recordPool.Get().(*AccessRecord)
-	record.Accesses = univaluepk.UnivaluesDecode(ars.Accesses, uniPool.Get, nil)
+func Decode(ars *eushared.TxAccessRecords, recordPool *mempool.Mempool[AccessRecord], uniPool *mempool.Mempool[univaluepk.Univalue]) *AccessRecord {
+	record := recordPool.Get()
+	record.Accesses = univaluepk.Univalues{}.DecodeWithMempool(ars.Accesses, uniPool.Get, nil).(univaluepk.Univalues)
 	record.TxHash = [32]byte([]byte(ars.Hash))
 	record.TxID = ars.ID
 	uniPool.Reclaim()
@@ -20,5 +19,5 @@ type AccessRecord struct {
 	GroupID  uint32
 	TxID     uint32
 	TxHash   [32]byte
-	Accesses []interfaces.Univalue
+	Accesses []*univaluepk.Univalue
 }

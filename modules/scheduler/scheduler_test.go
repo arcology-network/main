@@ -8,13 +8,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/arcology-network/common-lib/codec"
 	cmncmn "github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
-	"github.com/arcology-network/component-lib/log"
-	"github.com/arcology-network/component-lib/streamer"
 	"github.com/arcology-network/main/modules/storage"
+	"github.com/arcology-network/streamer/actor"
+	brokerpk "github.com/arcology-network/streamer/broker"
+	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 )
@@ -127,10 +128,10 @@ func TestSchedulerMixedTxs(t *testing.T) {
 func TestSchedulerContractWithDefer(t *testing.T) {
 	schd := setup(t)
 
-	spawnedHash := sha256.Sum256(cmncmn.Flatten([][]byte{
+	spawnedHash := sha256.Sum256(codec.Byteset([][]byte{
 		evmCommon.BytesToHash([]byte{3}).Bytes(),
 		evmCommon.BytesToHash([]byte{4}).Bytes(),
-	}))
+	}).Flatten())
 	// seqId := sha256.Sum256(encoding.Byteset([][]byte{spawnedHash[:]}).Encode())
 	runBlock(
 		schd,
@@ -331,8 +332,8 @@ func TestSchedulerConflictionInDefer(t *testing.T) {
 		evmCommon.BytesToHash([]byte{4}),
 	}
 	spawnedHashes := [][32]byte{
-		sha256.Sum256(cmncmn.Flatten([][]byte{txHashes[0].Bytes()})),
-		sha256.Sum256(cmncmn.Flatten([][]byte{txHashes[2].Bytes(), txHashes[3].Bytes()})),
+		sha256.Sum256(codec.Byteset([][]byte{txHashes[0].Bytes()}).Flatten()),
+		sha256.Sum256(codec.Byteset([][]byte{txHashes[2].Bytes(), txHashes[3].Bytes()}).Flatten()),
 	}
 	txHashes = append(txHashes, []evmCommon.Hash{
 		evmCommon.BytesToHash(spawnedHashes[0][:]),
@@ -432,18 +433,18 @@ type mockConsumer struct {
 }
 
 func (mock *mockConsumer) Consume(data interface{}) {
-	mock.tb.Log(data, data.(streamer.Aggregated).Data.(*actor.Message).Data)
+	mock.tb.Log(data, data.(brokerpk.Aggregated).Data.(*actor.Message).Data)
 	mock.check(data)
 }
 
 func (mock *mockConsumer) check(data interface{}) {
-	msgName := data.(streamer.Aggregated).Name
+	msgName := data.(brokerpk.Aggregated).Name
 	_, ok := mock.expectedResults[msgName]
 	if !ok {
 		return
 	}
 
-	msg := data.(streamer.Aggregated).Data.(*actor.Message).Data
+	msg := data.(brokerpk.Aggregated).Data.(*actor.Message).Data
 	switch msgName {
 	case actor.MsgSchdState:
 		got := msg.(*storage.SchdState)
@@ -497,9 +498,9 @@ func setup(tb testing.TB) *Scheduler {
 	intf.Router.Register("arbitrator", &arbitrator, "rpc-server-addr", "zk-server-addr")
 	intf.Router.SetAvailableServices([]string{"executor-1"})
 
-	broker := streamer.NewStatefulStreamer()
+	broker := brokerpk.NewStatefulStreamer()
 	consumer = &mockConsumer{tb: tb}
-	broker.RegisterProducer(streamer.NewDefaultProducer(
+	broker.RegisterProducer(brokerpk.NewDefaultProducer(
 		"scheduler",
 		[]string{
 			actor.MsgInclusive,
@@ -509,7 +510,7 @@ func setup(tb testing.TB) *Scheduler {
 		},
 		[]int{1, 1, 1, 1},
 	))
-	broker.RegisterConsumer(streamer.NewDefaultConsumer(
+	broker.RegisterConsumer(brokerpk.NewDefaultConsumer(
 		"mock-consumer",
 		[]string{
 			actor.MsgInclusive,
@@ -517,7 +518,7 @@ func setup(tb testing.TB) *Scheduler {
 			actor.MsgSpawnedRelations,
 			actor.MsgSchdState,
 		},
-		streamer.NewDisjunctions(consumer, 1),
+		brokerpk.NewDisjunctions(consumer, 1),
 	))
 	broker.Serve()
 

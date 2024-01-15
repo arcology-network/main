@@ -1,14 +1,16 @@
 package consensus
 
 import (
-	"github.com/arcology-network/common-lib/mhasher"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
+	"crypto/sha256"
+
+	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/consensus-engine/types"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 func init() {
-	types.QuickHash = BinaryMerkleFromRaw256
+	types.QuickHash = CalculateHash
 
 	actor.Factory.Register("consensus", NewConsensus)
 	intf.Factory.Register("consensus", func(concurrency int, groupId string) interface{} {
@@ -16,12 +18,11 @@ func init() {
 	})
 }
 
-func BinaryMerkleFromRaw256(txs types.Txs) ([]byte, error) {
-	datas := make([][]byte, len(txs))
-	sizes := make([]int, len(txs))
+func CalculateHash(txs types.Txs) ([]byte, error) {
+	data := make([][]byte, len(txs))
 	for i := range txs {
-		datas[i] = txs[i]
-		sizes[i] = len(txs[i])
+		data[i] = txs[i]
 	}
-	return mhasher.Roothash(datas, mhasher.HashType_256)
+	hash := sha256.Sum256(codec.Byteset(data).Flatten())
+	return hash[:], nil
 }

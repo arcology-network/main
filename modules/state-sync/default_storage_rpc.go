@@ -2,7 +2,7 @@ package statesync
 
 import (
 	cmntyp "github.com/arcology-network/common-lib/types"
-	intf "github.com/arcology-network/component-lib/interface"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 type DefaultStorageRpc struct{}

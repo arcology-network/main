@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/miner"
 
 	"github.com/arcology-network/common-lib/types"
-	intf "github.com/arcology-network/component-lib/interface"
+	intf "github.com/arcology-network/streamer/interface"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 

@@ -3,8 +3,8 @@ package types
 import (
 	"sort"
 
-	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/concurrenturl/interfaces"
+	"github.com/arcology-network/main/modules/tools"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -70,7 +70,7 @@ func (ss *SnapShotLookup) Query(precedings []*evmCommon.Hash) (*interfaces.Datas
 		if item.Size > precedingSize {
 			continue
 		}
-		if item.PrecedingHash == common.CalculateHash(precedings[:item.Size]) {
+		if item.PrecedingHash == tools.CalculateHash(precedings[:item.Size]) {
 			return ss.Snapshots[item.PrecedingHash], precedings[item.Size:]
 		}
 	}

@@ -23,26 +23,26 @@ func TestOp(t *testing.T) {
 	}
 }
 func TestRawFile(t *testing.T) {
-	filehandle := NewRawFiles("datas")
+	filehandle := NewRawFiles("testdata")
 
-	datas := make([][]byte, 50000)
-	for i := range datas {
-		datas[i] = make([]byte, 1000)
+	data := make([][]byte, 50000)
+	for i := range data {
+		data[i] = make([]byte, 1000)
 	}
 
-	val := codec.Byteset(datas).Encode()
+	val := codec.Byteset(data).Encode()
 	t0 := time.Now()
 	filehandle.Write(filehandle.GetFilename(345), val)
 	fmt.Printf("==============write time : %v\n", time.Since(t0))
 
 	t1 := time.Now()
-	data, err := filehandle.Read(filehandle.GetFilename(345))
+	filedata, err := filehandle.Read(filehandle.GetFilename(345))
 	fmt.Printf("==============read time : %v\n", time.Since(t1))
 	if err != nil {
 		t.Error("raw file read err:" + err.Error())
 	}
 
-	if !reflect.DeepEqual(val, data) {
+	if !reflect.DeepEqual(val, filedata) {
 		t.Error("raw file read write err")
 	}
 	fmt.Printf("==============write time 2: %v\n", time.Since(t0))

@@ -8,12 +8,12 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/arcology-network/component-lib/actor"
-	_ "github.com/arcology-network/component-lib/aggregator/v3"
-	intf "github.com/arcology-network/component-lib/interface"
-	_ "github.com/arcology-network/component-lib/storage"
-	"github.com/arcology-network/component-lib/streamer"
+	_ "github.com/arcology-network/main/components/storage"
 	_ "github.com/arcology-network/main/modules"
+	"github.com/arcology-network/streamer/actor"
+	_ "github.com/arcology-network/streamer/aggregator/v3"
+	brokerpk "github.com/arcology-network/streamer/broker"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 type Settings struct {
@@ -70,7 +70,7 @@ func LoadAppConfig(file string) AppConfig {
 	return config
 }
 
-func (config *AppConfig) InitApp(broker *streamer.StatefulStreamer, globalConfig GlobalConfig) map[string]actor.IWorkerEx {
+func (config *AppConfig) InitApp(broker *brokerpk.StatefulStreamer, globalConfig GlobalConfig) map[string]actor.IWorkerEx {
 	intf.Router.SetZkServers([]string{globalConfig.Zookeeper})
 	var rpcs []string
 	for rpc := range globalConfig.Rpc {
@@ -193,7 +193,7 @@ func (config *AppConfig) InitApp(broker *streamer.StatefulStreamer, globalConfig
 	return config.workersDict
 }
 
-func (config *AppConfig) createMsgOps(worker actor.IWorkerEx, broker *streamer.StatefulStreamer) {
+func (config *AppConfig) createMsgOps(worker actor.IWorkerEx, broker *brokerpk.StatefulStreamer) {
 	inputs, _ := worker.Inputs()
 	for _, input := range inputs {
 		if strings.HasPrefix(input, actor.CombinerPrefix) {
@@ -206,14 +206,14 @@ func (config *AppConfig) createMsgOps(worker actor.IWorkerEx, broker *streamer.S
 	}
 }
 
-func (config *AppConfig) createActor(name string, worker actor.IWorkerEx, broker *streamer.StatefulStreamer) {
+func (config *AppConfig) createActor(name string, worker actor.IWorkerEx, broker *brokerpk.StatefulStreamer) {
 	config.workersDict[name] = worker
 	workerActor := actor.NewActorEx(name, broker, worker)
 	_, isConjunction := worker.Inputs()
 	if isConjunction {
-		workerActor.Connect(streamer.NewConjunctions(workerActor))
+		workerActor.Connect(brokerpk.NewConjunctions(workerActor))
 	} else {
-		workerActor.Connect(streamer.NewDisjunctions(workerActor, 1))
+		workerActor.Connect(brokerpk.NewDisjunctions(workerActor, 1))
 	}
 }
 

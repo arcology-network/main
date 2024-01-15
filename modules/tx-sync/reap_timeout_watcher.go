@@ -5,9 +5,9 @@ import (
 	"time"
 
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/log"
 	"github.com/arcology-network/main/modules/p2p"
+	"github.com/arcology-network/streamer/actor"
+	"github.com/arcology-network/streamer/log"
 )
 
 type ReapTimeoutWatcher struct {

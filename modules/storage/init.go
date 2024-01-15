@@ -3,9 +3,9 @@ package storage
 import (
 	"encoding/gob"
 
-	"github.com/arcology-network/common-lib/transactional"
-	"github.com/arcology-network/component-lib/actor"
-	intf "github.com/arcology-network/component-lib/interface"
+	"github.com/arcology-network/common-lib/storage/transactional"
+	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 func init() {
@@ -15,7 +15,6 @@ func init() {
 	actor.Factory.Register("storage", NewStorage)
 	actor.Factory.Register("storage_debug", NewStorageDebug)
 	actor.Factory.Register("storage.initializer", NewInitializer)
-	actor.Factory.Register("storage.root_calculator", NewRootCalculator)
 	actor.Factory.Register("storage.metrics", NewMetrics)
 	actor.Factory.Register("storage.statesyncstore", NewStateSyncStore)
 	actor.Factory.Register("storage.schdstore", NewSchdStore)

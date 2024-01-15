@@ -6,6 +6,7 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
+	"github.com/arcology-network/main/modules/tools"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -67,7 +68,7 @@ func (b *batch) process(execTree *execTree) *batch {
 		)
 
 	b.context.executed = append(b.context.executed, executed...)
-	b.context.executedHash = common.CalculateHash(b.context.executed)
+	b.context.executedHash = tools.CalculateHash(b.context.executed)
 	b.context.newContracts = append(b.context.newContracts, newContracts...)
 	// Find conflictions.
 	arbitrateParam := b.makeArbitrateParam(responses, execTree)
@@ -140,7 +141,7 @@ func (b *batch) setMsgPrecedings() []*evmCommon.Hash {
 				precedings = append(precedings, b.context.executedLastGen...)
 				precedings = append(precedings, *schdMsg.DirectPrecedings...)
 				schdMsg.Precedings = &precedings
-				schdMsg.PrecedingHash = common.CalculateHash(precedings)
+				schdMsg.PrecedingHash = tools.CalculateHash(precedings)
 			} else {
 				schdMsg.Precedings = &b.context.executed
 				schdMsg.PrecedingHash = b.context.executedHash

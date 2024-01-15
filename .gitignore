@@ -29,7 +29,6 @@ modules/scheduler/log/
 modules/storage/schdstore/
 modules/storage/slices/
 modules/storage/sync_point/
-modules/storage/types/datas/
 test/statesync/data/
 *.tar
 log/

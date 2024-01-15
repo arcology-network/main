@@ -22,21 +22,21 @@ func NewReceiptCaches(path string, cache int, concurrency int) *ReceiptCaches {
 	}
 }
 func (rc *ReceiptCaches) QueryReceipt(height uint64, idx int) *evmTypes.Receipt {
-	datas := rc.updateCache(height)
-	if datas == nil {
+	data := rc.updateCache(height)
+	if data == nil {
 		return nil
 	}
-	return datas[idx].(*evmTypes.Receipt)
+	return data[idx].(*evmTypes.Receipt)
 }
 
 func (rc *ReceiptCaches) QueryBlockReceipts(height uint64) []*evmTypes.Receipt {
-	datas := rc.updateCache(height)
-	if datas == nil {
+	data := rc.updateCache(height)
+	if data == nil {
 		return nil
 	}
-	receipts := make([]*evmTypes.Receipt, len(datas))
+	receipts := make([]*evmTypes.Receipt, len(data))
 	for i := range receipts {
-		receipts[i] = datas[i].(*evmTypes.Receipt)
+		receipts[i] = data[i].(*evmTypes.Receipt)
 	}
 	return receipts
 }
@@ -51,7 +51,7 @@ func (rc *ReceiptCaches) updateCache(height uint64) []interface{} {
 		return nil
 	}
 	buffers := [][]byte(codec.Byteset{}.Decode(data).(codec.Byteset))
-	datas := make([]interface{}, len(buffers))
+	receiptData := make([]interface{}, len(buffers))
 
 	keys := make([]string, len(buffers))
 	worker := func(start, end int, idx int, args ...interface{}) {
@@ -61,13 +61,13 @@ func (rc *ReceiptCaches) updateCache(height uint64) []interface{} {
 			if err != nil {
 				continue
 			}
-			datas[i] = &receiptobj
+			receiptData[i] = &receiptobj
 			keys[i] = string(receiptobj.TxHash.Bytes())
 		}
 	}
 	common.ParallelWorker(len(buffers), rc.concurrency, worker)
-	rc.caches.Add(height, keys, datas)
-	return datas
+	rc.caches.Add(height, keys, receiptData)
+	return receiptData
 }
 
 func (rc *ReceiptCaches) Save(height uint64, receipts []*evmTypes.Receipt) ([]string, []time.Duration) {
@@ -76,7 +76,7 @@ func (rc *ReceiptCaches) Save(height uint64, receipts []*evmTypes.Receipt) ([]st
 		return []string{}, tims
 	}
 	t0 := time.Now()
-	datas := make([]interface{}, len(receipts))
+	data := make([]interface{}, len(receipts))
 	databyteset := make([][]byte, len(receipts))
 	keys := make([]string, len(receipts))
 	worker := func(start, end int, idx int, args ...interface{}) {
@@ -89,7 +89,7 @@ func (rc *ReceiptCaches) Save(height uint64, receipts []*evmTypes.Receipt) ([]st
 			databyteset[i] = receiptRaw
 			keys[i] = string(receipts[i].TxHash.Bytes())
 
-			datas[i] = receipts[i]
+			data[i] = receipts[i]
 
 		}
 	}
@@ -97,7 +97,7 @@ func (rc *ReceiptCaches) Save(height uint64, receipts []*evmTypes.Receipt) ([]st
 	common.ParallelWorker(len(receipts), rc.concurrency, worker)
 	tims[0] = time.Since(t0)
 	t0 = time.Now()
-	rc.caches.Add(height, keys, datas)
+	rc.caches.Add(height, keys, data)
 	tims[1] = time.Since(t0)
 	t0 = time.Now()
 	rc.db.Write(rc.db.GetFilename(height), codec.Byteset(databyteset).Encode())

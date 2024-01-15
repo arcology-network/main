@@ -8,7 +8,7 @@ import (
 	"testing"
 
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
+	"github.com/arcology-network/streamer/actor"
 )
 
 func TestSliceKey(t *testing.T) {

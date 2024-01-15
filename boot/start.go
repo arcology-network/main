@@ -8,10 +8,10 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/log"
-	"github.com/arcology-network/component-lib/streamer"
 	"github.com/arcology-network/main/config"
+	"github.com/arcology-network/streamer/actor"
+	brokerpk "github.com/arcology-network/streamer/broker"
+	"github.com/arcology-network/streamer/log"
 )
 
 var StartCmd = &cobra.Command{
@@ -57,7 +57,7 @@ func initApp(
 	globalConfig config.GlobalConfig,
 	kafkaConfig config.KafkaConfig,
 	appConfig config.AppConfig,
-) (*streamer.StatefulStreamer, []actor.IWorkerEx, []actor.IWorkerEx) {
+) (*brokerpk.StatefulStreamer, []actor.IWorkerEx, []actor.IWorkerEx) {
 	log.InitLog(
 		appConfig.Settings.ServiceName+".log",
 		globalConfig.LogConfigFile,
@@ -66,7 +66,7 @@ func initApp(
 		globalConfig.ClusterId,
 	)
 
-	broker := streamer.NewStatefulStreamer()
+	broker := brokerpk.NewStatefulStreamer()
 	workers := appConfig.InitApp(broker, globalConfig)
 	downloaders, uploaders := kafkaConfig.InitKafka(broker, workers, globalConfig, appConfig)
 	broker.Serve()

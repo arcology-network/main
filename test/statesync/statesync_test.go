@@ -12,11 +12,11 @@ import (
 	"time"
 
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
-	cmnst "github.com/arcology-network/component-lib/storage"
-	"github.com/arcology-network/component-lib/streamer"
+	cmnst "github.com/arcology-network/main/components/storage"
 	statesync "github.com/arcology-network/main/modules/state-sync"
 	"github.com/arcology-network/main/modules/storage"
+	"github.com/arcology-network/streamer/actor"
+	brokerpk "github.com/arcology-network/streamer/broker"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -85,17 +85,17 @@ func TestStateSync(t *testing.T) {
 		values = append(values, []byte(randomHexString(4)))
 	}
 
-	broker := streamer.NewStatefulStreamer()
+	broker := brokerpk.NewStatefulStreamer()
 	syncer := &syncer{}
-	broker.RegisterProducer(streamer.NewDefaultProducer(
+	broker.RegisterProducer(brokerpk.NewDefaultProducer(
 		"syncClient",
 		[]string{actor.MsgStateSyncDone},
 		[]int{1},
 	))
-	broker.RegisterConsumer(streamer.NewDefaultConsumer(
+	broker.RegisterConsumer(brokerpk.NewDefaultConsumer(
 		"syncer",
 		[]string{actor.MsgStateSyncDone},
-		streamer.NewDisjunctions(syncer, 1),
+		brokerpk.NewDisjunctions(syncer, 1),
 	))
 	broker.Serve()
 

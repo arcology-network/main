@@ -3,14 +3,17 @@ package types
 import (
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/concurrenturl/interfaces"
-	adaptor "github.com/arcology-network/vm-adaptor/execution"
+
+	// eucommon "github.com/arcology-network/eu/common"
+	"github.com/arcology-network/eu/execution"
+	eushared "github.com/arcology-network/eu/shared"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type ExecMessagers struct {
 	Snapshot *interfaces.Datastore
-	Config   *adaptor.Config
+	Config   *execution.Config
 	Sequence *types.ExecutingSequence
 	// Uuid     uint64
 	// SerialID int
@@ -19,8 +22,8 @@ type ExecMessagers struct {
 }
 
 type ExecutionResponse struct {
-	AccessRecords   []*types.TxAccessRecords
-	EuResults       []*types.EuResult
+	AccessRecords   []*eushared.TxAccessRecords
+	EuResults       []*eushared.EuResult
 	Receipts        []*evmTypes.Receipt
 	ContractAddress []evmCommon.Address
 	CallResults     [][]byte

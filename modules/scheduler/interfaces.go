@@ -4,8 +4,8 @@ import (
 	"math/big"
 
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
 	schedulingTypes "github.com/arcology-network/main/modules/scheduler/types"
+	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 

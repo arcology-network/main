@@ -3,8 +3,8 @@ package p2p
 import (
 	"testing"
 
-	"github.com/arcology-network/component-lib/actor"
 	"github.com/arcology-network/main/modules/p2p/conn/protocol"
+	"github.com/arcology-network/streamer/actor"
 )
 
 func TestMessageToPackages(t *testing.T) {

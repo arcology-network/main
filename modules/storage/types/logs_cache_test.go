@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/arcology-network/component-lib/ethrpc"
+	mtypes "github.com/arcology-network/main/types"
 	evm "github.com/ethereum/go-ethereum"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
@@ -19,22 +19,22 @@ func TestFilter(t *testing.T) {
 		evmCommon.HexToHash("927cfa6decccd60f650e6566dc319240299ce3c08ff4afa1f75721e016407b57"),
 	}
 
-	if !reflect.DeepEqual(true, ethrpc.FiltereTopic(filetrs, topics)) {
+	if !reflect.DeepEqual(true, mtypes.FiltereTopic(filetrs, topics)) {
 		t.Error("{} filter  Error")
 	}
 
-	if !reflect.DeepEqual(true, ethrpc.FiltereTopic(nil, topics)) {
+	if !reflect.DeepEqual(true, mtypes.FiltereTopic(nil, topics)) {
 		t.Error("nil filter  Error")
 	}
 
 	filetrs = [][]evmCommon.Hash{{evmCommon.HexToHash("66812f708302896954212d553f4cf11dc8859e32cb3ae1decfd955aba6718312")}}
 
-	if !reflect.DeepEqual(true, ethrpc.FiltereTopic(filetrs, topics)) {
+	if !reflect.DeepEqual(true, mtypes.FiltereTopic(filetrs, topics)) {
 		t.Error("{{A}} filter  Error")
 	}
 	filetrs = [][]evmCommon.Hash{{}, {evmCommon.HexToHash("714222414d021b26175afe55364239d7c12a8eb54e300b4256402bffea20da74")}}
 
-	if !reflect.DeepEqual(true, ethrpc.FiltereTopic(filetrs, topics)) {
+	if !reflect.DeepEqual(true, mtypes.FiltereTopic(filetrs, topics)) {
 		t.Error("{{}, {B}} filter  Error")
 	}
 
@@ -43,7 +43,7 @@ func TestFilter(t *testing.T) {
 		{evmCommon.HexToHash("714222414d021b26175afe55364239d7c12a8eb54e300b4256402bffea20da74")},
 	}
 
-	if !reflect.DeepEqual(true, ethrpc.FiltereTopic(filetrs, topics)) {
+	if !reflect.DeepEqual(true, mtypes.FiltereTopic(filetrs, topics)) {
 		t.Error("{{A},{B}} filter  Error")
 	}
 
@@ -57,7 +57,7 @@ func TestFilter(t *testing.T) {
 			evmCommon.HexToHash("714222414d021b26175afe55364239d7c12a8eb54e300b4256402bffea20da74"),
 		},
 	}
-	if !reflect.DeepEqual(true, ethrpc.FiltereTopic(filetrs, topics)) {
+	if !reflect.DeepEqual(true, mtypes.FiltereTopic(filetrs, topics)) {
 		t.Error("{{A, B}, {C, D}} filter  Error")
 	}
 
@@ -67,7 +67,7 @@ func TestFilter(t *testing.T) {
 		{evmCommon.HexToHash("927cfa6decccd60f650e6566dc319240299ce3c08ff4afa1f75721e016407b57")},
 		{},
 	}
-	if !reflect.DeepEqual(false, ethrpc.FiltereTopic(filetrs, topics)) {
+	if !reflect.DeepEqual(false, mtypes.FiltereTopic(filetrs, topics)) {
 		t.Error("filetrs size > topics size filter  Error")
 	}
 
@@ -76,7 +76,7 @@ func TestFilter(t *testing.T) {
 		{evmCommon.HexToHash("714222414d021b26175afe55364239d7c12a8eb54e300b4256402bffea20da74")},
 		{evmCommon.HexToHash("927cfa6decccd60f650e6566dc319240299ce3c08ff4afa1f75721e016407b57")},
 	}
-	if !reflect.DeepEqual(true, ethrpc.FiltereTopic(filetrs, topics)) {
+	if !reflect.DeepEqual(true, mtypes.FiltereTopic(filetrs, topics)) {
 		t.Error("{{A},{B},{C}} filter  Error")
 	}
 }

@@ -5,9 +5,9 @@ import (
 	"io/ioutil"
 	"os"
 
-	"github.com/arcology-network/component-lib/actor"
-	"github.com/arcology-network/component-lib/kafka"
-	"github.com/arcology-network/component-lib/streamer"
+	"github.com/arcology-network/streamer/actor"
+	brokerpk "github.com/arcology-network/streamer/broker"
+	"github.com/arcology-network/streamer/kafka"
 )
 
 type KafkaConfig map[string]map[string][]string
@@ -41,7 +41,7 @@ func LoadKafkaConfig(file string) KafkaConfig {
 }
 
 func (config KafkaConfig) InitKafka(
-	broker *streamer.StatefulStreamer,
+	broker *brokerpk.StatefulStreamer,
 	workers map[string]actor.IWorkerEx,
 	globalConfig GlobalConfig,
 	appConfig AppConfig,
@@ -89,9 +89,9 @@ func (config KafkaConfig) InitKafka(
 
 		workerActor := actor.NewActorEx(name, broker, workers[name])
 		if isConjunction {
-			workerActor.Connect(streamer.NewConjunctions(workerActor))
+			workerActor.Connect(brokerpk.NewConjunctions(workerActor))
 		} else {
-			workerActor.Connect(streamer.NewDisjunctions(workerActor, 1))
+			workerActor.Connect(brokerpk.NewDisjunctions(workerActor, 1))
 		}
 	}
 
@@ -129,7 +129,7 @@ func (config KafkaConfig) InitKafka(
 			broker,
 			downloader,
 		)
-		downloaderActor.Connect(streamer.NewDisjunctions(downloaderActor, 100))
+		downloaderActor.Connect(brokerpk.NewDisjunctions(downloaderActor, 100))
 	}
 
 	type uploaderParam struct {
@@ -167,7 +167,7 @@ func (config KafkaConfig) InitKafka(
 			broker,
 			cleaner,
 		)
-		uploaderActor.Connect(streamer.NewDisjunctions(uploaderActor, 100))
+		uploaderActor.Connect(brokerpk.NewDisjunctions(uploaderActor, 100))
 	}
 	return
 }

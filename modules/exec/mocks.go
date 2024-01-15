@@ -2,11 +2,13 @@ package exec
 
 import (
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
 	ccurl "github.com/arcology-network/concurrenturl"
 	"github.com/arcology-network/concurrenturl/interfaces"
+	eupk "github.com/arcology-network/eu"
+	eucommon "github.com/arcology-network/eu/common"
+	eushared "github.com/arcology-network/eu/shared"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
-	adaptor "github.com/arcology-network/vm-adaptor/execution"
+	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -51,7 +53,7 @@ func (m *mockWorker) OnMessageArrived(msgs []*actor.Message) error {
 		m.MsgBroker.Send(
 			actor.MsgPrecedingsEuresult,
 			[]interface{}{
-				&types.EuResult{
+				&eushared.EuResult{
 					H: string(evmCommon.BytesToHash([]byte{1}).Bytes()),
 				},
 			},
@@ -83,18 +85,18 @@ func (m *mockSnapshotDict) Query(precedings []*evmCommon.Hash) (*interfaces.Data
 type mockExecutionImpl struct {
 }
 
-func (m *mockExecutionImpl) Init(eu *adaptor.EU, url *ccurl.ConcurrentUrl) {}
+func (m *mockExecutionImpl) Init(eu *eupk.EU, url *ccurl.StateCommitter) {}
 
 func (m *mockExecutionImpl) SetDB(db *interfaces.Datastore) {}
 
 func (m *mockExecutionImpl) Exec(
 	sequence *types.ExecutingSequence,
-	config *adaptor.Config,
+	config *eucommon.Config,
 	logger *actor.WorkerThreadLogger,
 	gatherExeclog bool,
 ) (*exetyp.ExecutionResponse, error) {
 	return &exetyp.ExecutionResponse{
-		EuResults: []*types.EuResult{
+		EuResults: []*eushared.EuResult{
 			{},
 		},
 		Receipts: []*ethTypes.Receipt{

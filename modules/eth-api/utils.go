@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/arcology-network/component-lib/ethrpc"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
+	mtypes "github.com/arcology-network/main/types"
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
 	eth "github.com/ethereum/go-ethereum"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -20,12 +20,12 @@ import (
 	ethflt "github.com/ethereum/go-ethereum/eth/filters"
 )
 
-func AttachChainId(tx *ethrpc.RPCTransaction, chainid uint64) *ethrpc.RPCTransaction { //} map[string]string {
+func AttachChainId(tx *mtypes.RPCTransaction, chainid uint64) *mtypes.RPCTransaction { //} map[string]string {
 	tx.ChainID = (*hexutil.Big)(big.NewInt(0).SetUint64(chainid))
 	return tx
 }
 
-func ToTransactionResponse(tx *ethrpc.RPCTransaction, chainid uint64) interface{} { //} map[string]string {
+func ToTransactionResponse(tx *mtypes.RPCTransaction, chainid uint64) interface{} { //} map[string]string {
 	return AttachChainId(tx, chainid)
 }
 func ToBlockIndex(v interface{}) (int, error) {
@@ -49,15 +49,15 @@ func ToBlockNumber(v interface{}) (int64, error) {
 	} else {
 		switch str {
 		case "latest":
-			return ethrpc.BlockNumberLatest, nil
+			return mtypes.BlockNumberLatest, nil
 		case "earliest":
-			return ethrpc.BlockNumberEarliest, nil
+			return mtypes.BlockNumberEarliest, nil
 		case "pending":
-			return ethrpc.BlockNumberPending, nil
+			return mtypes.BlockNumberPending, nil
 		case "finalized":
-			return ethrpc.BlockNumberFinalized, nil
+			return mtypes.BlockNumberFinalized, nil
 		case "safe":
-			return ethrpc.BlockNumberSafe, nil
+			return mtypes.BlockNumberSafe, nil
 		default:
 			if str[:2] == "0x" {
 				str = str[2:]

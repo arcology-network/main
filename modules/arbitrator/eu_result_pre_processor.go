@@ -2,9 +2,9 @@ package arbitrator
 
 import (
 	"github.com/arcology-network/common-lib/common"
-	ctypes "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/component-lib/actor"
+	eushared "github.com/arcology-network/eu/shared"
 	"github.com/arcology-network/main/modules/arbitrator/types"
+	"github.com/arcology-network/streamer/actor"
 )
 
 type EuResultPreProcessor struct {
@@ -32,12 +32,12 @@ func (p *EuResultPreProcessor) Outputs() map[string]int {
 }
 
 func (p *EuResultPreProcessor) OnMessageArrived(msgs []*actor.Message) error {
-	results := *(msgs[0].Data.(*ctypes.TxAccessRecordSet))
+	results := *(msgs[0].Data.(*eushared.TxAccessRecordSet))
 
 	processed := make([]*types.AccessRecord, len(results))
 	worker := func(start, end, idx int, args ...interface{}) {
-		recordPool := types.RecordPool.GetTlsMempool(idx)
-		uniPool := types.UnivaluePool.GetTlsMempool(idx)
+		recordPool := types.RecordPool
+		uniPool := types.UnivaluePool
 		for i := start; i < end; i++ {
 			processed[i] = types.Decode(results[i], recordPool, uniPool)
 		}

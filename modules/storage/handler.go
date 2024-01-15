@@ -12,8 +12,8 @@ import (
 	"strings"
 	"time"
 
-	kafkalib "github.com/arcology-network/component-lib/kafka/lib"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	kafkalib "github.com/arcology-network/streamer/kafka/lib"
 )
 
 type data struct {
