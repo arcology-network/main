@@ -149,16 +149,16 @@ func parseResult(txsListGroup [][]*ctypes.TxElement, conflits arbitratorn.Confli
 			dic[e.Txid] = e.TxHash
 		}
 	}
-	idsmp, _, paris := conflits.ToDict()
+	idsmp, _, pairs := conflits.ToDict()
 	confiltList := []*evmCommon.Hash{}
-	for _, id := range common.MapKeys(*idsmp) {
+	for _, id := range common.MapKeys(idsmp) {
 		confiltList = append(confiltList, dic[id])
 	}
-	left := make([]uint32, 0, len(paris))
-	right := make([]uint32, 0, len(paris))
-	for _, par := range paris {
-		left = append(left, par[0])
-		right = append(right, par[1])
+	left := make([]uint32, 0, len(pairs))
+	right := make([]uint32, 0, len(pairs))
+	for _, pair := range pairs {
+		left = append(left, pair[0])
+		right = append(right, pair[1])
 	}
 	return confiltList, left, right
 }
