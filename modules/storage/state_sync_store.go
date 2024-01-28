@@ -8,10 +8,10 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/arcology-network/common-lib/common"
 	badgerpk "github.com/arcology-network/common-lib/storage/badger"
 	"github.com/arcology-network/common-lib/storage/transactional"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	ccurlcommon "github.com/arcology-network/concurrenturl/common"
 	"github.com/arcology-network/main/components/storage"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
@@ -88,7 +88,7 @@ func (store *StateSyncStore) Outputs() map[string]int {
 
 func (store *StateSyncStore) Config(params map[string]interface{}) {
 	store.sliceDB = transactional.NewSimpleFileDB(params["slice_db_root"].(string))
-	store.spDB = badgerpk.NewParaBadgerDB(params["sync_point_root"].(string), ccurlcommon.Eth10AccountShard)
+	store.spDB = badgerpk.NewParaBadgerDB(params["sync_point_root"].(string), common.Remainder)
 	store.spInterval = uint64(params["sync_point_interval"].(float64))
 }
 

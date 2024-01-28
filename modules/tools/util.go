@@ -7,5 +7,8 @@ import (
 )
 
 func CalculateHash(hashes []*evmCommon.Hash) evmCommon.Hash {
+	if len(hashes) == 0 {
+		return evmCommon.Hash{}
+	}
 	return evmCommon.BytesToHash(crypto.Keccak256(array.Concate(hashes, func(v *evmCommon.Hash) []byte { return (*v)[:] })))
 }

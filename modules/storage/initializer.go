@@ -15,7 +15,6 @@ import (
 	"github.com/arcology-network/concurrenturl/interfaces"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	"github.com/arcology-network/consensus-engine/state"
-	"github.com/arcology-network/main/components/storage"
 	"github.com/arcology-network/main/modules/core"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
@@ -120,19 +119,19 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 
 		// Register recover function.
 		transactional.RegisterRecoverFunc("urlupdate", func(_ interface{}, bs []byte) error {
-			var updates storage.UrlUpdate
-			if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&updates); err != nil {
-				fmt.Printf("Error decoding UrlUpdate, err = %v\n", err)
-				return err
-			}
+			// var updates storage.UrlUpdate
+			// if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&updates); err != nil {
+			// 	fmt.Printf("Error decoding UrlUpdate, err = %v\n", err)
+			// 	return err
+			// }
 
-			values := make([]interface{}, len(updates.EncodedValues))
-			for i, v := range updates.EncodedValues {
-				values[i] = ccdb.Codec{}.Decode(v, nil) //urltyp.FromBytes(v)
-			}
+			// values := make([]interface{}, len(updates.EncodedValues))
+			// for i, v := range updates.EncodedValues {
+			// 	values[i] = ccdb.Codec{}.Decode(v, nil) //urltyp.FromBytes(v)
+			// }
 
-			db.BatchInject(updates.Keys, values)
-			fmt.Printf("[storage.Initializer] Recover urlupdate.\n")
+			// db.BatchInject(updates.Keys, values)
+			// fmt.Printf("[storage.Initializer] Recover urlupdate.\n")
 			return nil
 		})
 		transactional.RegisterRecoverFunc("parentinfo", func(_ interface{}, bs []byte) error {

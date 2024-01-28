@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/exp/array"
 	"github.com/arcology-network/common-lib/types"
 	ccurl "github.com/arcology-network/concurrenturl"
@@ -360,9 +361,6 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		accesses := univaluepk.Univalues(array.Clone(result.Transitions())).To(importer.ITAccess{})
 		transitions := univaluepk.Univalues(array.Clone(result.Transitions())).To(importer.ITTransition{})
 
-		// fmt.Printf("===================main/modules/exec/executor.go=======================\n")
-		// transitions.Print()
-
 		if result.Receipt.Status == 0 {
 			failed++
 		}
@@ -371,13 +369,14 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		euresult.GasUsed = result.Receipt.GasUsed
 		euresult.Status = result.Receipt.Status
 		euresult.ID = txids[i]
-		euresult.Transitions = transitions.Encode()
+		euresult.Transitions = common.IfThen(len(transitions.Keys()) == 0, []byte{}, transitions.Encode())
 		sendingEuResults[i] = &euresult
 
 		accessRecord := eushared.TxAccessRecords{}
 		accessRecord.Hash = euresult.H
 		accessRecord.ID = txids[i]
-		accessRecord.Accesses = accesses.Encode()
+
+		accessRecord.Accesses = common.IfThen(len(accesses.Keys()) == 0, []byte{}, accesses.Encode())
 		sendingAccessRecords[i] = &accessRecord
 
 		sendingReceipts[i] = result.Receipt

@@ -1,20 +1,15 @@
 package storage
 
 import (
-	"bytes"
 	"context"
-	"encoding/gob"
 	"fmt"
 	"math/big"
 
-	"github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/concurrenturl/interfaces"
-	ccdb "github.com/arcology-network/concurrenturl/storage"
 	"github.com/arcology-network/main/components/storage"
 	strtyp "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
-	intf "github.com/arcology-network/streamer/interface"
 )
 
 type UrlContainerGetRequest struct {
@@ -61,13 +56,13 @@ func (us *UrlStore) Query(ctx context.Context, pattern *string, response *storag
 	return nil
 }
 
-func (us *UrlStore) Get(ctx context.Context, keys *[]string, values *[][]byte) error {
-	objs := us.db.BatchRetrive(*keys, nil)
-	data := make([][]byte, len(objs))
-	for i := range *keys {
-		data[i] = ccdb.Codec{}.Encode("", objs[i]) //urltyp.ToBytes(objs[i])
-	}
-	*values = data
+func (us *UrlStore) Get(ctx context.Context, keys *[]string, values *[][]byte, T []any) error {
+	us.db.BatchRetrive(*keys, T)
+	// data := make([][]byte, len(objs))
+	// for i := range *keys {
+	// 	data[i] = ccdb.Codec{}.Encode("", objs[i]) //urltyp.ToBytes(objs[i])
+	// }
+	// *values = objs
 	return nil
 }
 
@@ -108,83 +103,84 @@ func (us *UrlStore) GetEthStorage(ctx context.Context, request *UrlEthStorageGet
 }
 
 func (us *UrlStore) ApplyData(ctx context.Context, request *cmntyp.SyncDataRequest, _ *int) error {
-	var numSlice int
-	// var slices []ethcmn.Hash
-	if request.To-request.From > 1 { // Sync point.
-		numSlice = cmntyp.SlicePerSyncPoint
-	} else { // Block.
-		numSlice = 1
-	}
+	// var numSlice int
+	// // var slices []ethcmn.Hash
+	// if request.To-request.From > 1 { // Sync point.
+	// 	numSlice = cmntyp.SlicePerSyncPoint
+	// } else { // Block.
+	// 	numSlice = 1
+	// }
 
-	var parent *cmntyp.ParentInfo
-	var schdState *SchdState
-	for i := 0; i < numSlice; i++ {
-		var response cmntyp.SyncDataResponse
-		err := intf.Router.Call("statesyncstore", "ReadSlice", &cmntyp.SyncDataRequest{
-			From:  request.From,
-			To:    request.To,
-			Slice: i,
-		}, &response)
-		if err != nil {
-			return err
-		}
-		parent = response.Parent
+	// var parent *cmntyp.ParentInfo
+	// var schdState *SchdState
+	// for i := 0; i < numSlice; i++ {
+	// 	var response cmntyp.SyncDataResponse
+	// 	err := intf.Router.Call("statesyncstore", "ReadSlice", &cmntyp.SyncDataRequest{
+	// 		From:  request.From,
+	// 		To:    request.To,
+	// 		Slice: i,
+	// 	}, &response)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	parent = response.Parent
 
-		if response.SchdStates != nil {
-			schdState = response.SchdStates.(*SchdState)
-		}
+	// 	if response.SchdStates != nil {
+	// 		schdState = response.SchdStates.(*SchdState)
+	// 	}
 
-		// TODO: data validation.
-		// slices = append(slices, ethcmn.BytesToHash(response.Hash))
+	// 	// TODO: data validation.
+	// 	// slices = append(slices, ethcmn.BytesToHash(response.Hash))
 
-		var urlUpdate storage.UrlUpdate
-		gob.NewDecoder(bytes.NewBuffer(response.Data)).Decode(&urlUpdate)
-		common.ParallelExecute(
-			func() {
-				values := make([]interface{}, len(urlUpdate.EncodedValues))
-				for i, v := range urlUpdate.EncodedValues {
-					values[i] = ccdb.Codec{}.Decode(v, nil)
-				}
-				us.db.BatchInject(urlUpdate.Keys, values)
-			},
-			func() {
-				us.indexer.Scan(urlUpdate.Keys, urlUpdate.EncodedValues)
-			},
-		)
-	}
+	// 	var urlUpdate storage.UrlUpdate
+	// 	gob.NewDecoder(bytes.NewBuffer(response.Data)).Decode(&urlUpdate)
+	// 	common.ParallelExecute(
+	// 		func() {
+	// 			values := make([]interface{}, len(urlUpdate.EncodedValues))
+	// 			for i, v := range urlUpdate.EncodedValues {
+	// 				values[i] = ccdb.Codec{}.Decode(v, nil)
+	// 			}
+	// 			us.db.BatchInject(urlUpdate.Keys, values)
+	// 		},
+	// 		func() {
+	// 			us.indexer.Scan(urlUpdate.Keys, urlUpdate.EncodedValues)
+	// 		},
+	// 	)
+	// }
 
-	var na int
-	var status cmntyp.SyncStatus
-	err := intf.Router.Call("statesyncstore", "GetSyncStatus", &na, &status)
-	if err != nil {
-		return err
-	}
+	// var na int
+	// var status cmntyp.SyncStatus
+	// err := intf.Router.Call("statesyncstore", "GetSyncStatus", &na, &status)
+	// if err != nil {
+	// 	return err
+	// }
 
-	if request.To-request.From > 1 {
-		var sp cmntyp.SyncPoint
-		err = intf.Router.Call("statesyncstore", "InitSyncPoint", &request.To, &sp)
-		if err != nil {
-			return err
-		}
-		status.SyncPoint = request.To
+	// if request.To-request.From > 1 {
+	// 	var sp cmntyp.SyncPoint
+	// 	err = intf.Router.Call("statesyncstore", "InitSyncPoint", &request.To, &sp)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	status.SyncPoint = request.To
 
-		var p cmntyp.ParentInfo
-		intf.Router.Call("statestore", "GetParentInfo", &na, &p)
-		parent = &p
-	} else {
-		var na int
-		intf.Router.Call("schdstore", "DirectWrite", schdState, &na)
-	}
+	// 	var p cmntyp.ParentInfo
+	// 	intf.Router.Call("statestore", "GetParentInfo", &na, &p)
+	// 	parent = &p
+	// } else {
+	// 	var na int
+	// 	intf.Router.Call("schdstore", "DirectWrite", schdState, &na)
+	// }
 
-	// Update state
-	intf.Router.Call("statestore", "Save", &State{
-		Height:     request.To,
-		ParentHash: parent.ParentHash,
-		ParentRoot: parent.ParentRoot,
-	}, &na)
+	// // Update state
+	// intf.Router.Call("statestore", "Save", &State{
+	// 	Height:     request.To,
+	// 	ParentHash: parent.ParentHash,
+	// 	ParentRoot: parent.ParentRoot,
+	// }, &na)
 
-	status.Height = request.To
-	return intf.Router.Call("statesyncstore", "SetSyncStatus", &status, &na)
+	// status.Height = request.To
+	// return intf.Router.Call("statesyncstore", "SetSyncStatus", &status, &na)
+	return nil
 }
 
 func (us *UrlStore) RewriteMeta(ctx context.Context, _ *int, _ *int) error {

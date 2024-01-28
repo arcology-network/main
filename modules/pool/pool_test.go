@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/arcology-network/common-lib/common"
 	badgerpk "github.com/arcology-network/common-lib/storage/badger"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	ccurl "github.com/arcology-network/concurrenturl"
@@ -238,7 +239,7 @@ func TestPoolCleanObsolete(t *testing.T) {
 }
 
 func initdb(path string) (interfaces.Datastore, *badgerpk.ParaBadgerDB) {
-	badger := badgerpk.NewParaBadgerDB(path, ccurlcommon.Eth10AccountShard)
+	badger := badgerpk.NewParaBadgerDB(path, common.Remainder)
 
 	db := ccdb.NewParallelEthMemDataStore()
 
