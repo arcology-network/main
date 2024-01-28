@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/spf13/cobra"
-	"github.com/spf13/viper"
 
 	"github.com/arcology-network/consensus-engine/privval"
 
@@ -26,18 +25,18 @@ import (
 
 var (
 	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-	af     = ""
+	// af     = ""
 	//aft         = ""
-	addressfile = ""
+	// addressfile = ""
 )
 
-func init() {
-	flags := InitCmd.Flags()
+// func init() {
+// 	flags := InitCmd.Flags()
 
-	flags.String("af", "", "address file for create genesis")
-	//flags.String("aft", "", "address templete file ")
-	flags.String("addressfile", "", "address  file ")
-}
+// 	// flags.String("af", "", "address file for create genesis")
+// 	//flags.String("aft", "", "address templete file ")
+// 	// flags.String("addressfile", "", "address  file ")
+// }
 
 var InitCmd = &cobra.Command{
 	Use:   "init",
@@ -46,9 +45,9 @@ var InitCmd = &cobra.Command{
 }
 
 func initCmd(cmd *cobra.Command, args []string) error {
-	af = viper.GetString("af")
+	// af = viper.GetString("af")
 	//aft = viper.GetString("aft")
-	addressfile = viper.GetString("addressfile")
+	// addressfile = viper.GetString("addressfile")
 	initCfg()
 	return nil
 }
@@ -97,15 +96,15 @@ func initCfg() {
 		return
 	}
 
-	if len(af) > 0 {
+	// if len(af) > 0 {
 
-		err := AddToAF(addressfile, af, userAddr)
-		if err != nil {
-			fmt.Printf("AddToAF  err=%v\n", err)
-			return
-		}
+	// 	err := AddToAF(addressfile, af, userAddr)
+	// 	if err != nil {
+	// 		fmt.Printf("AddToAF  err=%v\n", err)
+	// 		return
+	// 	}
 
-	}
+	// }
 
 	var DEFAULT_DENOM = "mycoin"
 
