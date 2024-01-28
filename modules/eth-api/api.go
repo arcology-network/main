@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/BurntSushi/toml"
-	"github.com/arcology-network/common-lib/types"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 	wal "github.com/arcology-network/main/modules/eth-api/wallet"
 	mtypes "github.com/arcology-network/main/types"
@@ -788,14 +787,18 @@ func getProof(ctx context.Context, params []interface{}) (interface{}, error) {
 	if err != nil {
 		return nil, jsonrpc.InvalidParams("invalid keys given %v", params[1])
 	}
-	blockTag, err := ToHash(params[2])
+	blockParameter, err := mtypes.ParseBlockParameter(params[2])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid blockTag given %v", params[2])
+		return nil, jsonrpc.InvalidParams("invalid blockParameter given %v,err:%v", params[2], err)
 	}
-	request := &types.RequestProof{
-		Address:  address,
-		Keys:     keys,
-		BlockTag: blockTag,
+	// blockTag, err := ToHash(params[2])
+	// if err != nil {
+	// 	return nil, jsonrpc.InvalidParams("invalid blockTag given %v", params[2])
+	// }
+	request := &mtypes.RequestProof{
+		Address:        address,
+		Keys:           keys,
+		BlockParameter: blockParameter,
 	}
 	return backend.GetProof(request)
 }

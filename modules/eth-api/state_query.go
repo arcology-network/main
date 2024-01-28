@@ -10,6 +10,7 @@ import (
 	opadapter "github.com/arcology-network/concurrenturl/op"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	apifunc "github.com/arcology-network/main/modules/eth-api/backend"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 	"go.uber.org/zap"
@@ -23,7 +24,7 @@ var (
 type StateQuery struct {
 	actor.WorkerThread
 	// store  *ccdb.EthDataStore
-	provider *ccdb.ProofProvider
+	ProofCache *ccdb.MerkleProofCache
 }
 
 // return a Subscriber struct
@@ -61,21 +62,8 @@ func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
 		switch v.Name {
 		case actor.MsgApcHandle: //actor.MsgInitDB: //
 			ddb := (*v.Data.(*interfaces.Datastore)).(*ccdb.EthDataStore)
-
-			// sq.store = ddb
-
-			roothash := ddb.Root()
-
-			// Initiate the proof cache, max size = 16
-			cache := ccdb.NewMerkleProofCache(16, ddb.EthDB())
-
-			var err error
-			// Get the proof provider by a root hash.
-			provider, err := cache.GetProofProvider(roothash)
-			if err != nil {
-				panic(err)
-			}
-			sq.provider = provider
+			cache := ccdb.NewMerkleProofCache(2, ddb.EthDB())
+			sq.ProofCache = cache
 		}
 	}
 	return nil
@@ -84,27 +72,36 @@ func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
 func (sq *StateQuery) QueryState(ctx context.Context, request *types.QueryRequest, response *types.QueryResult) error {
 	switch request.QueryType {
 	case types.QueryType_Proof:
-		rq := request.Data.(*types.RequestProof)
+		rq := request.Data.(*mtypes.RequestProof)
 		keys := make([]string, len(rq.Keys))
 		for i := range keys {
 			keys[i] = fmt.Sprintf("%x", rq.Keys[i].Bytes())
 		}
-		sq.AddLog(log.LogLevel_Debug, "************* QueryState request", zap.String("blockTag", fmt.Sprintf("%x", rq.BlockTag)), zap.Strings("keys", keys), zap.String("addr", fmt.Sprintf("%x", rq.Address.Bytes())))
+		sq.AddLog(log.LogLevel_Debug, "************* QueryState request", zap.Strings("keys", keys), zap.String("addr", fmt.Sprintf("%x", rq.Address.Bytes())))
+		var rpcblock *mtypes.RPCBlock
+		var err error
+		if hash, ok := rq.BlockParameter.Hash(); ok {
+			rpcblock, err = apifunc.GetHeaderFromHash(hash)
+		} else if number, ok := rq.BlockParameter.Number(); ok {
+			rpcblock, err = apifunc.GetHeaderByNumber(number.Int64())
+		} else {
+			return err
+		}
 
-		rpcblock, err := apifunc.GetHeaderFromHash(rq.BlockTag)
 		if err != nil {
 			if err != nil {
 				return err
 			}
 		}
 		roothash := rpcblock.Header.Root
-		// roothash := sq.store.Root()
-		// proof, err := ccdb.NewMerkleProof(sq.store.EthDB(), [32]byte(roothash))
-		// if err != nil {
-		// 	return err
-		// }
-		// result, err := proof.GetProof(fmt.Sprintf("%x", rq.Address.Bytes()), keys)
-		accountResult, err := sq.provider.GetProof(rq.Address, keys)
+
+		// Get the proof provider by a root hash.
+		provider, err := sq.ProofCache.GetProofProvider(roothash)
+		if err != nil {
+			panic(err)
+		}
+
+		accountResult, err := provider.GetProof(rq.Address, keys)
 		if err := accountResult.Validate(roothash); err != nil {
 			sq.AddLog(log.LogLevel_Error, "accountResult Validate Failed", zap.Error(err))
 			return err
@@ -116,7 +113,7 @@ func (sq *StateQuery) QueryState(ctx context.Context, request *types.QueryReques
 			sq.AddLog(log.LogLevel_Error, "accountResult Convert Failed", zap.Error(err))
 		}
 
-		response.Data = opProof
+		response.Data = accountResult
 	}
 	return nil
 }

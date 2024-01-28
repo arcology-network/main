@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"sync"
 
-	"github.com/arcology-network/common-lib/types"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
 	mtypes "github.com/arcology-network/main/types"
 	eth "github.com/ethereum/go-ethereum"
@@ -42,7 +41,7 @@ func NewEthereumAPIMock(chainID *big.Int) EthereumAPI {
 	}
 }
 
-func (mock *EthereumAPIMock) GetProof(rq *types.RequestProof) (*ccdb.AccountResult, error) {
+func (mock *EthereumAPIMock) GetProof(rq *mtypes.RequestProof) (*ccdb.AccountResult, error) {
 	return &ccdb.AccountResult{}, nil
 }
 

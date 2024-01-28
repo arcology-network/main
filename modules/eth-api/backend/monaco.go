@@ -43,7 +43,7 @@ func NewMonaco(filters *Filters) *Monaco {
 	}
 }
 
-func (api *Monaco) GetProof(rq *cmntyp.RequestProof) (*ccdb.AccountResult, error) {
+func (api *Monaco) GetProof(rq *mtypes.RequestProof) (*ccdb.AccountResult, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("state_query", "QueryState", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_Proof,
@@ -196,6 +196,10 @@ func (m *Monaco) GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*mtypes.RPCBlock
 }
 
 func (m *Monaco) GetHeaderByNumber(number int64) (*mtypes.RPCBlock, error) {
+	return GetHeaderByNumber(number)
+}
+
+func GetHeaderByNumber(number int64) (*mtypes.RPCBlock, error) {
 	var response cmntyp.QueryResult
 	err := intf.Router.Call("storage", "Query", &cmntyp.QueryRequest{
 		QueryType: cmntyp.QueryType_HeaderByNumber,
