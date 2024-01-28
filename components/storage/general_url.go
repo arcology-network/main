@@ -22,6 +22,7 @@ type GeneralUrl struct {
 	generateAcctRoot  bool
 	inited            bool
 	cached            bool
+	transactional     bool
 	apcHandleName     string
 }
 
@@ -50,15 +51,15 @@ func (url *GeneralUrl) PostCommit(euResults []*eushared.EuResult, height uint64)
 		worker := func(start, end, index int, args ...interface{}) {
 			for i := start; i < end; i++ {
 				if values[i] != nil {
-					univalue := values[i].(univaluepk.Univalue)
+					univalue := values[i].(*univaluepk.Univalue)
 					if univalue.Value() != nil && univalue.Preexist() && univalue.Value().(interfaces.Type).TypeID() == commutative.PATH { // Skip meta data
 						metaKeys[i] = keys[i]
-						encodedMetas[i] = univalue.Value().(interfaces.Type).StorageEncode()
+						encodedMetas[i] = univalue.Value().(interfaces.Type).StorageEncode(keys[i])
 
 						keys[i] = ""
 						continue
 					}
-					encodedValues[i] = univalue.Value().(interfaces.Type).StorageEncode()
+					encodedValues[i] = univalue.Value().(interfaces.Type).StorageEncode(keys[i])
 				} else {
 					encodedValues[i] = nil
 				}
@@ -66,7 +67,7 @@ func (url *GeneralUrl) PostCommit(euResults []*eushared.EuResult, height uint64)
 		}
 		common.ParallelWorker(len(keys), 4, worker)
 
-		filter := func(v []byte) bool { return v == nil }
+		filter := func(_ int, v []byte) bool { return v == nil }
 		array.Remove(&keys, "")
 		array.RemoveIf(&encodedValues, filter)
 		array.Remove(&metaKeys, "")
@@ -96,6 +97,9 @@ func (url *GeneralUrl) PostCommit(euResults []*eushared.EuResult, height uint64)
 			Keys:          keys,
 			EncodedValues: encodedValues,
 		})
+	}
+	if url.transactional {
+		url.MsgBroker.Send(actor.MsgTransactionalAddCompleted, "ok")
 	}
 }
 
@@ -129,6 +133,10 @@ func (url *GeneralUrl) Outputs() map[string]int {
 	if url.cached {
 		outputs[actor.MsgCached] = 1
 	}
+	if url.transactional {
+		outputs[actor.MsgTransactionalAddCompleted] = 1
+	}
+
 	return outputs
 }
 
@@ -155,5 +163,11 @@ func (url *GeneralUrl) Config(params map[string]interface{}) {
 		panic("parameter not found: cached")
 	} else {
 		url.cached = v.(bool)
+	}
+
+	if v, ok := params["transactional"]; !ok {
+		panic("parameter not found: transactional")
+	} else {
+		url.transactional = v.(bool)
 	}
 }

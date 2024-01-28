@@ -42,6 +42,7 @@ func (m *MakeBlock) Inputs() ([]string, bool) {
 		actor.MsgBloom,
 		actor.MsgWithDrawHash,
 		actor.MsgSignerType,
+		actor.MsgTransactionalAddCompleted,
 	}, true
 }
 
@@ -139,6 +140,7 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 			}
 		case actor.MsgWithDrawHash:
 			withDrawHash = v.Data.(*evmCommon.Hash)
+		case actor.MsgTransactionalAddCompleted:
 
 		}
 	}
