@@ -7,6 +7,7 @@
             "generate_acct_root": true,
             "init_db": true,
             "cached":true,
+            "transactional": true,
             "no_op":true
         }
     },
@@ -17,7 +18,8 @@
                 "generate_url_update": "__env__",
                 "generate_acct_root": "__env__",
                 "init_db": "__env__",
-                "cached":"__env__"
+                "cached":"__env__",
+                "transactional":"__env__"
             },
             "stateful_euresult_aggr_selector": {
                 "output": "selectedexecuted"
@@ -69,7 +71,8 @@
                 "generate_url_update": false,
                 "generate_acct_root": false,
                 "init_db": false,
-                "cached": false
+                "cached": false,
+                "transactional": false
             },
             "stateful_euresult_aggr_selector4pool": {
                 "output": "commitNonceUrl"
