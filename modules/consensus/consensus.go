@@ -151,13 +151,13 @@ func (c *Consensus) Proposer(isporposer bool) {
 func (c *Consensus) Syncing(syncing bool) {
 	c.syncing = syncing
 }
-func (c *Consensus) Reap(maxBytes int64, maxGas int64) (txs [][]byte, hashes [][]byte) {
+func (c *Consensus) Reap(maxBytes int64, maxGas int64, height int64) (txs [][]byte, hashes [][]byte) {
 	c.AddLog(log.LogLevel_Debug, "enter Reap", zap.Uint64("height", c.LatestMessage.Height))
 	if c.cachedMetaBlock != nil {
 		c.AddLog(log.LogLevel_Debug, "c.cachedMetaBlock.Height", zap.Uint64("cache height", c.cachedMetaBlock.Height))
 	}
 	var msg *actor.Message
-	if c.cachedMetaBlock != nil && c.LatestMessage.Height == c.cachedMetaBlock.Height {
+	if c.cachedMetaBlock != nil && uint64(height) == c.cachedMetaBlock.Height {
 		msg = c.cachedMetaBlock
 		c.AddLog(log.LogLevel_Debug, "got cachedMetaBlock")
 	} else {
