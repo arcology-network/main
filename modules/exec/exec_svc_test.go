@@ -99,9 +99,7 @@ func TestExecSvcMakeSnapshot(t *testing.T) {
 
 func setup(tb testing.TB) (*brokerpk.StatefulStreamer, *mockWorker) {
 	log.InitLog("exec-svc.log", "./log.toml", "tester", "tester", 0)
-	// config.MainConfig = &config.Monaco{
-	// 	ChainId: new(big.Int),
-	// }
+
 	broker := brokerpk.NewStatefulStreamer()
 
 	intf.RPCCreator = func(serviceAddr, basepath string, zkAddrs []string, rcvrs, fns []interface{}) {}

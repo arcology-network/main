@@ -11,7 +11,6 @@ import (
 
 	"github.com/arcology-network/consensus-engine/privval"
 
-	//monacoCoinCfg "github.com/arcology-network/Monaco/coin/config"
 	"github.com/arcology-network/consensus-engine/p2p"
 
 	"github.com/arcology-network/consensus-engine/cmd/tendermint/commands"

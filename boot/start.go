@@ -16,7 +16,7 @@ import (
 
 var StartCmd = &cobra.Command{
 	Use:   "start",
-	Short: "Start monaco service Daemon",
+	Short: "Start arcology service Daemon",
 	RunE:  startCmd,
 }
 
@@ -40,8 +40,6 @@ func startCmd(cmd *cobra.Command, args []string) error {
 	globalConfig := config.LoadGlobalConfig(globalConfigFile)
 	kafkaConfig := config.LoadKafkaConfig(kafkaConfigFile)
 	appConfig := config.LoadAppConfig(appConfigFile)
-
-	//viper.Set(cli.HomeFlag, os.ExpandEnv("$HOME/monacos/main"))
 
 	initApp(globalConfig, kafkaConfig, appConfig)
 

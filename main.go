@@ -13,9 +13,9 @@ import (
 func main() {
 
 	var CoreCmd = &cobra.Command{
-		Use:   "monaco",
-		Short: "monaco main service",
-		Long:  `monaco main service,It's the Monaco logical structure as a conductor`,
+		Use:   "arcology",
+		Short: "arcology main service",
+		Long:  `arcology main service,It's the arcology logical structure as a conductor`,
 	}
 
 	CoreCmd.AddCommand(
@@ -25,7 +25,7 @@ func main() {
 		consensus.MergeCmd,
 	)
 
-	cmd := cli.PrepareMainCmd(CoreCmd, "BC", os.ExpandEnv("$HOME/monacos/main"))
+	cmd := cli.PrepareMainCmd(CoreCmd, "BC", os.ExpandEnv("$HOME/arcology/main"))
 	if err := cmd.Execute(); err != nil {
 		os.Exit(1)
 	}
