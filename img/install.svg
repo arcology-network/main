@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Uploaded to: SVG Repo, www.svgrepo.com, Generator: SVG Repo Mixer Tools -->
+<svg width="800px" height="800px" viewBox="0 0 64 64" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    
+    <title>com-mac-old</title>
+    <desc>Created with Sketch.</desc>
+    <defs>
+
+</defs>
+    <g id="General" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="SLICES-64px" transform="translate(-360.000000, -300.000000)">
+
+</g>
+        <g id="ICONS" transform="translate(-355.000000, -295.000000)">
+            <g id="com-mac-old" transform="translate(364.000000, 302.000000)">
+                <path d="M2,0 L42,0 C43.104,0 44,0.896 44,2 L44,28 C44,29.104 43.104,30 42,30 L2,30 C0.896,30 0,29.104 0,28 L0,2 C0,0.896 0.896,0 2,0 Z" id="Fill-1" fill="#4BAADC">
+
+</path>
+                <polygon id="Fill-3" fill="#FFFFFF" points="4 26 40 26 40 4 4 4">
+
+</polygon>
+                <path d="M24,34.124 L24,34.124 L24,36 C24,37.104 23.104,38 22,38 C20.896,38 20,37.104 20,36 L20,34.124 C12.107,35.108 6,41.841 6,50 L6,50.452 C6,51.307 6.693,52 7.548,52 L36.452,52 C37.307,52 38,51.307 38,50.452 L38,50 C38,41.841 31.893,35.108 24,34.124" id="Fill-5" fill="#FFFFFF">
+
+</path>
+                <path d="M20,30 L20,36 C20,37.104 20.896,38 22,38 C23.104,38 24,37.104 24,36 L24,30 L20,30 Z" id="Fill-6" fill="#4BAADC">
+
+</path>
+                <path d="M2,0 L42,0 C43.104,0 44,0.896 44,2 L44,28 C44,29.104 43.104,30 42,30 L2,30 C0.896,30 0,29.104 0,28 L0,2 C0,0.896 0.896,0 2,0 Z" id="Stroke-7" stroke="#1E69A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+</path>
+                <polygon id="Stroke-8" stroke="#1E69A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" points="4 26 40 26 40 4 4 4">
+
+</polygon>
+                <path d="M24,43 C24,43.553 23.104,44 22,44 C20.896,44 20,43.553 20,43 C20,42.447 20.896,42 22,42 C23.104,42 24,42.447 24,43 Z" id="Stroke-9" stroke="#4BAADC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+</path>
+                <path d="M20,30 L20,36 C20,37.104 20.896,38 22,38 C23.104,38 24,37.104 24,36 L24,30" id="Stroke-10" stroke="#1E69A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+</path>
+                <path d="M20,34.124 C12.107,35.108 6,41.841 6,50 L6,50.452 C6,51.307 6.693,52 7.548,52 L36.452,52 C37.307,52 38,51.307 38,50.452 L38,50 C38,41.841 31.893,35.108 24,34.124" id="Stroke-11" stroke="#1E69A0" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+
+</path>
+            </g>
+        </g>
+    </g>
+</svg>
