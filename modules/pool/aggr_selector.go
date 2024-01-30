@@ -280,8 +280,8 @@ func (a *AggrSelector) Height() uint64 {
 }
 
 func (a *AggrSelector) ReceivedMessages(ctx context.Context, request *types.OpRequest, response *types.QueryResult) error {
-	a.MsgBroker.Send(actor.MsgOpCommand, request)
-	a.MsgBroker.Send(actor.MsgBlockParams, request.BlockParam)
+	a.MsgBroker.Send(actor.MsgOpCommand, request, a.height)
+	a.MsgBroker.Send(actor.MsgBlockParams, request.BlockParam, a.height)
 
 	var withdrawalsHash *evmCommon.Hash
 	if request.Withdrawals == nil {
@@ -292,7 +292,7 @@ func (a *AggrSelector) ReceivedMessages(ctx context.Context, request *types.OpRe
 		h := evmTypes.DeriveSha(evmTypes.Withdrawals(request.Withdrawals), trie.NewStackTrie(nil))
 		withdrawalsHash = &h
 	}
-	a.MsgBroker.Send(actor.MsgWithDrawHash, withdrawalsHash)
+	a.MsgBroker.Send(actor.MsgWithDrawHash, withdrawalsHash, a.height)
 	response.Data = <-a.resultch
 	return nil
 }
@@ -311,13 +311,10 @@ func (a *AggrSelector) Query(ctx context.Context, request *types.QueryRequest, r
 		if err := otx.UnmarshalBinary(txReal); err != nil {
 			return errors.New("tx decode err")
 		}
-		// transactionIndex := uint64(0)
+
 		v, s, r := otx.RawSignatureValues()
 		msg := st.NativeMessage
 		transaction := mtypes.RPCTransaction{
-			// BlockHash:        evmCommon.Hash{},
-			// BlockNumber:      big.NewInt(0),
-			// TransactionIndex: &transactionIndex,
 
 			Type:     hexutil.Uint64(evmTypes.LegacyTxType),
 			From:     evmCommon.Address(msg.From),

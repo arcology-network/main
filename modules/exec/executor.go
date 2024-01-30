@@ -398,7 +398,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	//-----------------------------start sending ------------------------------
 	if !debug {
 		euresults := eushared.Euresults(sendingEuResults)
-		exec.MsgBroker.Send(actor.MsgEuResults, &euresults)
+		exec.MsgBroker.Send(actor.MsgEuResults, &euresults, exec.height)
 		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgEuResults", zap.Int("euresults", len(euresults)))
 	}
 	responses := ExecutorResponse{
@@ -414,7 +414,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 
 	if !debug {
 		tarss := eushared.TxAccessRecordSet(sendingAccessRecords)
-		exec.MsgBroker.Send(actor.MsgTxAccessRecords, &tarss)
+		exec.MsgBroker.Send(actor.MsgTxAccessRecords, &tarss, exec.height)
 		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgTxAccessRecords", zap.Int("MsgTxAccessRecords", len(tarss)))
 	}
 	if debug {
@@ -422,6 +422,6 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	}
 
 	if counter > 0 {
-		exec.MsgBroker.Send(actor.MsgReceipts, &sendingReceipts)
+		exec.MsgBroker.Send(actor.MsgReceipts, &sendingReceipts, exec.height)
 	}
 }
