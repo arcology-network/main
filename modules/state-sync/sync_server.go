@@ -3,8 +3,8 @@ package statesync
 import (
 	"fmt"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/modules/p2p"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 )
 
@@ -67,8 +67,8 @@ func (srv *SyncServer) OnMessageArrived(msgs []*actor.Message) error {
 				Data: sp,
 			})
 		case actor.MsgSyncDataRequest:
-			data := srv.storageRpc.ReadSlice(msg.Data.(*cmntyp.SyncDataRequest))
-			fmt.Printf("SyncServer[%s]: handle sync data request [%v]\n", srv.Groupid, msg.Data.(*cmntyp.SyncDataRequest))
+			data := srv.storageRpc.ReadSlice(msg.Data.(*mtypes.SyncDataRequest))
+			fmt.Printf("SyncServer[%s]: handle sync data request [%v]\n", srv.Groupid, msg.Data.(*mtypes.SyncDataRequest))
 			srv.p2pClient.Response(p2pMessage.Sender, &actor.Message{
 				Name: actor.MsgSyncDataResponse,
 				Data: data,

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/modules/storage"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 )
 
@@ -24,17 +24,17 @@ func (mock *schdStoreMock) Save(ctx context.Context, state *storage.SchdState, _
 type executorMock struct {
 	tb       testing.TB
 	callTime int
-	response []*cmntyp.ExecutorResponses
+	response []*mtypes.ExecutorResponses
 }
 
-func (mock *executorMock) ExecTxs(ctx context.Context, request *actor.Message, response *cmntyp.ExecutorResponses) error {
-	mock.tb.Log(request, request.Data.(*cmntyp.ExecutorRequest))
+func (mock *executorMock) ExecTxs(ctx context.Context, request *actor.Message, response *mtypes.ExecutorResponses) error {
+	mock.tb.Log(request, request.Data.(*mtypes.ExecutorRequest))
 	*response = *mock.response[mock.callTime]
 	mock.callTime++
 	return nil
 }
 
-func (mock *executorMock) GetConfig(ctx context.Context, _ *int, config *cmntyp.ExecutorConfig) error {
+func (mock *executorMock) GetConfig(ctx context.Context, _ *int, config *mtypes.ExecutorConfig) error {
 	config.Concurrency = 4
 	return nil
 }
@@ -47,11 +47,11 @@ var (
 type arbitratorMock struct {
 	tb       testing.TB
 	callTime int
-	response []*cmntyp.ArbitratorResponse
+	response []*mtypes.ArbitratorResponse
 }
 
-func (mock *arbitratorMock) Arbitrate(ctx context.Context, request *actor.Message, response *cmntyp.ArbitratorResponse) error {
-	mock.tb.Log(request, request.Data.(*cmntyp.ArbitratorRequest).TxsListGroup)
+func (mock *arbitratorMock) Arbitrate(ctx context.Context, request *actor.Message, response *mtypes.ArbitratorResponse) error {
+	mock.tb.Log(request, request.Data.(*mtypes.ArbitratorRequest).TxsListGroup)
 	*response = *mock.response[mock.callTime]
 	mock.callTime++
 	return nil

@@ -1,7 +1,7 @@
 package core
 
 import (
-	cmntyp "github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 )
@@ -33,7 +33,7 @@ func (i *Initializer) OnStart() {}
 
 func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 	if !i.inited {
-		var parentInfo cmntyp.ParentInfo
+		var parentInfo mtypes.ParentInfo
 		iin := 12
 		if err := intf.Router.Call("statestore", "GetParentInfo", &iin, &parentInfo); err != nil {
 			panic(err)

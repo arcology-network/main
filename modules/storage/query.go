@@ -7,7 +7,6 @@ import (
 	"math/big"
 	"time"
 
-	"github.com/arcology-network/common-lib/types"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
 	intf "github.com/arcology-network/streamer/interface"
@@ -19,30 +18,30 @@ import (
 	"go.uber.org/zap"
 )
 
-func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, response *types.QueryResult) error {
+func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
 	switch request.QueryType {
-	case types.QueryType_LatestHeight:
+	case mtypes.QueryType_LatestHeight:
 		response.Data = int(rs.lastHeight)
-	case types.QueryType_Nonce:
-		request := request.Data.(types.RequestBalance)
+	case mtypes.QueryType_Nonce:
+		request := request.Data.(mtypes.RequestBalance)
 		var nonce uint64
 		intf.Router.Call("urlstore", "GetNonce", &request.Address, &nonce)
 		response.Data = nonce
-	case types.QueryType_Balance:
-		request := request.Data.(types.RequestBalance)
+	case mtypes.QueryType_Balance:
+		request := request.Data.(mtypes.RequestBalance)
 		var balance *big.Int
 		intf.Router.Call("urlstore", "GetBalance", &request.Address, &balance)
 		response.Data = balance
-	case types.QueryType_RawBlock:
+	case mtypes.QueryType_RawBlock:
 		queryHeight := request.Data.(uint64)
-		var block *types.MonacoBlock
+		var block *mtypes.MonacoBlock
 		intf.Router.Call("blockstore", "GetByHeight", &queryHeight, &block)
 		if block == nil {
 			return fmt.Errorf("block not found for height %d", queryHeight)
 		}
 		response.Data = block
-	case types.QueryType_Block:
-		blockRequest := request.Data.(*types.RequestBlock)
+	case mtypes.QueryType_Block:
+		blockRequest := request.Data.(*mtypes.RequestBlock)
 		if blockRequest == nil {
 			return errors.New("query params is nil")
 		}
@@ -52,15 +51,15 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		} else {
 			queryHeight = uint64(blockRequest.Height)
 		}
-		var block *types.MonacoBlock
+		var block *mtypes.MonacoBlock
 		intf.Router.Call("blockstore", "GetByHeight", &queryHeight, &block)
 		if block == nil {
 			return errors.New("block is nil")
 		}
-		var statisticInfo *types.StatisticalInformation
+		var statisticInfo *mtypes.StatisticalInformation
 		intf.Router.Call("debugstore", "GetStatisticInfos", &queryHeight, &statisticInfo)
 		if statisticInfo == nil {
-			statisticInfo = &types.StatisticalInformation{
+			statisticInfo = &mtypes.StatisticalInformation{
 				TimeUsed: 0,
 			}
 		}
@@ -85,7 +84,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			height = int(block.Height)
 		}
 
-		queryBlock := types.Block{
+		queryBlock := mtypes.Block{
 			Height:    height,
 			Hash:      hash,
 			Coinbase:  coinbase,
@@ -101,7 +100,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		}
 		response.Data = queryBlock
 
-	case types.QueryType_Container:
+	case mtypes.QueryType_Container:
 		// request := request.Data.(types.RequestContainer)
 		// key := string(evmCommon.Hex2Bytes(request.Key))
 		data := []byte{}
@@ -121,15 +120,15 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		// 	Key:           key,
 		// }, &data)
 		response.Data = data
-	case types.QueryType_Receipt:
+	case mtypes.QueryType_Receipt:
 		start := time.Now()
-		requestReceipt := request.Data.(*types.RequestReceipt)
+		requestReceipt := request.Data.(*mtypes.RequestReceipt)
 		if requestReceipt == nil {
 			return nil
 		}
 		hashes := requestReceipt.Hashes
 
-		receipts := make([]*types.QueryReceipt, 0, len(hashes))
+		receipts := make([]*mtypes.QueryReceipt, 0, len(hashes))
 		for _, hash := range hashes {
 			txhash := evmCommon.HexToHash(hash)
 			txhashstr := string(txhash.Bytes())
@@ -144,13 +143,13 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 				continue
 			}
 
-			logs := make([]*types.Log, len(receipt.Logs))
+			logs := make([]*mtypes.Log, len(receipt.Logs))
 			for j, log := range receipt.Logs {
 				topics := make([]string, len(log.Topics))
 				for k, topic := range log.Topics {
 					topics[k] = fmt.Sprintf("%x", topic.Bytes())
 				}
-				logs[j] = &types.Log{
+				logs[j] = &mtypes.Log{
 					Address:     fmt.Sprintf("%x", log.Address.Bytes()),
 					Topics:      topics,
 					Data:        fmt.Sprintf("%x", log.Data),
@@ -162,7 +161,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 				}
 			}
 
-			receiptNew := &types.QueryReceipt{
+			receiptNew := &mtypes.QueryReceipt{
 				Status:          int(receipt.Status),
 				ContractAddress: fmt.Sprintf("%x", receipt.ContractAddress),
 				GasUsed:         big.NewInt(int64(receipt.GasUsed)),
@@ -178,22 +177,22 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		response.Data = receipts
 
 	//------------------------------------------------for Ethereum rpc api-----------------------------------------
-	case types.QueryType_BlockNumber:
+	case mtypes.QueryType_BlockNumber:
 		response.Data = rs.lastHeight
-	case types.QueryType_TransactionCount:
-		request := request.Data.(types.RequestParameters)
+	case mtypes.QueryType_TransactionCount:
+		request := request.Data.(mtypes.RequestParameters)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
 		var nonce uint64
 		intf.Router.Call("urlstore", "GetNonce", &address, &nonce)
 		response.Data = nonce
-	case types.QueryType_Code:
-		request := request.Data.(types.RequestParameters)
+	case mtypes.QueryType_Code:
+		request := request.Data.(mtypes.RequestParameters)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
 		var code []byte
 		intf.Router.Call("urlstore", "GetCode", &address, &code)
 		response.Data = code
-	case types.QueryType_Balance_Eth:
-		request := request.Data.(*types.RequestParameters)
+	case mtypes.QueryType_Balance_Eth:
+		request := request.Data.(*mtypes.RequestParameters)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
 		var balance *big.Int
 		err := intf.Router.Call("urlstore", "GetBalance", &address, &balance)
@@ -201,8 +200,8 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			return err
 		}
 		response.Data = balance
-	case types.QueryType_Storage:
-		request := request.Data.(types.RequestStorage)
+	case mtypes.QueryType_Storage:
+		request := request.Data.(mtypes.RequestStorage)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
 		var value []byte
 		intf.Router.Call("urlstore", "GetEthStorage", &UrlEthStorageGetRequest{
@@ -210,7 +209,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			Key:     request.Key,
 		}, &value)
 		response.Data = value
-	case types.QueryType_Receipt_Eth:
+	case mtypes.QueryType_Receipt_Eth:
 		hash := request.Data.(evmCommon.Hash)
 		txhashstr := string(hash.Bytes())
 		var position *mstypes.Position
@@ -227,7 +226,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		}
 
 		response.Data = receipt
-	case types.QueryType_Block_Receipts:
+	case mtypes.QueryType_Block_Receipts:
 		height := request.Data.(uint64)
 
 		var receipts []*evmTypes.Receipt
@@ -238,7 +237,7 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 		}
 
 		response.Data = receipts
-	case types.QueryType_Transaction:
+	case mtypes.QueryType_Transaction:
 		hash := request.Data.(evmCommon.Hash)
 		txhashstr := string(hash.Bytes())
 		var position *mstypes.Position
@@ -256,8 +255,8 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			return err
 		}
 		response.Data = transaction
-	case types.QueryType_Block_Eth:
-		request := request.Data.(*types.RequestBlockEth)
+	case mtypes.QueryType_Block_Eth:
+		request := request.Data.(*mtypes.RequestBlockEth)
 		queryHeight := rs.getQueryHeight(request.Number)
 
 		rpcBlock, _, err := rs.getRpcBlock(queryHeight, request.FullTx, false)
@@ -265,8 +264,8 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			return err
 		}
 		response.Data = rpcBlock
-	case types.QueryType_HeaderByNumber:
-		request := request.Data.(*types.RequestBlockEth)
+	case mtypes.QueryType_HeaderByNumber:
+		request := request.Data.(*mtypes.RequestBlockEth)
 		queryHeight := rs.getQueryHeight(request.Number)
 
 		rpcBlock, _, err := rs.getRpcBlock(queryHeight, false, true)
@@ -274,8 +273,8 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			return err
 		}
 		response.Data = rpcBlock
-	case types.QueryType_HeaderByHash:
-		request := request.Data.(*types.RequestBlockEth)
+	case mtypes.QueryType_HeaderByHash:
+		request := request.Data.(*mtypes.RequestBlockEth)
 		hash := string(request.Hash.Bytes())
 		var height uint64
 		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
@@ -284,8 +283,8 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			return err
 		}
 		response.Data = rpcBlock
-	case types.QueryType_BlocByHash:
-		request := request.Data.(*types.RequestBlockEth)
+	case mtypes.QueryType_BlocByHash:
+		request := request.Data.(*mtypes.RequestBlockEth)
 		hash := string(request.Hash.Bytes())
 		var height uint64
 		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
@@ -294,20 +293,20 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			return err
 		}
 		response.Data = rpcBlock
-	case types.QueryType_Logs:
+	case mtypes.QueryType_Logs:
 		request := request.Data.(*evm.FilterQuery)
 		response.Data = rs.caches.Query(*request)
-	case types.QueryType_TxNumsByHash:
+	case mtypes.QueryType_TxNumsByHash:
 		hash := string(request.Data.(evmCommon.Hash).Bytes())
 		var height uint64
 		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
 		response.Data = rs.getBlockTxs(height)
-	case types.QueryType_TxNumsByNumber:
+	case mtypes.QueryType_TxNumsByNumber:
 		number := request.Data.(int64)
 		height := rs.getQueryHeight(number)
 		response.Data = rs.getBlockTxs(height)
-	case types.QueryType_TxByHashAndIdx:
-		request := request.Data.(*types.RequestBlockEth)
+	case mtypes.QueryType_TxByHashAndIdx:
+		request := request.Data.(*mtypes.RequestBlockEth)
 		hash := string(request.Hash.Bytes())
 		var height uint64
 		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
@@ -320,8 +319,8 @@ func (rs *Storage) Query(ctx context.Context, request *types.QueryRequest, respo
 			return err
 		}
 		response.Data = transaction
-	case types.QueryType_TxByNumberAndIdx:
-		request := request.Data.(*types.RequestBlockEth)
+	case mtypes.QueryType_TxByNumberAndIdx:
+		request := request.Data.(*mtypes.RequestBlockEth)
 		height := rs.getQueryHeight(request.Number)
 		block, signerType, err := rs.getRpcBlock(height, false, true)
 		if err != nil {
@@ -347,7 +346,7 @@ func (rs *Storage) getTransactionByPosition(blockHash evmCommon.Hash, height uin
 	var tx *evmTypes.Transaction
 	intf.Router.Call("blockstore", "GetTransaction", &position, &tx)
 
-	signer := types.MakeSigner(SignerType, rs.chainID)
+	signer := mtypes.MakeSigner(SignerType, rs.chainID)
 	from, _ := evmTypes.Sender(signer, tx)
 	v, r, s := tx.RawSignatureValues()
 	result := &mtypes.RPCTransaction{
@@ -465,17 +464,17 @@ func (rs *Storage) getQueryHeight(number int64) uint64 {
 	return queryHeight
 }
 func (rs *Storage) getBlockTxs(height uint64) int {
-	var block *types.MonacoBlock
+	var block *mtypes.MonacoBlock
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 	return len(block.Txs)
 }
 func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*mtypes.RPCBlock, uint8, error) {
-	var block *types.MonacoBlock
+	var block *mtypes.MonacoBlock
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 
 	header := evmTypes.Header{}
 	for i := range block.Headers {
-		if block.Headers[i][0] != types.AppType_Eth {
+		if block.Headers[i][0] != mtypes.AppType_Eth {
 			continue
 		}
 

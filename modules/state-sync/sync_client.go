@@ -5,9 +5,9 @@ import (
 	"sync"
 	"time"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/modules/p2p"
 	"github.com/arcology-network/main/modules/storage"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 )
@@ -26,32 +26,32 @@ MsgSyncDataResponse		SyncDataResponse
 type SyncClient struct {
 	actor.WorkerThread
 
-	peers map[string]*cmntyp.SyncStatus
+	peers map[string]*mtypes.SyncStatus
 	pLock sync.RWMutex
 
 	p2pClient  P2pClient
 	storageRpc StorageRpc
 
-	taskChan      chan *cmntyp.SyncDataRequest
+	taskChan      chan *mtypes.SyncDataRequest
 	taskHeight    uint64
-	taskInProcess map[string]*cmntyp.SyncDataRequest
+	taskInProcess map[string]*mtypes.SyncDataRequest
 	tLock         sync.Mutex
 
-	dataChan     chan *cmntyp.SyncDataResponse
+	dataChan     chan *mtypes.SyncDataResponse
 	dataHeight   uint64
-	waitForWrite map[uint64][]*cmntyp.SyncDataRequest
+	waitForWrite map[uint64][]*mtypes.SyncDataRequest
 
-	writeChan chan []*cmntyp.SyncDataRequest
+	writeChan chan []*mtypes.SyncDataRequest
 }
 
 func NewSyncClient(concurrency int, groupId string) actor.IWorkerEx {
 	cli := &SyncClient{
-		peers:         make(map[string]*cmntyp.SyncStatus),
-		taskChan:      make(chan *cmntyp.SyncDataRequest, 1000),
-		taskInProcess: make(map[string]*cmntyp.SyncDataRequest),
-		dataChan:      make(chan *cmntyp.SyncDataResponse, 1000),
-		waitForWrite:  make(map[uint64][]*cmntyp.SyncDataRequest),
-		writeChan:     make(chan []*cmntyp.SyncDataRequest, 1000),
+		peers:         make(map[string]*mtypes.SyncStatus),
+		taskChan:      make(chan *mtypes.SyncDataRequest, 1000),
+		taskInProcess: make(map[string]*mtypes.SyncDataRequest),
+		dataChan:      make(chan *mtypes.SyncDataResponse, 1000),
+		waitForWrite:  make(map[uint64][]*mtypes.SyncDataRequest),
+		writeChan:     make(chan []*mtypes.SyncDataRequest, 1000),
 		p2pClient:     p2p.NewP2pClient(concurrency, "p2p.client").(P2pClient),
 		storageRpc:    NewDefaultStorageRpc(),
 	}
@@ -113,7 +113,7 @@ func (cli *SyncClient) OnMessageArrived(msgs []*actor.Message) error {
 		// Get peers status.
 		go func() {
 			// Find one eligible peer.
-			var status *cmntyp.SyncStatus
+			var status *mtypes.SyncStatus
 			for {
 				status = cli.getPeerAbove(target)
 				if status != nil {
@@ -140,10 +140,10 @@ func (cli *SyncClient) OnMessageArrived(msgs []*actor.Message) error {
 		msg = p2pMessage.Message
 		switch msg.Name {
 		case actor.MsgSyncStatusResponse:
-			fmt.Printf("[SyncClient.OnMessageArrived] MsgSyncStatusResponse: %v\n", msg.Data.(*cmntyp.SyncStatus))
+			fmt.Printf("[SyncClient.OnMessageArrived] MsgSyncStatusResponse: %v\n", msg.Data.(*mtypes.SyncStatus))
 			cli.pLock.Lock()
 			defer cli.pLock.Unlock()
-			ss := msg.Data.(*cmntyp.SyncStatus)
+			ss := msg.Data.(*mtypes.SyncStatus)
 			if _, ok := cli.peers[ss.Id]; !ok {
 				cli.peers[ss.Id] = ss
 			} else {
@@ -151,8 +151,8 @@ func (cli *SyncClient) OnMessageArrived(msgs []*actor.Message) error {
 				cli.peers[ss.Id].Height = ss.Height
 			}
 		case actor.MsgSyncPointResponse:
-			fmt.Printf("[SyncClient.OnMessageArrived] MsgSyncPointResponse: %v\n", msg.Data.(*cmntyp.SyncPoint))
-			sp := msg.Data.(*cmntyp.SyncPoint)
+			fmt.Printf("[SyncClient.OnMessageArrived] MsgSyncPointResponse: %v\n", msg.Data.(*mtypes.SyncPoint))
+			sp := msg.Data.(*mtypes.SyncPoint)
 			// Save parent info, but leave the Height at the beginning of the sync point.
 			// The Height will be updated to the end of the sync point when the sync point
 			// was applied to local url store.
@@ -171,7 +171,7 @@ func (cli *SyncClient) OnMessageArrived(msgs []*actor.Message) error {
 			// TODO: validate the sync point.
 			go func() {
 				for i := range sp.Slices {
-					cli.taskChan <- &cmntyp.SyncDataRequest{
+					cli.taskChan <- &mtypes.SyncDataRequest{
 						From:  sp.From,
 						To:    sp.To,
 						Slice: i,
@@ -179,8 +179,8 @@ func (cli *SyncClient) OnMessageArrived(msgs []*actor.Message) error {
 				}
 			}()
 		case actor.MsgSyncDataResponse:
-			fmt.Printf("[SyncClient.OnMessageArrived] MsgSyncDataResponse: %v\n", msg.Data.(*cmntyp.SyncDataResponse).SyncDataRequest)
-			data := msg.Data.(*cmntyp.SyncDataResponse)
+			fmt.Printf("[SyncClient.OnMessageArrived] MsgSyncDataResponse: %v\n", msg.Data.(*mtypes.SyncDataResponse).SyncDataRequest)
+			data := msg.Data.(*mtypes.SyncDataResponse)
 			cli.tLock.Lock()
 			delete(cli.taskInProcess, data.ID())
 			cli.tLock.Unlock()
@@ -191,7 +191,7 @@ func (cli *SyncClient) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (cli *SyncClient) getPeerAbove(height uint64) *cmntyp.SyncStatus {
+func (cli *SyncClient) getPeerAbove(height uint64) *mtypes.SyncStatus {
 	cli.pLock.RLock()
 	defer cli.pLock.RUnlock()
 	fmt.Printf("[SyncClient.getPeerAbove] height = %d\n", height)
@@ -204,10 +204,10 @@ func (cli *SyncClient) getPeerAbove(height uint64) *cmntyp.SyncStatus {
 	return nil
 }
 
-func (cli *SyncClient) getNextTask(target, syncPoint uint64) *cmntyp.SyncDataRequest {
+func (cli *SyncClient) getNextTask(target, syncPoint uint64) *mtypes.SyncDataRequest {
 	if syncPoint > cli.taskHeight {
 		cli.taskHeight = syncPoint
-		return &cmntyp.SyncDataRequest{
+		return &mtypes.SyncDataRequest{
 			From:  0,
 			To:    syncPoint,
 			Slice: -1,
@@ -216,7 +216,7 @@ func (cli *SyncClient) getNextTask(target, syncPoint uint64) *cmntyp.SyncDataReq
 
 	if target > cli.taskHeight {
 		cli.taskHeight++
-		return &cmntyp.SyncDataRequest{
+		return &mtypes.SyncDataRequest{
 			From:  cli.taskHeight - 1,
 			To:    cli.taskHeight,
 			Slice: 0,
@@ -274,7 +274,7 @@ func (cli *SyncClient) taskSendingRoutine() {
 			})
 			status.RequestId = task.ID()
 			cli.tLock.Lock()
-			cli.taskInProcess[task.ID()] = &cmntyp.SyncDataRequest{
+			cli.taskInProcess[task.ID()] = &mtypes.SyncDataRequest{
 				From:    task.From,
 				To:      task.To,
 				Slice:   task.Slice,
@@ -290,13 +290,13 @@ func (cli *SyncClient) dataReorderingRoutine(target uint64) {
 		cli.storageRpc.WriteSlice(data)
 		if data.To-data.From > 1 {
 			if _, ok := cli.waitForWrite[data.From]; !ok {
-				cli.waitForWrite[data.From] = make([]*cmntyp.SyncDataRequest, cmntyp.SlicePerSyncPoint)
+				cli.waitForWrite[data.From] = make([]*mtypes.SyncDataRequest, mtypes.SlicePerSyncPoint)
 				cli.waitForWrite[data.From][data.Slice] = &data.SyncDataRequest
 			} else {
 				cli.waitForWrite[data.From][data.Slice] = &data.SyncDataRequest
 			}
 		} else {
-			cli.waitForWrite[data.From] = []*cmntyp.SyncDataRequest{&data.SyncDataRequest}
+			cli.waitForWrite[data.From] = []*mtypes.SyncDataRequest{&data.SyncDataRequest}
 		}
 
 		for {

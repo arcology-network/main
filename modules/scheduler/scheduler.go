@@ -11,6 +11,7 @@ import (
 	engine "github.com/arcology-network/main/modules/scheduler/lib"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	"github.com/arcology-network/main/modules/storage"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/log"
@@ -168,7 +169,7 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 	// schd.MsgBroker.Send(actor.MsgSpawnedRelations, schd.context.spawnedRelations)
 	// Exec time.
 	execTime := time.Since(timeStart)
-	schd.MsgBroker.Send(actor.MsgExecTime, &types.StatisticalInformation{
+	schd.MsgBroker.Send(actor.MsgExecTime, &mtypes.StatisticalInformation{
 		Key:      actor.MsgExecTime,
 		TimeUsed: execTime,
 		Value:    fmt.Sprintf("%v", execTime),
@@ -191,8 +192,8 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 
 func (schd *Scheduler) SetParallelism(
 	ctx context.Context,
-	request *types.ClusterConfig,
-	response *types.SetReply,
+	request *mtypes.ClusterConfig,
+	response *mtypes.SetReply,
 ) error {
 	schd.parallelism = request.Parallelism
 	return nil
@@ -228,7 +229,7 @@ func (schd *Scheduler) createGenerations() []*generation {
 			schd.context,
 			[]*batch{newBatch(
 				schd.context,
-				[]*types.ExecutingSequence{types.NewExecutingSequence(schd.transfers, true)},
+				[]*mtypes.ExecutingSequence{mtypes.NewExecutingSequence(schd.transfers, true)},
 			)},
 		))
 	}

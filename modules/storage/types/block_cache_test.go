@@ -8,13 +8,13 @@ import (
 	"testing"
 
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 	evmRlp "github.com/ethereum/go-ethereum/rlp"
 )
 
-func newBlock(height uint64, idx int) (*types.MonacoBlock, []evmCommon.Hash) {
+func newBlock(height uint64, idx int) (*mtypes.MonacoBlock, []evmCommon.Hash) {
 	header := &evmTypes.Header{
 		ParentHash:  evmCommon.BytesToHash([]byte{byte(1 + idx), byte(2 + idx), byte(3 + idx), byte(4 + idx), 5, 6, 7, 8, 9, 10}),
 		Number:      big.NewInt(common.Uint64ToInt64(height)),
@@ -35,7 +35,7 @@ func newBlock(height uint64, idx int) (*types.MonacoBlock, []evmCommon.Hash) {
 	headers := [][]byte{}
 	ethHeaders := make([]byte, len(ethHeader)+1)
 	bz := 0
-	bz += copy(ethHeaders[bz:], []byte{types.AppType_Eth})
+	bz += copy(ethHeaders[bz:], []byte{mtypes.AppType_Eth})
 	bz += copy(ethHeaders[bz:], ethHeader)
 
 	headers = append(headers, ethHeaders)
@@ -47,7 +47,7 @@ func newBlock(height uint64, idx int) (*types.MonacoBlock, []evmCommon.Hash) {
 		txhashes[i] = evmCommon.HexToHash(hashes[idx+i])
 	}
 
-	block := &types.MonacoBlock{
+	block := &mtypes.MonacoBlock{
 		Height:  height,
 		Headers: headers,
 		Txs:     txSelected,

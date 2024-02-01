@@ -3,8 +3,8 @@ package storage
 import (
 	"context"
 
-	"github.com/arcology-network/common-lib/types"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -14,11 +14,11 @@ type LogSaveRequest struct {
 }
 type StatisticInfoSaveRequest struct {
 	Height          uint64
-	StatisticalInfo *types.StatisticalInformation
+	StatisticalInfo *mtypes.StatisticalInformation
 }
 
 type DebugStore struct {
-	execlog  *mstypes.ExeclogCaches
+	// execlog  *mstypes.ExeclogCaches
 	exectime *mstypes.ExectimeCaches
 }
 
@@ -32,16 +32,16 @@ func NewDebugStore() *DebugStore {
 
 func (ds *DebugStore) Config(params map[string]interface{}) {
 	ds.exectime = mstypes.NewExectimeCaches(int(params["cache_statistcalinfo_size"].(float64)))
-	ds.execlog = mstypes.NewExeclogCaches(int(params["cache_execlog_size"].(float64)), int(params["cache_exec_concurrency"].(float64)))
+	// ds.execlog = mstypes.NewExeclogCaches(int(params["cache_execlog_size"].(float64)), int(params["cache_exec_concurrency"].(float64)))
 }
 
 func (ds *DebugStore) SaveLog(ctx context.Context, request *LogSaveRequest, _ *int) error {
-	ds.execlog.Save(request.Height, request.Execlogs)
+	// ds.execlog.Save(request.Height, request.Execlogs)
 	return nil
 }
 
 func (ds *DebugStore) GetExecLog(ctx context.Context, hash *evmCommon.Hash, log *string) error {
-	log = ds.execlog.Query(string(hash.Bytes()))
+	// log = ds.execlog.Query(string(hash.Bytes()))
 	return nil
 }
 
@@ -50,7 +50,7 @@ func (ds *DebugStore) SaveStatisticInfos(ctx context.Context, request *Statistic
 	return nil
 }
 
-func (ds *DebugStore) GetStatisticInfos(ctx context.Context, height *uint64, staticalInfo **types.StatisticalInformation) error {
+func (ds *DebugStore) GetStatisticInfos(ctx context.Context, height *uint64, staticalInfo **mtypes.StatisticalInformation) error {
 	*staticalInfo = ds.exectime.Query(*height)
 	return nil
 }

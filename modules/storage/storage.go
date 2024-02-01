@@ -10,6 +10,7 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/log"
@@ -96,8 +97,8 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 	result := ""
 	height := uint64(0)
 	var receipts []*evmTypes.Receipt
-	var block *types.MonacoBlock
-	var exectime *types.StatisticalInformation
+	var block *mtypes.MonacoBlock
+	var exectime *mtypes.StatisticalInformation
 	// spawnedRelations := []*types.SpawnedRelation{}
 	inclusive := &types.InclusiveList{}
 	var na int
@@ -107,7 +108,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		case actor.MsgBlockCompleted:
 			result = v.Data.(string)
 		case actor.MsgParentInfo:
-			parentinfo := v.Data.(*types.ParentInfo)
+			parentinfo := v.Data.(*mtypes.ParentInfo)
 			isnil, err := s.IsNil(parentinfo, "parentinfo")
 			if isnil {
 				return err
@@ -122,10 +123,10 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 				receipts = append(receipts, item.(*evmTypes.Receipt))
 			}
 		case actor.MsgPendingBlock:
-			block = v.Data.(*types.MonacoBlock)
+			block = v.Data.(*mtypes.MonacoBlock)
 			height = v.Height
 		case actor.MsgExecTime:
-			exectime = v.Data.(*types.StatisticalInformation)
+			exectime = v.Data.(*mtypes.StatisticalInformation)
 
 		case actor.MsgConflictInclusive:
 			inclusive = v.Data.(*types.InclusiveList)

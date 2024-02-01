@@ -11,8 +11,8 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	badgerpk "github.com/arcology-network/common-lib/storage/badger"
 	"github.com/arcology-network/common-lib/storage/transactional"
-	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/components/storage"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	evmCommon "github.com/ethereum/go-ethereum/common"
@@ -44,8 +44,8 @@ type StateSyncStore struct {
 	sliceDB    KvDB
 	spDB       *badgerpk.ParaBadgerDB
 	spInterval uint64
-	status     *cmntyp.SyncStatus
-	sp         *cmntyp.SyncPoint
+	status     *mtypes.SyncStatus
+	sp         *mtypes.SyncPoint
 
 	// Bufferred data
 	urlUpdate *storage.UrlUpdate
@@ -124,10 +124,10 @@ func (store *StateSyncStore) OnMessageArrived(msgs []*actor.Message) error {
 		store.hash = msg.Data.(*evmCommon.Hash)
 		store.state = s3StateParentInfo
 	case s3StateParentInfo:
-		parent := msg.Data.(*cmntyp.ParentInfo)
+		parent := msg.Data.(*mtypes.ParentInfo)
 		var na int
-		store.WriteSlice(context.Background(), &cmntyp.SyncDataResponse{
-			SyncDataRequest: cmntyp.SyncDataRequest{
+		store.WriteSlice(context.Background(), &mtypes.SyncDataResponse{
+			SyncDataRequest: mtypes.SyncDataRequest{
 				From:  msg.Height - 1,
 				To:    msg.Height,
 				Slice: 0,
@@ -165,18 +165,18 @@ func (store *StateSyncStore) GetCurrentState() int {
 	return store.state
 }
 
-func (store *StateSyncStore) setSyncStatus(status *cmntyp.SyncStatus) error {
+func (store *StateSyncStore) setSyncStatus(status *mtypes.SyncStatus) error {
 	store.status = status
 	return store.sliceDB.Set("syncstatus", store.encode(status))
 }
 
-func (store *StateSyncStore) SetSyncStatus(ctx context.Context, status *cmntyp.SyncStatus, _ *int) error {
+func (store *StateSyncStore) SetSyncStatus(ctx context.Context, status *mtypes.SyncStatus, _ *int) error {
 	return store.setSyncStatus(status)
 }
 
-func (store *StateSyncStore) getSyncStatus() *cmntyp.SyncStatus {
+func (store *StateSyncStore) getSyncStatus() *mtypes.SyncStatus {
 	if store.status == nil {
-		store.status = &cmntyp.SyncStatus{}
+		store.status = &mtypes.SyncStatus{}
 		bs, err := store.sliceDB.Get("syncstatus")
 		if err == nil {
 			store.decode(bs, store.status)
@@ -185,23 +185,23 @@ func (store *StateSyncStore) getSyncStatus() *cmntyp.SyncStatus {
 	return store.status
 }
 
-func (store *StateSyncStore) GetSyncStatus(ctx context.Context, _ *int, status *cmntyp.SyncStatus) error {
+func (store *StateSyncStore) GetSyncStatus(ctx context.Context, _ *int, status *mtypes.SyncStatus) error {
 	*status = *store.getSyncStatus()
 	return nil
 }
 
-func (store *StateSyncStore) setSyncPoint(sp *cmntyp.SyncPoint) error {
+func (store *StateSyncStore) setSyncPoint(sp *mtypes.SyncPoint) error {
 	return store.sliceDB.Set("syncpoint", store.encode(sp))
 }
 
-func (store *StateSyncStore) SetSyncPoint(ctx context.Context, sp *cmntyp.SyncPoint, _ *int) error {
+func (store *StateSyncStore) SetSyncPoint(ctx context.Context, sp *mtypes.SyncPoint, _ *int) error {
 	store.sp = sp
 	return store.setSyncPoint(sp)
 }
 
-func (store *StateSyncStore) getSyncPoint() *cmntyp.SyncPoint {
+func (store *StateSyncStore) getSyncPoint() *mtypes.SyncPoint {
 	if store.sp == nil {
-		store.sp = &cmntyp.SyncPoint{}
+		store.sp = &mtypes.SyncPoint{}
 		bs, err := store.sliceDB.Get("syncpoint")
 		if err == nil {
 			store.decode(bs, store.sp)
@@ -210,7 +210,7 @@ func (store *StateSyncStore) getSyncPoint() *cmntyp.SyncPoint {
 	return store.sp
 }
 
-func (store *StateSyncStore) GetSyncPoint(ctx context.Context, height *uint64, sp *cmntyp.SyncPoint) error {
+func (store *StateSyncStore) GetSyncPoint(ctx context.Context, height *uint64, sp *mtypes.SyncPoint) error {
 	*sp = *store.getSyncPoint()
 	if sp.To != *height {
 		return errors.New("syncpoint not found")
@@ -218,10 +218,10 @@ func (store *StateSyncStore) GetSyncPoint(ctx context.Context, height *uint64, s
 	return nil
 }
 
-func (store *StateSyncStore) InitSyncPoint(ctx context.Context, to *uint64, sp *cmntyp.SyncPoint) error {
+func (store *StateSyncStore) InitSyncPoint(ctx context.Context, to *uint64, sp *mtypes.SyncPoint) error {
 	count := 0
-	for i := 0; i < cmntyp.SlicePerSyncPoint; i++ {
-		if response, err := store.readSliceFromKvDB(&cmntyp.SyncDataRequest{
+	for i := 0; i < mtypes.SlicePerSyncPoint; i++ {
+		if response, err := store.readSliceFromKvDB(&mtypes.SyncDataRequest{
 			From:  0,
 			To:    *to,
 			Slice: i,
@@ -237,7 +237,7 @@ func (store *StateSyncStore) InitSyncPoint(ctx context.Context, to *uint64, sp *
 	fmt.Printf("StateSyncStore.InitSyncPoint, update %d keys\n", count)
 
 	var na int
-	var parent cmntyp.ParentInfo
+	var parent mtypes.ParentInfo
 	intf.Router.Call("statestore", "GetParentInfo", &na, parent)
 
 	var states []SchdState
@@ -251,10 +251,10 @@ func (store *StateSyncStore) InitSyncPoint(ctx context.Context, to *uint64, sp *
 	}
 
 	// TODO: Set slice hashes.
-	if err := store.setSyncPoint(&cmntyp.SyncPoint{
+	if err := store.setSyncPoint(&mtypes.SyncPoint{
 		From:       0,
 		To:         *to,
-		Slices:     make([]evmCommon.Hash, cmntyp.SlicePerSyncPoint),
+		Slices:     make([]evmCommon.Hash, mtypes.SlicePerSyncPoint),
 		Parent:     &parent,
 		SchdStates: states[:end],
 	}); err != nil {
@@ -263,15 +263,15 @@ func (store *StateSyncStore) InitSyncPoint(ctx context.Context, to *uint64, sp *
 	return nil
 }
 
-func (store *StateSyncStore) WriteSlice(ctx context.Context, slice *cmntyp.SyncDataResponse, _ *int) error {
+func (store *StateSyncStore) WriteSlice(ctx context.Context, slice *mtypes.SyncDataResponse, _ *int) error {
 	return store.sliceDB.Set(store.sliceKey(&slice.SyncDataRequest), store.encode(slice))
 }
 
-func (store *StateSyncStore) deleteSlice(slice *cmntyp.SyncDataRequest) error {
+func (store *StateSyncStore) deleteSlice(slice *mtypes.SyncDataRequest) error {
 	return store.sliceDB.Delete(store.sliceKey(slice))
 }
 
-func (store *StateSyncStore) readSliceFromSyncPointDB(request *cmntyp.SyncDataRequest) (*cmntyp.SyncDataResponse, error) {
+func (store *StateSyncStore) readSliceFromSyncPointDB(request *mtypes.SyncDataRequest) (*mtypes.SyncDataResponse, error) {
 	// TODO: check request.To & request.From
 	keys, values, err := store.spDB.Query(fmt.Sprintf("%s%02x", RootPrefix, []byte{byte(request.Slice)}), nil)
 	if err != nil {
@@ -279,7 +279,7 @@ func (store *StateSyncStore) readSliceFromSyncPointDB(request *cmntyp.SyncDataRe
 	}
 
 	// TODO: Calculate slice hash.
-	response := &cmntyp.SyncDataResponse{
+	response := &mtypes.SyncDataResponse{
 		SyncDataRequest: *request,
 		Data: store.encode(&storage.UrlUpdate{
 			Keys:          keys,
@@ -290,13 +290,13 @@ func (store *StateSyncStore) readSliceFromSyncPointDB(request *cmntyp.SyncDataRe
 	return response, nil
 }
 
-func (store *StateSyncStore) readSliceFromKvDB(request *cmntyp.SyncDataRequest) (*cmntyp.SyncDataResponse, error) {
+func (store *StateSyncStore) readSliceFromKvDB(request *mtypes.SyncDataRequest) (*mtypes.SyncDataResponse, error) {
 	bs, err := store.sliceDB.Get(store.sliceKey(request))
 	if err != nil {
 		return nil, err
 	}
 
-	var response cmntyp.SyncDataResponse
+	var response mtypes.SyncDataResponse
 	store.decode(bs, &response)
 	if response.To != request.To {
 		return nil, errors.New("slice not found")
@@ -304,8 +304,8 @@ func (store *StateSyncStore) readSliceFromKvDB(request *cmntyp.SyncDataRequest) 
 	return &response, nil
 }
 
-func (store *StateSyncStore) ReadSlice(ctx context.Context, request *cmntyp.SyncDataRequest, response *cmntyp.SyncDataResponse) error {
-	var resp *cmntyp.SyncDataResponse
+func (store *StateSyncStore) ReadSlice(ctx context.Context, request *mtypes.SyncDataRequest, response *mtypes.SyncDataResponse) error {
+	var resp *mtypes.SyncDataResponse
 	var err error
 	if request.To-request.From > 1 {
 		resp, err = store.readSliceFromSyncPointDB(request)
@@ -336,7 +336,7 @@ func (store *StateSyncStore) decode(bs []byte, obj interface{}) {
 	}
 }
 
-func (store *StateSyncStore) sliceKey(slice *cmntyp.SyncDataRequest) string {
+func (store *StateSyncStore) sliceKey(slice *mtypes.SyncDataRequest) string {
 	return fmt.Sprintf("%016x-%04x", slice.From, slice.Slice)
 }
 
@@ -346,10 +346,10 @@ func (store *StateSyncStore) makeSyncPoint(from, to uint64) {
 	status.SyncPoint = 0
 	store.setSyncStatus(&status)
 
-	var parent *cmntyp.ParentInfo
+	var parent *mtypes.ParentInfo
 	for i := from; i < to; i++ {
-		var response cmntyp.SyncDataResponse
-		err := store.ReadSlice(context.Background(), &cmntyp.SyncDataRequest{
+		var response mtypes.SyncDataResponse
+		err := store.ReadSlice(context.Background(), &mtypes.SyncDataRequest{
 			From:  i,
 			To:    i + 1,
 			Slice: 0,
@@ -363,7 +363,7 @@ func (store *StateSyncStore) makeSyncPoint(from, to uint64) {
 		gob.NewDecoder(bytes.NewBuffer(response.Data)).Decode(&urlUpdate)
 		store.spDB.BatchSet(urlUpdate.Keys, urlUpdate.EncodedValues)
 
-		err = store.deleteSlice(&cmntyp.SyncDataRequest{
+		err = store.deleteSlice(&mtypes.SyncDataRequest{
 			From:  i,
 			To:    i + 1,
 			Slice: 0,
@@ -385,10 +385,10 @@ func (store *StateSyncStore) makeSyncPoint(from, to uint64) {
 	}
 
 	// TODO: Set slice hashes.
-	store.setSyncPoint(&cmntyp.SyncPoint{
+	store.setSyncPoint(&mtypes.SyncPoint{
 		From:       0,
 		To:         to,
-		Slices:     make([]evmCommon.Hash, cmntyp.SlicePerSyncPoint),
+		Slices:     make([]evmCommon.Hash, mtypes.SlicePerSyncPoint),
 		Parent:     parent,
 		SchdStates: states[:end],
 	})

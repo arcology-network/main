@@ -20,6 +20,7 @@ import (
 	"github.com/arcology-network/consensus-engine/p2p"
 	"github.com/arcology-network/consensus-engine/privval"
 	"github.com/arcology-network/consensus-engine/proxy"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/log"
@@ -135,11 +136,11 @@ func (c *Consensus) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (c *Consensus) Query(ctx context.Context, request *types.QueryRequest, response *types.QueryResult) error {
+func (c *Consensus) Query(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
 	switch request.QueryType {
-	case types.QueryType_Syncing:
+	case mtypes.QueryType_Syncing:
 		response.Data = c.syncing
-	case types.QueryType_Proposer:
+	case mtypes.QueryType_Proposer:
 		response.Data = c.isproposer
 	}
 	return nil
@@ -170,7 +171,7 @@ func (c *Consensus) Reap(maxBytes int64, maxGas int64, height int64) (txs [][]by
 	c.cachedMetaBlock = msg
 	c.AddLog(log.LogLevel_Debug, "after c.cachedMetaBlock.Height", zap.Uint64("cache height", c.cachedMetaBlock.Height))
 
-	metaBlock := msg.Data.(*types.MetaBlock)
+	metaBlock := msg.Data.(*mtypes.MetaBlock)
 	txs = [][]byte{}
 	hashes = [][]byte{}
 	if metaBlock != nil {
@@ -281,17 +282,17 @@ func (c *Consensus) GetLocalTxsChan() chan [][]byte {
 }
 
 func (c *Consensus) GetTxsOnBlock(height uint64) ([][]byte, error) {
-	request := types.QueryRequest{
-		QueryType: types.QueryType_RawBlock,
+	request := mtypes.QueryRequest{
+		QueryType: mtypes.QueryType_RawBlock,
 		Data:      height,
 	}
-	response := types.QueryResult{}
+	response := mtypes.QueryResult{}
 	err := intf.Router.Call(c.storageSvcName, "Query", &request, &response)
 	if err != nil {
 		return nil, err
 	}
 
-	return (*response.Data.(*types.MonacoBlock)).Txs, nil
+	return (*response.Data.(*mtypes.MonacoBlock)).Txs, nil
 }
 
 func (c *Consensus) CreateBlockStore() monaco.BlockStore {

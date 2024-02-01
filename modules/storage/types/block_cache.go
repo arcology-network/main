@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -31,11 +31,11 @@ func (rc *BlockCaches) QueryTx(height uint64, idx int) *evmTypes.Transaction {
 	}
 	return otx
 }
-func (rc *BlockCaches) Query(height uint64) *types.MonacoBlock {
+func (rc *BlockCaches) Query(height uint64) *mtypes.MonacoBlock {
 	heightstr := fmt.Sprintf("%v", height)
 	block := rc.caches.Query(heightstr)
 	if block != nil {
-		return block.(*types.MonacoBlock)
+		return block.(*mtypes.MonacoBlock)
 	}
 
 	data, err := rc.db.Read(rc.db.GetFilename(height))
@@ -43,7 +43,7 @@ func (rc *BlockCaches) Query(height uint64) *types.MonacoBlock {
 		return nil
 	}
 
-	blockobj := types.MonacoBlock{}
+	blockobj := mtypes.MonacoBlock{}
 	err = blockobj.GobDecode(data)
 	//err = common.GobDecode(data, &blockobj)
 	if err != nil {
@@ -53,7 +53,7 @@ func (rc *BlockCaches) Query(height uint64) *types.MonacoBlock {
 	return &blockobj
 }
 
-func (rc *BlockCaches) Save(height uint64, block *types.MonacoBlock) {
+func (rc *BlockCaches) Save(height uint64, block *mtypes.MonacoBlock) {
 	data, err := block.GobEncode()
 	if err != nil {
 		return
@@ -63,7 +63,7 @@ func (rc *BlockCaches) Save(height uint64, block *types.MonacoBlock) {
 	rc.db.Write(rc.db.GetFilename(height), data)
 }
 
-func (rc *BlockCaches) CacheOnly(height uint64, block *types.MonacoBlock) {
+func (rc *BlockCaches) CacheOnly(height uint64, block *mtypes.MonacoBlock) {
 	key := fmt.Sprintf("%v", height)
 	rc.caches.Add(height, []string{key}, []interface{}{block})
 }

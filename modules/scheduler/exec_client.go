@@ -6,8 +6,8 @@ import (
 	"time"
 
 	cmncmn "github.com/arcology-network/common-lib/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	evmCommon "github.com/ethereum/go-ethereum/common"
@@ -32,14 +32,14 @@ var (
 type ExecClient struct {
 	executors   []string
 	batchSize   int
-	execConfigs []*cmntyp.ExecutorConfig
+	execConfigs []*mtypes.ExecutorConfig
 }
 
 func NewExecClient(executors []string, batchSize int) *ExecClient {
-	execConfigs := make([]*cmntyp.ExecutorConfig, len(executors))
+	execConfigs := make([]*mtypes.ExecutorConfig, len(executors))
 	for i, exec := range executors {
 		var na int
-		execConfigs[i] = &cmntyp.ExecutorConfig{}
+		execConfigs[i] = &mtypes.ExecutorConfig{}
 		intf.Router.Call(exec, "GetConfig", &na, execConfigs[i])
 	}
 
@@ -52,7 +52,7 @@ func NewExecClient(executors []string, batchSize int) *ExecClient {
 
 func (client *ExecClient) Run(
 	messages map[evmCommon.Hash]*schtyp.Message,
-	sequences []*cmntyp.ExecutingSequence,
+	sequences []*mtypes.ExecutingSequence,
 	timestamp *big.Int,
 	msgTemplate *actor.Message,
 	inlog *actor.WorkerThreadLogger,
@@ -60,21 +60,17 @@ func (client *ExecClient) Run(
 	generationIdx,
 	batchIdx int,
 ) (
-	map[evmCommon.Hash]*cmntyp.ExecuteResponse,
-	// map[evmCommon.Hash]evmCommon.Hash,
-	// map[evmCommon.Hash][]evmCommon.Hash,
+	map[evmCommon.Hash]*mtypes.ExecuteResponse,
 	[]evmCommon.Address,
-	// map[evmCommon.Hash]uint32,
-	// map[evmCommon.Hash]evmCommon.Address,
 ) {
-	requests := make([]*cmntyp.ExecutorRequest, 0, int(50000/client.batchSize))
+	requests := make([]*mtypes.ExecutorRequest, 0, int(50000/client.batchSize))
 	for _, sequence := range sequences {
 		if sequence.Parallel {
 			msg := messages[sequence.Msgs[0].TxHash]
 			for i := 0; i < len(sequence.Msgs); i += client.batchSize {
 				end := cmncmn.Min(len(sequence.Msgs), i+client.batchSize)
-				requests = append(requests, &cmntyp.ExecutorRequest{
-					Sequences: []*cmntyp.ExecutingSequence{
+				requests = append(requests, &mtypes.ExecutorRequest{
+					Sequences: []*mtypes.ExecutingSequence{
 						{
 							Msgs:     sequence.Msgs[i:end],
 							Txids:    sequence.Txids[i:end],
@@ -89,8 +85,8 @@ func (client *ExecClient) Run(
 			}
 		} else {
 			msg := messages[sequence.SequenceId]
-			requests = append(requests, &cmntyp.ExecutorRequest{
-				Sequences:     []*cmntyp.ExecutingSequence{sequence},
+			requests = append(requests, &mtypes.ExecutorRequest{
+				Sequences:     []*mtypes.ExecutingSequence{sequence},
 				Precedings:    [][]*evmCommon.Hash{*msg.Precedings},
 				PrecedingHash: []evmCommon.Hash{msg.PrecedingHash},
 				Timestamp:     timestamp,
@@ -109,7 +105,7 @@ func (client *ExecClient) Run(
 	var ccGuard sync.Mutex
 	var wg sync.WaitGroup
 	//requestIdx := 0
-	responses := make([][]*cmntyp.ExecutorResponses, len(client.executors))
+	responses := make([][]*mtypes.ExecutorResponses, len(client.executors))
 	inlog.CheckPoint("exec preparation complete,start exec transactions", zap.Int("parallelism", parallelism), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
 	for i := 0; i < len(requests); {
 		execIdx := <-idleExec
@@ -125,14 +121,14 @@ func (client *ExecClient) Run(
 		ccGuard.Unlock()
 
 		wg.Add(1)
-		go func(requests []*cmntyp.ExecutorRequest, execIdx int, requestIdx int, msg actor.Message) {
+		go func(requests []*mtypes.ExecutorRequest, execIdx int, requestIdx int, msg actor.Message) {
 			data := mergeRequests(requests)
 			msg.Name = actor.MsgTxsToExecute
 			msg.Msgid = cmncmn.GenerateUUID()
 			msg.Data = data
 
 			inlog.CheckPoint(">>>>>>>>>>>>>>>>>>>>>", zap.Int("execIdx", execIdx), zap.Int("idx", requestIdx), zap.Int("sequences", len(data.Sequences)), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
-			response := cmntyp.ExecutorResponses{}
+			response := mtypes.ExecutorResponses{}
 			err := intf.Router.Call(client.executors[execIdx], "ExecTxs", &msg, &response)
 			if err != nil {
 				panic(err)
@@ -153,52 +149,29 @@ func (client *ExecClient) Run(
 	ExecTimeGauge.Set(time.Since(execBegin).Seconds())
 
 	// The following code were copied from exec v1.
-	results := make(map[evmCommon.Hash]*cmntyp.ExecuteResponse)
-	// spawnedTxs := make(map[evmCommon.Hash]evmCommon.Hash)
-	// relations := make(map[evmCommon.Hash][]evmCommon.Hash)
+	results := make(map[evmCommon.Hash]*mtypes.ExecuteResponse)
+
 	contractAddress := make([]evmCommon.Address, 0, 10)
-	// txids := make(map[evmCommon.Hash]uint32)
-	// defCallees := make(map[evmCommon.Hash]evmCommon.Address)
+
 	for _, resps := range responses {
 		for _, r := range resps {
-			// if r.DfCalls != nil {
 			for i := range r.HashList {
-				results[r.HashList[i]] = &cmntyp.ExecuteResponse{
-					// DfCall:  r.DfCalls[i],
+				results[r.HashList[i]] = &mtypes.ExecuteResponse{
 					Hash:    r.HashList[i],
 					Status:  r.StatusList[i],
 					GasUsed: r.GasUsedList[i],
 				}
 			}
-			// }
-
-			// for i, spawnedHash := range r.SpawnedTxs {
-			// 	spawnedTxs[r.SpawnedKeys[i]] = spawnedHash
-			// }
-
-			// if len(r.RelationKeys) == len(r.RelationSizes) {
-			// 	idx := 0
-			// 	for i, hash := range r.RelationKeys {
-			// 		relations[hash] = r.RelationValues[idx : idx+int(r.RelationSizes[i])]
-			// 		idx = idx + int(r.RelationSizes[i])
-			// 	}
-			// }
 
 			contractAddress = append(contractAddress, r.ContractAddresses...)
 
-			// if len(r.TxidsHash) == len(r.TxidsId) {
-			// 	for i, hash := range r.TxidsHash {
-			// 		txids[hash] = r.TxidsId[i]
-			// 		defCallees[hash] = r.TxidsAddress[i]
-			// 	}
-			// }
 		}
 	}
 	return results, contractAddress
 }
 
-func mergeRequests(requests []*cmntyp.ExecutorRequest) *cmntyp.ExecutorRequest {
-	sequences := make([]*cmntyp.ExecutingSequence, len(requests))
+func mergeRequests(requests []*mtypes.ExecutorRequest) *mtypes.ExecutorRequest {
+	sequences := make([]*mtypes.ExecutingSequence, len(requests))
 	precedings := make([][]*evmCommon.Hash, len(requests))
 	precedingHash := make([]evmCommon.Hash, len(requests))
 	for i, request := range requests {
@@ -206,7 +179,7 @@ func mergeRequests(requests []*cmntyp.ExecutorRequest) *cmntyp.ExecutorRequest {
 		precedings[i] = request.Precedings[0]
 		precedingHash[i] = request.PrecedingHash[0]
 	}
-	return &cmntyp.ExecutorRequest{
+	return &mtypes.ExecutorRequest{
 		Sequences:     sequences,
 		Precedings:    precedings,
 		PrecedingHash: precedingHash,

@@ -1,7 +1,7 @@
 package statesync
 
 import (
-	cmntyp "github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 )
 
@@ -14,11 +14,11 @@ type P2pClient interface {
 }
 
 type StorageRpc interface {
-	GetSyncStatus() *cmntyp.SyncStatus
-	GetSyncPoint(height uint64) *cmntyp.SyncPoint
+	GetSyncStatus() *mtypes.SyncStatus
+	GetSyncPoint(height uint64) *mtypes.SyncPoint
 
-	WriteSlice(slice *cmntyp.SyncDataResponse)
-	ReadSlice(request *cmntyp.SyncDataRequest) *cmntyp.SyncDataResponse
-	ApplyData(request *cmntyp.SyncDataRequest)
+	WriteSlice(slice *mtypes.SyncDataResponse)
+	ReadSlice(request *mtypes.SyncDataRequest) *mtypes.SyncDataResponse
+	ApplyData(request *mtypes.SyncDataRequest)
 	RewriteMeta()
 }

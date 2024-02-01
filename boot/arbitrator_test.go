@@ -7,12 +7,12 @@ import (
 	"testing"
 	"time"
 
-	cmntypes "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/noncommutative"
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 	eushared "github.com/arcology-network/eu/shared"
 	"github.com/arcology-network/main/config"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/mock/kafka"
@@ -28,7 +28,7 @@ func TestBootstrapCase1(t *testing.T) {
 
 	response := runTestCase(
 		t,
-		[][]*cmntypes.TxElement{{createTxElement(hash1, 0, 1)}, {createTxElement(hash2, 0, 2)}, {createTxElement(hash3, 0, 3)}, {createTxElement(hash4, 0, 4)}},
+		[][]*mtypes.TxElement{{createTxElement(hash1, 0, 1)}, {createTxElement(hash2, 0, 2)}, {createTxElement(hash3, 0, 3)}, {createTxElement(hash4, 0, 4)}},
 		newAccessRecords(hash1, 1,
 			newAccess(noncommutative.BYTES, "blcc://eth1.0/accounts/Alice/storage/containers/map1/key1", 0, 1, true, false, nil),
 			newAccess(commutative.UINT256, "blcc://eth1.0/accounts/Alice/balance", 0, 1, true, true, commutative.NewUnboundedU256().(*commutative.U256).New(100, 50, false, nil, nil)),
@@ -67,7 +67,7 @@ func TestBootstrapCase2(t *testing.T) {
 	}
 	response := runTestCase(
 		t,
-		[][]*cmntypes.TxElement{
+		[][]*mtypes.TxElement{
 			{createTxElement(hashes[0], 0, 1), createTxElement(hashes[1], 0, 2), createTxElement(hashes[2], 1, 3)},
 			{createTxElement(hashes[3], 0, 4), createTxElement(hashes[4], 0, 5), createTxElement(hashes[5], 1, 6)},
 			{createTxElement(hashes[6], 0, 7), createTxElement(hashes[7], 0, 8), createTxElement(hashes[8], 1, 9)},
@@ -133,9 +133,9 @@ func TestDetectConflictPerf(t *testing.T) {
 		addresses[i] = evmCommon.BytesToAddress([]byte(RandStringRunes(20)))
 	}
 	coinbase := evmCommon.BytesToHash([]byte(RandStringRunes(20)))
-	groups := make([][]*cmntypes.TxElement, NTXS)
+	groups := make([][]*mtypes.TxElement, NTXS)
 	for i := 0; i < NTXS; i++ {
-		groups[i] = []*cmntypes.TxElement{createTxElement(hashes[i], 0, uint32(i+1))}
+		groups[i] = []*mtypes.TxElement{createTxElement(hashes[i], 0, uint32(i+1))}
 	}
 	records := make([]*accessRecords, NTXS)
 	for i := 0; i < NTXS; i++ {
@@ -208,15 +208,15 @@ func newAccessRecords(hash evmCommon.Hash, id uint32, accesses ...*access) *acce
 	return accessRecords
 }
 
-func createTxElement(hash evmCommon.Hash, batch uint64, tx uint32) *cmntypes.TxElement {
-	return &cmntypes.TxElement{
+func createTxElement(hash evmCommon.Hash, batch uint64, tx uint32) *mtypes.TxElement {
+	return &mtypes.TxElement{
 		TxHash:  &hash,
 		Batchid: batch,
 		Txid:    tx,
 	}
 }
 
-func runTestCase(t *testing.T, txGroups [][]*cmntypes.TxElement, records ...*accessRecords) *cmntypes.ArbitratorResponse {
+func runTestCase(t *testing.T, txGroups [][]*mtypes.TxElement, records ...*accessRecords) *mtypes.ArbitratorResponse {
 	// defer func() {
 	// 	if r := recover(); r != nil {
 	// 		t.Log(r)
@@ -260,16 +260,16 @@ func runTestCase(t *testing.T, txGroups [][]*cmntypes.TxElement, records ...*acc
 	// 	})
 	// }
 
-	response := cmntypes.ArbitratorResponse{}
+	response := mtypes.ArbitratorResponse{}
 	intf.Router.Call("arbitrator", "Arbitrate", &actor.Message{
-		Data: &cmntypes.ArbitratorRequest{TxsListGroup: txGroups},
+		Data: &mtypes.ArbitratorRequest{TxsListGroup: txGroups},
 	}, &response)
 
 	if len(response.ConflictedList) == 0 && len(response.CPairLeft) != 0 {
 		t.Log("SOMETHING WEIRD HAPPENED.")
 		t.Log(response)
 		intf.Router.Call("arbitrator", "Arbitrate", &actor.Message{
-			Data: &cmntypes.ArbitratorRequest{TxsListGroup: txGroups},
+			Data: &mtypes.ArbitratorRequest{TxsListGroup: txGroups},
 		}, &response)
 		t.Fail()
 	}

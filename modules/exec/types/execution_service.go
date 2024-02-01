@@ -1,12 +1,11 @@
 package types
 
 import (
-	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/concurrenturl/interfaces"
 
-	// eucommon "github.com/arcology-network/eu/common"
 	"github.com/arcology-network/eu/execution"
 	eushared "github.com/arcology-network/eu/shared"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -14,7 +13,7 @@ import (
 type ExecMessagers struct {
 	Snapshot *interfaces.Datastore
 	Config   *execution.Config
-	Sequence *types.ExecutingSequence
+	Sequence *mtypes.ExecutingSequence
 	// Uuid     uint64
 	// SerialID int
 	// Total    int

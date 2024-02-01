@@ -8,6 +8,7 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"
 	intf "github.com/arcology-network/streamer/interface"
@@ -18,12 +19,12 @@ import (
 func TestExecSvcBasic(t *testing.T) {
 	setup(t)
 
-	var response types.ExecutorResponses
+	var response mtypes.ExecutorResponses
 	intf.Router.Call("executor-1", "ExecTxs", &actor.Message{
 		Msgid:  common.GenerateUUID(),
 		Height: 2,
-		Data: &types.ExecutorRequest{
-			Sequences: []*types.ExecutingSequence{
+		Data: &mtypes.ExecutorRequest{
+			Sequences: []*mtypes.ExecutingSequence{
 				{
 					Msgs: []*types.StandardTransaction{
 						{},
@@ -50,13 +51,13 @@ func TestExecSvcBasic(t *testing.T) {
 func TestExecSvcMakeSnapshot(t *testing.T) {
 	_, mock := setup(t)
 
-	var response types.ExecutorResponses
+	var response mtypes.ExecutorResponses
 	precedingHash := evmCommon.BytesToHash([]byte{1})
 	intf.Router.Call("executor-1", "ExecTxs", &actor.Message{
 		Msgid:  common.GenerateUUID(),
 		Height: 2,
-		Data: &types.ExecutorRequest{
-			Sequences: []*types.ExecutingSequence{
+		Data: &mtypes.ExecutorRequest{
+			Sequences: []*mtypes.ExecutingSequence{
 				{
 					Msgs: []*types.StandardTransaction{
 						{},
@@ -162,7 +163,7 @@ func setup(tb testing.TB) (*brokerpk.StatefulStreamer, *mockWorker) {
 					Data: &actor.BlockStart{},
 				},
 				actor.MsgParentInfo: {
-					Data: &types.ParentInfo{},
+					Data: &mtypes.ParentInfo{},
 				},
 			},
 		},

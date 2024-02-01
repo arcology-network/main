@@ -3,7 +3,7 @@ package coordinator
 import (
 	"fmt"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
@@ -140,7 +140,7 @@ func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 			dm.MsgBroker.Send(actor.MsgExtAppHash, evmCommon.Hash{}.Bytes())
 		case actor.MsgExtReapingList:
 			fmt.Printf("[DecisionMaker.OnMessageArrived] in dmStateFastSync, on MsgExtReapingList\n")
-			dm.MsgBroker.Send(actor.MsgMetaBlock, &cmntyp.MetaBlock{
+			dm.MsgBroker.Send(actor.MsgMetaBlock, &mtypes.MetaBlock{
 				Txs:      [][]byte{},
 				Hashlist: []*evmCommon.Hash{},
 			})

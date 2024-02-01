@@ -3,7 +3,7 @@ package storage
 import (
 	"sync"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 )
@@ -39,7 +39,7 @@ func (cbs *CacheBlockStore) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	switch msg.Name {
 	case actor.MsgPendingBlock:
-		block := msg.Data.(*cmntyp.MonacoBlock)
+		block := msg.Data.(*mtypes.MonacoBlock)
 		var na int
 		intf.Router.Call("blockstore", "SavePendingBlock", block, &na)
 	}

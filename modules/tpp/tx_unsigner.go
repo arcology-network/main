@@ -6,6 +6,7 @@ import (
 
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
@@ -46,7 +47,7 @@ func (c *TxUnsigner) OnMessageArrived(msgs []*actor.Message) error {
 		switch v.Name {
 		case actor.MsgSignerType:
 			c.SignerType = v.Data.(uint8)
-			signer := types.MakeSigner(c.SignerType, c.chainID)
+			signer := mtypes.MakeSigner(c.SignerType, c.chainID)
 			c.Signer = &signer
 		case actor.MsgCheckingTxs:
 			stdPack := v.Data.(*types.StdTransactionPack)

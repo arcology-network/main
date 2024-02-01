@@ -3,8 +3,8 @@ package txsync
 import (
 	"fmt"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/modules/p2p"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 )
@@ -44,7 +44,7 @@ func (srv *SyncServer) OnMessageArrived(msgs []*actor.Message) error {
 		switch msg.Name {
 		case actor.MsgSyncTxRequest:
 			height := msg.Data.(uint64)
-			var block *cmntyp.MonacoBlock
+			var block *mtypes.MonacoBlock
 			intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 			if block == nil {
 				fmt.Printf("[txsync.SyncServer] handle sync tx request from %s, block not found, height = %d\n", p2pMessage.Sender, height)

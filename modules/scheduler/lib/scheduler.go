@@ -12,6 +12,7 @@ import (
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -92,7 +93,7 @@ type Item struct {
 	branch int
 }
 
-func ParseResult(msgs []*types.StandardTransaction, orderIDs []uint32, branches []uint32, generations []uint32) [][]*types.ExecutingSequence {
+func ParseResult(msgs []*types.StandardTransaction, orderIDs []uint32, branches []uint32, generations []uint32) [][]*mtypes.ExecutingSequence {
 	count := len(msgs)
 	idx_id := make([]int, count)
 	idx_branche := make([]int, count)
@@ -150,9 +151,9 @@ func ParseResult(msgs []*types.StandardTransaction, orderIDs []uint32, branches 
 		idxes[i] = ids
 	}
 
-	sequences := make([][]*types.ExecutingSequence, len(idxes))
+	sequences := make([][]*mtypes.ExecutingSequence, len(idxes))
 	for i, list := range idxes {
-		executingSequenceList := make([]*types.ExecutingSequence, 0, len(list))
+		executingSequenceList := make([]*mtypes.ExecutingSequence, 0, len(list))
 		parallels := make([]*types.StandardTransaction, 0, len(msgs))
 		for _, ids := range list {
 			if len(ids) == 1 {
@@ -163,10 +164,10 @@ func ParseResult(msgs []*types.StandardTransaction, orderIDs []uint32, branches 
 			for k, id := range ids {
 				seqMsgs[k] = msgs[id]
 			}
-			executingSequenceList = append(executingSequenceList, types.NewExecutingSequence(seqMsgs, false))
+			executingSequenceList = append(executingSequenceList, mtypes.NewExecutingSequence(seqMsgs, false))
 		}
 		if len(parallels) > 0 {
-			executingSequenceList = append(executingSequenceList, types.NewExecutingSequence(parallels, true))
+			executingSequenceList = append(executingSequenceList, mtypes.NewExecutingSequence(parallels, true))
 		}
 		sequences[i] = executingSequenceList
 	}
@@ -183,9 +184,9 @@ func ParseLog(buffer []byte) string {
 	}
 	return string(buffer[:rstsize])
 }
-func (s *Scheduler) Schedule(msgs []*types.StandardTransaction, height uint64) ([][]*types.ExecutingSequence, string) {
+func (s *Scheduler) Schedule(msgs []*types.StandardTransaction, height uint64) ([][]*mtypes.ExecutingSequence, string) {
 	if len(msgs) == 0 {
-		return [][]*types.ExecutingSequence{}, ""
+		return [][]*mtypes.ExecutingSequence{}, ""
 	}
 	buffer := make([]byte, BUFFERSIZE)
 	c_log := (*C.char)(unsafe.Pointer(&buffer[0]))

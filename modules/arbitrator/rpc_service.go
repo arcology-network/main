@@ -13,6 +13,7 @@ import (
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 	eu "github.com/arcology-network/eu"
 	"github.com/arcology-network/main/modules/arbitrator/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	kafkalib "github.com/arcology-network/streamer/kafka/lib"
 	"github.com/arcology-network/streamer/log"
@@ -72,10 +73,10 @@ func (rs *RpcService) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, response *ctypes.ArbitratorResponse) error {
+func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, response *mtypes.ArbitratorResponse) error {
 	lstMessage := request.CopyHeader()
 	rs.ChangeEnvironment(lstMessage)
-	params := request.Data.(*ctypes.ArbitratorRequest)
+	params := request.Data.(*mtypes.ArbitratorRequest)
 	list := []*evmCommon.Hash{}
 	for _, rows := range params.TxsListGroup {
 		for _, element := range rows {
@@ -121,7 +122,7 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	return nil
 }
 
-func parseRequests(txsListGroup [][]*ctypes.TxElement, results *[]*types.AccessRecord) ([][]uint32, [][]*univaluepk.Univalue) {
+func parseRequests(txsListGroup [][]*mtypes.TxElement, results *[]*types.AccessRecord) ([][]uint32, [][]*univaluepk.Univalue) {
 	mp := map[[32]byte]*types.AccessRecord{}
 	for _, result := range *results {
 		mp[result.TxHash] = result
@@ -142,7 +143,7 @@ func parseRequests(txsListGroup [][]*ctypes.TxElement, results *[]*types.AccessR
 	return groupIDs, records
 }
 
-func parseResult(txsListGroup [][]*ctypes.TxElement, conflits arbitratorn.Conflicts) ([]*evmCommon.Hash, []uint32, []uint32) {
+func parseResult(txsListGroup [][]*mtypes.TxElement, conflits arbitratorn.Conflicts) ([]*evmCommon.Hash, []uint32, []uint32) {
 	dic := map[uint32]*evmCommon.Hash{}
 	for _, row := range txsListGroup {
 		for _, e := range row {

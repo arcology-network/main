@@ -7,13 +7,13 @@ import (
 	"fmt"
 	"testing"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 )
 
 func TestSliceKey(t *testing.T) {
 	store := NewStateSyncStore(1, "statesyncstore").(*StateSyncStore)
-	key := store.sliceKey(&cmntyp.SyncDataRequest{
+	key := store.sliceKey(&mtypes.SyncDataRequest{
 		From:  0,
 		To:    1024,
 		Slice: 65535,
@@ -30,7 +30,7 @@ func TestSetGetSyncStatus(t *testing.T) {
 	})
 	store := worker.(*StateSyncStore)
 
-	status := &cmntyp.SyncStatus{
+	status := &mtypes.SyncStatus{
 		Id:        "node1",
 		SyncPoint: 1024,
 		Height:    1080,
@@ -38,7 +38,7 @@ func TestSetGetSyncStatus(t *testing.T) {
 	var na int
 	store.SetSyncStatus(context.Background(), status, &na)
 
-	var s cmntyp.SyncStatus
+	var s mtypes.SyncStatus
 	store.GetSyncStatus(context.Background(), &na, &s)
 	t.Log(s)
 }
@@ -52,14 +52,14 @@ func TestSetGetSyncPoint(t *testing.T) {
 	})
 	store := worker.(*StateSyncStore)
 
-	sp := &cmntyp.SyncPoint{
+	sp := &mtypes.SyncPoint{
 		From: 0,
 		To:   1024,
 	}
 	var na int
 	store.SetSyncPoint(context.Background(), sp, &na)
 
-	var s cmntyp.SyncPoint
+	var s mtypes.SyncPoint
 	store.GetSyncPoint(context.Background(), &sp.To, &s)
 	t.Log(s)
 }

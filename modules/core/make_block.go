@@ -7,7 +7,7 @@ import (
 
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/storage/transactional"
-	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/log"
@@ -66,10 +66,10 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	rcpthash := evmCommon.Hash{}
 	gasused := uint64(0)
 	txSelected := [][]byte{}
-	parentinfo := &types.ParentInfo{}
+	parentinfo := &mtypes.ParentInfo{}
 	height := uint64(0)
 	// timestamp := big.NewInt(0)
-	var blockParams *types.BlockParams
+	var blockParams *mtypes.BlockParams
 	var blockStart *actor.BlockStart
 	var bloom evmTypes.Bloom
 	var withDrawHash *evmCommon.Hash
@@ -121,13 +121,13 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 			}
 			gasused = gas
 		case actor.MsgLocalParentInfo:
-			parentinfo = v.Data.(*types.ParentInfo)
+			parentinfo = v.Data.(*mtypes.ParentInfo)
 			isnil, err := m.IsNil(parentinfo, "parentinfo")
 			if isnil {
 				return err
 			}
 		case actor.MsgBlockParams:
-			blockParams = v.Data.(*types.BlockParams)
+			blockParams = v.Data.(*mtypes.BlockParams)
 			isnil, err := m.IsNil(blockParams, "blockParams")
 			if isnil {
 				return err
@@ -161,7 +161,7 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	}
 
 	// save cache root and header hash
-	currentinfo := &types.ParentInfo{
+	currentinfo := &mtypes.ParentInfo{
 		ParentHash: header.Hash(),
 		ParentRoot: accthash,
 	}
@@ -183,7 +183,7 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (m *MakeBlock) CreateHerder(parentinfo *types.ParentInfo, height uint64, blockstart *actor.BlockStart, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, blockParams *types.BlockParams, bloom evmTypes.Bloom, withdrawhash *evmCommon.Hash) *evmTypes.Header {
+func (m *MakeBlock) CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, blockstart *actor.BlockStart, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, blockParams *mtypes.BlockParams, bloom evmTypes.Bloom, withdrawhash *evmCommon.Hash) *evmTypes.Header {
 	excessBlobGas := eip4844.CalcExcessBlobGas(0, 0)
 	headtime := blockstart.Timestamp.Uint64()
 	if blockParams.Times > 0 {
@@ -222,7 +222,7 @@ func (m *MakeBlock) CreateHerder(parentinfo *types.ParentInfo, height uint64, bl
 	return &header
 }
 
-func CreateBlock(header *evmTypes.Header, txSelected [][]byte, SignerType uint8) (*types.MonacoBlock, error) {
+func CreateBlock(header *evmTypes.Header, txSelected [][]byte, SignerType uint8) (*mtypes.MonacoBlock, error) {
 	// ethHeader, err := evmRlp.EncodeToBytes(&header)
 	ethHeader, err := header.MarshalJSON()
 	if err != nil {
@@ -232,12 +232,12 @@ func CreateBlock(header *evmTypes.Header, txSelected [][]byte, SignerType uint8)
 	headers := [][]byte{}
 	ethHeaders := make([]byte, len(ethHeader)+1)
 	bz := 0
-	bz += copy(ethHeaders[bz:], []byte{types.AppType_Eth})
+	bz += copy(ethHeaders[bz:], []byte{mtypes.AppType_Eth})
 	bz += copy(ethHeaders[bz:], ethHeader)
 
 	headers = append(headers, ethHeaders)
 
-	block := &types.MonacoBlock{
+	block := &mtypes.MonacoBlock{
 		Blockhash: header.Hash().Bytes(),
 		Height:    header.Number.Uint64(),
 		Headers:   headers,

@@ -8,6 +8,7 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
@@ -69,7 +70,7 @@ func (sc *ScanCache) GetTabs(style int) uint64 {
 func (sc *ScanCache) SetTabs(style int, val uint64) {
 	sc.tabs[style] = val
 }
-func (sc *ScanCache) BlockReceived(block *types.MonacoBlock, hash []byte, receipts map[evmCommon.Hash]*evmTypes.Receipt) error {
+func (sc *ScanCache) BlockReceived(block *mtypes.MonacoBlock, hash []byte, receipts map[evmCommon.Hash]*evmTypes.Receipt) error {
 	sc.lock.Lock()
 	defer sc.lock.Unlock()
 	tim := big.NewInt(0)

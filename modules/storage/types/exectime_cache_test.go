@@ -4,18 +4,18 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 )
 
 func TestExectime(t *testing.T) {
 	cache := NewExectimeCaches(2)
-	exectime1 := types.StatisticalInformation{
+	exectime1 := mtypes.StatisticalInformation{
 		Key:      "exectime",
 		Value:    "ok",
 		TimeUsed: 100,
 	}
 	cache.Save(1, &exectime1)
-	exectime2 := types.StatisticalInformation{
+	exectime2 := mtypes.StatisticalInformation{
 		Key:      "exectime",
 		Value:    "ok",
 		TimeUsed: 200,
@@ -27,7 +27,7 @@ func TestExectime(t *testing.T) {
 		t.Error("cache save get Error")
 		return
 	}
-	exectime3 := types.StatisticalInformation{
+	exectime3 := mtypes.StatisticalInformation{
 		Key:      "exectime",
 		Value:    "ok",
 		TimeUsed: 300,

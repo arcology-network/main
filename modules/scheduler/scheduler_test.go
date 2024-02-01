@@ -12,6 +12,7 @@ import (
 	cmncmn "github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/modules/storage"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"
 	intf "github.com/arcology-network/streamer/interface"
@@ -48,7 +49,7 @@ func TestSchedulerTransferOnly(t *testing.T) {
 		},
 		[]evmCommon.Address{},
 		[2][]evmCommon.Address{{}, {}},
-		[]*cmntyp.ExecutorResponses{
+		[]*mtypes.ExecutorResponses{
 			{
 				// DfCalls: []*cmntyp.DeferCall{nil, nil},
 				HashList: []evmCommon.Hash{
@@ -59,7 +60,7 @@ func TestSchedulerTransferOnly(t *testing.T) {
 				GasUsedList: []uint64{21000, 21000},
 			},
 		},
-		[]*cmntyp.ArbitratorResponse{{}, {}},
+		[]*mtypes.ArbitratorResponse{{}, {}},
 		map[string]interface{}{
 			actor.MsgSchdState: &storage.SchdState{},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
@@ -93,7 +94,7 @@ func TestSchedulerMixedTxs(t *testing.T) {
 			evmCommon.BytesToAddress([]byte{24}),
 		},
 		[2][]evmCommon.Address{{}, {}},
-		[]*cmntyp.ExecutorResponses{
+		[]*mtypes.ExecutorResponses{
 			{
 				// DfCalls: []*cmntyp.DeferCall{nil, nil},
 				HashList: []evmCommon.Hash{
@@ -113,7 +114,7 @@ func TestSchedulerMixedTxs(t *testing.T) {
 				GasUsedList: []uint64{50000, 50000},
 			},
 		},
-		[]*cmntyp.ArbitratorResponse{{}, {}},
+		[]*mtypes.ArbitratorResponse{{}, {}},
 		map[string]interface{}{
 			actor.MsgSchdState: &storage.SchdState{},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
@@ -153,22 +154,9 @@ func TestSchedulerContractWithDefer(t *testing.T) {
 			evmCommon.BytesToAddress([]byte{33}),
 		},
 		[2][]evmCommon.Address{{}, {}},
-		[]*cmntyp.ExecutorResponses{
+		[]*mtypes.ExecutorResponses{
 			{
-				// DfCalls: []*cmntyp.DeferCall{
-				// 	nil,
-				// 	nil,
-				// 	{
-				// 		DeferID:         "deferid",
-				// 		ContractAddress: cmntyp.Address(evmCommon.BytesToAddress([]byte{33}).Bytes()),
-				// 		Signature:       string([]byte{1, 2, 3, 4}),
-				// 	},
-				// 	{
-				// 		DeferID:         "deferid",
-				// 		ContractAddress: cmntyp.Address(evmCommon.BytesToAddress([]byte{33}).Bytes()),
-				// 		Signature:       string([]byte{1, 2, 3, 4}),
-				// 	},
-				// },
+
 				HashList: []evmCommon.Hash{
 					evmCommon.BytesToHash([]byte{1}),
 					evmCommon.BytesToHash([]byte{2}),
@@ -179,23 +167,18 @@ func TestSchedulerContractWithDefer(t *testing.T) {
 				GasUsedList: []uint64{50000, 50000, 50000, 50000},
 			},
 			{
-				// DfCalls:        []*cmntyp.DeferCall{nil},
 				HashList:    []evmCommon.Hash{evmCommon.BytesToHash(spawnedHash[:])},
 				StatusList:  []uint64{1},
 				GasUsedList: []uint64{50000},
-				// RelationKeys:   []evmCommon.Hash{evmCommon.BytesToHash(seqId[:])},
-				// RelationSizes:  []uint64{1},
-				// RelationValues: []evmCommon.Hash{evmCommon.BytesToHash(spawnedHash[:])},
 			},
 		},
-		[]*cmntyp.ArbitratorResponse{{}, {}},
+		[]*mtypes.ArbitratorResponse{{}, {}},
 		map[string]interface{}{
 			actor.MsgSchdState: &storage.SchdState{},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
 				HashList:   []*evmCommon.Hash{nil, nil, nil, nil, nil},
 				Successful: []bool{true, true, true, true, true},
 			},
-			// actor.MsgSpawnedRelations: []*cmntyp.SpawnedRelation{nil, nil},
 		},
 	)
 }
@@ -219,9 +202,9 @@ func TestSchedulerContractWithConfliction(t *testing.T) {
 			evmCommon.BytesToAddress([]byte{42}),
 		},
 		[2][]evmCommon.Address{{}, {}},
-		[]*cmntyp.ExecutorResponses{
+		[]*mtypes.ExecutorResponses{
 			{
-				// DfCalls: []*cmntyp.DeferCall{nil, nil},
+
 				HashList: []evmCommon.Hash{
 					evmCommon.BytesToHash([]byte{1}),
 					evmCommon.BytesToHash([]byte{2}),
@@ -230,7 +213,7 @@ func TestSchedulerContractWithConfliction(t *testing.T) {
 				GasUsedList: []uint64{50000, 50000},
 			},
 		},
-		[]*cmntyp.ArbitratorResponse{
+		[]*mtypes.ArbitratorResponse{
 			{
 				ConflictedList: []*evmCommon.Hash{&conflictHash},
 				CPairLeft:      []uint32{256},
@@ -246,7 +229,6 @@ func TestSchedulerContractWithConfliction(t *testing.T) {
 				HashList:   []*evmCommon.Hash{nil, nil},
 				Successful: []bool{true, false},
 			},
-			// actor.MsgSpawnedRelations: []*cmntyp.SpawnedRelation{},
 		},
 	)
 }
@@ -254,14 +236,6 @@ func TestSchedulerContractWithConfliction(t *testing.T) {
 func TestSchedulerSequentialTxs(t *testing.T) {
 	schd := setup(t)
 
-	// hashes := []evmCommon.Hash{
-	// 	evmCommon.BytesToHash([]byte{1}),
-	// 	evmCommon.BytesToHash([]byte{2}),
-	// }
-	// seqId := sha256.Sum256(encoding.Byteset([][]byte{
-	// 	hashes[0].Bytes(),
-	// 	hashes[1].Bytes(),
-	// }).Encode())
 	runBlock(
 		schd,
 		[]evmCommon.Address{
@@ -279,45 +253,24 @@ func TestSchedulerSequentialTxs(t *testing.T) {
 			{evmCommon.BytesToAddress([]byte{51})},
 			{evmCommon.BytesToAddress([]byte{51})},
 		},
-		[]*cmntyp.ExecutorResponses{
+		[]*mtypes.ExecutorResponses{
 			{
-				// DfCalls: []*cmntyp.DeferCall{nil, nil},
+
 				HashList: []evmCommon.Hash{
 					evmCommon.BytesToHash([]byte{1}),
 					evmCommon.BytesToHash([]byte{2}),
 				},
 				StatusList:  []uint64{1, 1},
 				GasUsedList: []uint64{50000, 50000},
-				// SpawnedKeys: []evmCommon.Hash{
-				// 	evmCommon.BytesToHash([]byte{1}),
-				// },
-				// SpawnedTxs: []evmCommon.Hash{
-				// 	evmCommon.BytesToHash([]byte{1, 100}),
-				// },
-				// RelationKeys:  []evmCommon.Hash{evmCommon.BytesToHash(seqId[:])},
-				// RelationSizes: []uint64{3},
-				// RelationValues: []evmCommon.Hash{
-				// 	evmCommon.BytesToHash([]byte{1}),
-				// 	evmCommon.BytesToHash([]byte{1, 100}),
-				// 	evmCommon.BytesToHash([]byte{2}),
-				// },
-				// TxidsHash: []evmCommon.Hash{
-				// 	evmCommon.BytesToHash([]byte{1, 100}),
-				// },
-				// TxidsId: []uint32{257},
-				// TxidsAddress: []evmCommon.Address{
-				// 	evmCommon.BytesToAddress([]byte{51}),
-				// },
 			},
 		},
-		[]*cmntyp.ArbitratorResponse{},
+		[]*mtypes.ArbitratorResponse{},
 		map[string]interface{}{
 			actor.MsgSchdState: &storage.SchdState{},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
 				HashList:   []*evmCommon.Hash{nil, nil, nil},
 				Successful: []bool{true, true, true},
 			},
-			// actor.MsgSpawnedRelations: []*cmntyp.SpawnedRelation{nil},
 		},
 	)
 }
@@ -339,10 +292,7 @@ func TestSchedulerConflictionInDefer(t *testing.T) {
 		evmCommon.BytesToHash(spawnedHashes[0][:]),
 		evmCommon.BytesToHash(spawnedHashes[1][:]),
 	}...)
-	// seqIds := [][32]byte{
-	// 	sha256.Sum256(encoding.Byteset([][]byte{spawnedHashes[0][:]}).Encode()),
-	// 	sha256.Sum256(encoding.Byteset([][]byte{spawnedHashes[1][:]}).Encode()),
-	// }
+
 	runBlock(
 		schd,
 		[]evmCommon.Address{
@@ -362,45 +312,19 @@ func TestSchedulerConflictionInDefer(t *testing.T) {
 			evmCommon.BytesToAddress([]byte{62}),
 		},
 		[2][]evmCommon.Address{{}, {}},
-		[]*cmntyp.ExecutorResponses{
+		[]*mtypes.ExecutorResponses{
 			{
-				// DfCalls: []*cmntyp.DeferCall{
-				// 	{
-				// 		DeferID:         "deferid1",
-				// 		ContractAddress: cmntyp.Address(evmCommon.BytesToAddress([]byte{61}).Bytes()),
-				// 		Signature:       string([]byte{1, 2, 3, 4}),
-				// 	},
-				// 	{
-				// 		DeferID:         "deferid1",
-				// 		ContractAddress: cmntyp.Address(evmCommon.BytesToAddress([]byte{61}).Bytes()),
-				// 		Signature:       string([]byte{1, 2, 3, 4}),
-				// 	},
-				// 	{
-				// 		DeferID:         "deferid2",
-				// 		ContractAddress: cmntyp.Address(evmCommon.BytesToAddress([]byte{62}).Bytes()),
-				// 		Signature:       string([]byte{5, 6, 7, 8}),
-				// 	},
-				// 	{
-				// 		DeferID:         "deferid2",
-				// 		ContractAddress: cmntyp.Address(evmCommon.BytesToAddress([]byte{62}).Bytes()),
-				// 		Signature:       string([]byte{5, 6, 7, 8}),
-				// 	},
-				// },
 				HashList:    txHashes[:4],
 				StatusList:  []uint64{1, 1, 1, 1},
 				GasUsedList: []uint64{50000, 50000, 50000, 50000},
 			},
 			{
-				// DfCalls:        []*cmntyp.DeferCall{nil, nil},
 				HashList:    []evmCommon.Hash{txHashes[4], txHashes[5]},
 				StatusList:  []uint64{1, 1},
 				GasUsedList: []uint64{50000, 50000},
-				// RelationKeys:   []evmCommon.Hash{evmCommon.BytesToHash(seqIds[0][:]), evmCommon.BytesToHash(seqIds[1][:])},
-				// RelationSizes:  []uint64{1, 1},
-				// RelationValues: []evmCommon.Hash{txHashes[4], txHashes[5]},
 			},
 		},
-		[]*cmntyp.ArbitratorResponse{
+		[]*mtypes.ArbitratorResponse{
 			{
 				ConflictedList: []*evmCommon.Hash{&txHashes[1]},
 				CPairLeft:      []uint32{256},
@@ -422,7 +346,6 @@ func TestSchedulerConflictionInDefer(t *testing.T) {
 				HashList:   cmncmn.ToReferencedSlice(txHashes),
 				Successful: []bool{true, false, false, false, true, false},
 			},
-			// actor.MsgSpawnedRelations: []*cmntyp.SpawnedRelation{nil, nil, nil},
 		},
 	)
 }
@@ -474,12 +397,7 @@ func (mock *mockConsumer) check(data interface{}) {
 				panic(fmt.Sprintf("check %s failed, expected %v, got %v", msgName, expected, got))
 			}
 		}
-		// case actor.MsgSpawnedRelations:
-		// 	got := msg.([]*cmntyp.SpawnedRelation)
-		// 	expected := mock.expectedResults[msgName].([]*cmntyp.SpawnedRelation)
-		// 	if len(got) != len(expected) {
-		// 		panic(fmt.Sprintf("check %s failed, expected %v, got %v", msgName, expected, got))
-		// 	}
+
 	}
 }
 
@@ -537,8 +455,8 @@ func runBlock(
 	msgFroms, msgTos []evmCommon.Address,
 	contracts []evmCommon.Address,
 	conflicts [2][]evmCommon.Address,
-	execResponse []*cmntyp.ExecutorResponses,
-	arbResponse []*cmntyp.ArbitratorResponse,
+	execResponse []*mtypes.ExecutorResponses,
+	arbResponse []*mtypes.ArbitratorResponse,
 	expectedResults map[string]interface{},
 ) {
 	msgs := make([]core.Message, len(msgFroms))
@@ -592,8 +510,8 @@ type block struct {
 	msgs      []*cmntyp.StandardTransaction
 	height    uint64
 
-	execResponse    []*cmntyp.ExecutorResponses
-	arbResponse     []*cmntyp.ArbitratorResponse
+	execResponse    []*mtypes.ExecutorResponses
+	arbResponse     []*mtypes.ArbitratorResponse
 	expectedResults map[string]interface{}
 }
 

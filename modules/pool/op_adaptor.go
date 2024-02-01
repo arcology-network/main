@@ -4,6 +4,7 @@ import (
 	"math/big"
 
 	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
@@ -27,7 +28,7 @@ type OpAdaptor struct {
 	ReapSize int
 
 	//result process
-	MBlock   *types.MonacoBlock
+	MBlock   *mtypes.MonacoBlock
 	Receipts *[]*evmTypes.Receipt
 }
 
@@ -45,8 +46,8 @@ func (oa *OpAdaptor) SetConfig(config *params.ChainConfig) {
 }
 
 func (oa *OpAdaptor) ChangeSigner(height uint64) {
-	oa.SignerType = types.GetSignerType(big.NewInt(int64(height)), oa.config)
-	oa.Signer = types.MakeSigner(oa.SignerType, oa.ChainID)
+	oa.SignerType = mtypes.GetSignerType(big.NewInt(int64(height)), oa.config)
+	oa.Signer = mtypes.MakeSigner(oa.SignerType, oa.ChainID)
 }
 
 func (oa *OpAdaptor) Reset() {
@@ -123,7 +124,7 @@ func (oa *OpAdaptor) ReapEnd(reaped []*types.StandardTransaction) ([]*types.Stan
 }
 
 // *****************************************************************************
-func (oa *OpAdaptor) AddBlock(block *types.MonacoBlock) (bool, *types.BlockResult) {
+func (oa *OpAdaptor) AddBlock(block *mtypes.MonacoBlock) (bool, *mtypes.BlockResult) {
 	oa.MBlock = block
 
 	//change signer from next block
@@ -131,12 +132,12 @@ func (oa *OpAdaptor) AddBlock(block *types.MonacoBlock) (bool, *types.BlockResul
 
 	return oa.Calculate()
 }
-func (oa *OpAdaptor) AddReceipts(receipts []*evmTypes.Receipt) (bool, *types.BlockResult) {
+func (oa *OpAdaptor) AddReceipts(receipts []*evmTypes.Receipt) (bool, *mtypes.BlockResult) {
 	oa.Receipts = &receipts
 	return oa.Calculate()
 }
 
-func (oa *OpAdaptor) Calculate() (bool, *types.BlockResult) {
+func (oa *OpAdaptor) Calculate() (bool, *mtypes.BlockResult) {
 	if oa.MBlock == nil || oa.Receipts == nil {
 		return false, nil
 	}
@@ -154,7 +155,7 @@ func (oa *OpAdaptor) Calculate() (bool, *types.BlockResult) {
 	// block := evmTypes.NewBlockWithWithdrawals(&header, txs, []*evmTypes.Header{}, *r.Receipts, r.Withdrawals, trie.NewStackTrie(nil))
 	block := evmTypes.NewBlockWithHeader(&header)
 	block.AttachBody(txs, []*evmTypes.Header{}, oa.Withdrawals)
-	return true, &types.BlockResult{
+	return true, &mtypes.BlockResult{
 		Block: block,
 		Fees:  totalFees(block, *oa.Receipts),
 	}

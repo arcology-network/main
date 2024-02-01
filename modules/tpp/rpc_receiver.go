@@ -4,8 +4,8 @@ import (
 	"context"
 	"sync"
 
-	"github.com/arcology-network/common-lib/types"
 	tppTypes "github.com/arcology-network/main/modules/tpp/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 )
@@ -48,7 +48,7 @@ func (rr *RpcReceiver) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (rr *RpcReceiver) ReceivedTransactionFromRpc(ctx context.Context, args *types.RawTransactionArgs, reply *types.RawTransactionReply) error {
+func (rr *RpcReceiver) ReceivedTransactionFromRpc(ctx context.Context, args *mtypes.RawTransactionArgs, reply *mtypes.RawTransactionReply) error {
 	if rr.LatestMessage == nil {
 		rr.LatestMessage = actor.NewMessage()
 	}

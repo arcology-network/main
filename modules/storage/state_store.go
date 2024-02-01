@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/arcology-network/common-lib/codec"
-	"github.com/arcology-network/common-lib/types"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -70,7 +70,7 @@ func (ss *StateStore) GetHeight(ctx context.Context, _ *int, height *uint64) err
 	return nil
 }
 
-func (ss *StateStore) GetParentInfo(ctx context.Context, na *int, parentInfo *types.ParentInfo) error {
+func (ss *StateStore) GetParentInfo(ctx context.Context, na *int, parentInfo *mtypes.ParentInfo) error {
 	if ss.state == nil {
 		data, err := ss.db.Read(statefilename)
 		if err != nil {

@@ -13,7 +13,7 @@ func init() {
 	gob.Register([]SchdState{})
 
 	actor.Factory.Register("storage", NewStorage)
-	actor.Factory.Register("storage_debug", NewStorageDebug)
+	// actor.Factory.Register("storage_debug", NewStorageDebug)
 	actor.Factory.Register("storage.initializer", NewInitializer)
 	actor.Factory.Register("storage.metrics", NewMetrics)
 	actor.Factory.Register("storage.statesyncstore", NewStateSyncStore)

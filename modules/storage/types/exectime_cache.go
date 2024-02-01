@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 )
 
 type ExectimeCaches struct {
@@ -19,16 +19,16 @@ func (ec *ExectimeCaches) GetKey(height uint64) string {
 	return fmt.Sprintf("statisticalInformation-%v", height)
 }
 
-func (ec *ExectimeCaches) Query(height uint64) *types.StatisticalInformation {
+func (ec *ExectimeCaches) Query(height uint64) *mtypes.StatisticalInformation {
 	key := ec.GetKey(height)
 	staticalInfo := ec.caches.Query(key)
 	if staticalInfo != nil {
-		return staticalInfo.(*types.StatisticalInformation)
+		return staticalInfo.(*mtypes.StatisticalInformation)
 	}
 	return nil
 }
 
-func (ec *ExectimeCaches) Save(height uint64, staticalInfo *types.StatisticalInformation) {
+func (ec *ExectimeCaches) Save(height uint64, staticalInfo *mtypes.StatisticalInformation) {
 	key := ec.GetKey(height)
 	ec.caches.Add(height, []string{key}, []interface{}{staticalInfo})
 }

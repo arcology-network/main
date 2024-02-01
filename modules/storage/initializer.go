@@ -9,7 +9,6 @@ import (
 	"os"
 
 	"github.com/arcology-network/common-lib/storage/transactional"
-	"github.com/arcology-network/common-lib/types"
 	ccurl "github.com/arcology-network/concurrenturl"
 	"github.com/arcology-network/concurrenturl/commutative"
 	"github.com/arcology-network/concurrenturl/interfaces"
@@ -29,6 +28,7 @@ import (
 
 	"github.com/arcology-network/common-lib/exp/array"
 	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	mtypes "github.com/arcology-network/main/types"
 )
 
 type Initializer struct {
@@ -97,7 +97,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 
 		evmblock := genesis.ToBlock()
 
-		block, err := core.CreateBlock(evmblock.Header(), [][]byte{}, types.GetSignerType(big.NewInt(height), genesis.Config))
+		block, err := core.CreateBlock(evmblock.Header(), [][]byte{}, mtypes.GetSignerType(big.NewInt(height), genesis.Config))
 		if err != nil {
 			panic("Create genesis block err!")
 		}
@@ -135,7 +135,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			return nil
 		})
 		transactional.RegisterRecoverFunc("parentinfo", func(_ interface{}, bs []byte) error {
-			var pi types.ParentInfo
+			var pi mtypes.ParentInfo
 			if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&pi); err != nil {
 				fmt.Printf("Error decoding ParentInfo, err = %v\n", err)
 				return err

@@ -9,6 +9,7 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"
 	intf "github.com/arcology-network/streamer/interface"
@@ -38,8 +39,8 @@ func (mock *execRpcMock) check(expected [][]int) {
 	}
 }
 
-func (mock *execRpcMock) ExecTxs(_ context.Context, request *actor.Message, response *types.ExecutorResponses) error {
-	req := request.Data.(*types.ExecutorRequest)
+func (mock *execRpcMock) ExecTxs(_ context.Context, request *actor.Message, response *mtypes.ExecutorResponses) error {
+	req := request.Data.(*mtypes.ExecutorRequest)
 	numMsgs := 0
 	for _, seq := range req.Sequences {
 		numMsgs += len(seq.Msgs)
@@ -51,7 +52,7 @@ func (mock *execRpcMock) ExecTxs(_ context.Context, request *actor.Message, resp
 	return nil
 }
 
-func (mock *execRpcMock) GetConfig(_ context.Context, _ *int, config *types.ExecutorConfig) error {
+func (mock *execRpcMock) GetConfig(_ context.Context, _ *int, config *mtypes.ExecutorConfig) error {
 	config.Concurrency = mock.concurrency
 	return nil
 }
@@ -148,7 +149,7 @@ func runExecClientTestCase(
 				Precedings: &[]*evmCommon.Hash{},
 			},
 		},
-		[]*types.ExecutingSequence{
+		[]*mtypes.ExecutingSequence{
 			{
 				Msgs:     msgs,
 				Parallel: true,

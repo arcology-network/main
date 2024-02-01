@@ -1,13 +1,13 @@
 package exec
 
 import (
-	"github.com/arcology-network/common-lib/types"
 	ccurl "github.com/arcology-network/concurrenturl"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	eupk "github.com/arcology-network/eu"
 	eucommon "github.com/arcology-network/eu/common"
 	eushared "github.com/arcology-network/eu/shared"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -29,7 +29,7 @@ func (m *mockWorker) Inputs() ([]string, bool) {
 		actor.MsgExecuted,
 		actor.MsgReceipts,
 		actor.MsgReceiptHashList,
-		actor.MsgExecutingLogs,
+		// actor.MsgExecutingLogs,
 		// Kafka uploader.
 		actor.MsgTxAccessRecords,
 	}, false
@@ -90,7 +90,7 @@ func (m *mockExecutionImpl) Init(eu *eupk.EU, url *ccurl.StateCommitter) {}
 func (m *mockExecutionImpl) SetDB(db *interfaces.Datastore) {}
 
 func (m *mockExecutionImpl) Exec(
-	sequence *types.ExecutingSequence,
+	sequence *mtypes.ExecutingSequence,
 	config *eucommon.Config,
 	logger *actor.WorkerThreadLogger,
 	gatherExeclog bool,

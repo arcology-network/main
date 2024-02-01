@@ -42,7 +42,6 @@
             "prometheus_fetch_step":"3",
             "coefficient":130
         },
-        "storage_debug": {},
         "storage.statesyncstore": {
             "slice_db_root": "./slices/",
             "sync_point_root": "./sync_point/",

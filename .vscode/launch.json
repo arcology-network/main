@@ -10,7 +10,7 @@
             "request": "launch",
             "mode": "auto",
             "program": "${fileDirname}",
-            "args": ["start","--global=/home/weizp/work/configs/global.json","--kafka=/home/weizp/work/configs/kafka-nil.json","--app=/home/weizp/work/configs/monaco.json"]
+            "args": ["start","--global=/home/weizp/work/configs/global.json","--kafka=/home/weizp/work/configs/kafka-nil.json","--app=/home/weizp/work/configs/arcology.json"]
             //"args": ["start","--global=/home/weizp/work/configs/global.json","--kafka=/home/weizp/work/configs/kafka.json","--app=/home/weizp/work/configs/exec.json"]
         }
     ]

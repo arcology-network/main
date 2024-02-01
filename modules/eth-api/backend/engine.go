@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/miner"
 
 	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	intf "github.com/arcology-network/streamer/interface"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
@@ -54,8 +55,8 @@ func getSealingBlock(params *generateParams, rawTxs [][]byte, chainID uint64) *n
 			Source:            types.TxFrom_Local,
 		}
 	}
-	request := &types.OpRequest{
-		BlockParam: &types.BlockParams{
+	request := &mtypes.OpRequest{
+		BlockParam: &mtypes.BlockParams{
 			Random:     params.random,
 			BeaconRoot: params.beaconRoot,
 			Times:      params.timestamp,
@@ -63,12 +64,12 @@ func getSealingBlock(params *generateParams, rawTxs [][]byte, chainID uint64) *n
 		Withdrawals:  params.withdrawals,
 		Transactions: transactions,
 	}
-	var response types.QueryResult
+	var response mtypes.QueryResult
 	err := intf.Router.Call("pool", "ReceivedMessages", request, &response)
 	if err != nil {
 		return nil
 	}
-	result := response.Data.(*types.BlockResult)
+	result := response.Data.(*mtypes.BlockResult)
 	return &newPayloadResult{
 		block:    result.Block,
 		fees:     result.Fees,

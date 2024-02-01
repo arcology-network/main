@@ -11,10 +11,10 @@ import (
 	"testing"
 	"time"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
 	cmnst "github.com/arcology-network/main/components/storage"
 	statesync "github.com/arcology-network/main/modules/state-sync"
 	"github.com/arcology-network/main/modules/storage"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"
 	evmCommon "github.com/ethereum/go-ethereum/common"
@@ -35,11 +35,11 @@ func TestMakeSyncPoint(t *testing.T) {
 
 	ssStore := makeSyncPoint(t, "./data/statesyncstore", keys, values)
 	var na int
-	var status cmntyp.SyncStatus
+	var status mtypes.SyncStatus
 	ssStore.GetSyncStatus(context.Background(), &na, &status)
 	t.Log(status)
 
-	var sp cmntyp.SyncPoint
+	var sp mtypes.SyncPoint
 	height := latestSyncPoint
 	ssStore.GetSyncPoint(context.Background(), &height, &sp)
 	t.Log(sp)

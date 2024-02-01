@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	opadapter "github.com/arcology-network/concurrenturl/op"
 	ccdb "github.com/arcology-network/concurrenturl/storage"
@@ -69,9 +68,9 @@ func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (sq *StateQuery) QueryState(ctx context.Context, request *types.QueryRequest, response *types.QueryResult) error {
+func (sq *StateQuery) QueryState(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
 	switch request.QueryType {
-	case types.QueryType_Proof:
+	case mtypes.QueryType_Proof:
 		rq := request.Data.(*mtypes.RequestProof)
 		keys := make([]string, len(rq.Keys))
 		for i := range keys {

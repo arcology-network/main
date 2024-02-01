@@ -4,6 +4,7 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/components/storage"
 	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/log"
@@ -92,8 +93,8 @@ func (r *TxRepeatedChecker) checkRepeated(txspack *gatewayTypes.TxsPack, from by
 	if txspack.TxHashChan != nil {
 		go func() {
 			if len(checkedTxs) > 0 {
-				response := types.RawTransactionReply{}
-				intf.Router.Call("tpp", "ReceivedTransactionFromRpc", &types.RawTransactionArgs{
+				response := mtypes.RawTransactionReply{}
+				intf.Router.Call("tpp", "ReceivedTransactionFromRpc", &mtypes.RawTransactionArgs{
 					Tx:  checkedTxs[0],
 					Src: txspack.Txs.Src,
 				}, &response)

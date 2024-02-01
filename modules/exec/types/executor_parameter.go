@@ -1,12 +1,12 @@
 package types
 
 import (
-	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	mevmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type ExecutorParameter struct {
-	ParentInfo *types.ParentInfo
+	ParentInfo *mtypes.ParentInfo
 	Coinbase   *mevmCommon.Address
 	Height     uint64
 }

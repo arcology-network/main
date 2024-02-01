@@ -5,8 +5,8 @@ import (
 	"time"
 
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/types"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
@@ -59,7 +59,7 @@ func (*FilterManager) Stop() {}
 
 func (fm *FilterManager) OnMessageArrived(msgs []*actor.Message) error {
 	var receipts []*ethTypes.Receipt
-	var block *types.MonacoBlock
+	var block *mtypes.MonacoBlock
 
 	for _, v := range msgs {
 		switch v.Name {
@@ -68,7 +68,7 @@ func (fm *FilterManager) OnMessageArrived(msgs []*actor.Message) error {
 				receipts = append(receipts, item.(*ethTypes.Receipt))
 			}
 		case actor.MsgPendingBlock:
-			block = v.Data.(*types.MonacoBlock)
+			block = v.Data.(*mtypes.MonacoBlock)
 		}
 	}
 

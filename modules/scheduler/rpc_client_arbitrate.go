@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/log"
@@ -43,7 +43,7 @@ func (rca *RpcClientArbitrate) Stop() {
 
 }
 
-func (rca *RpcClientArbitrate) Do(arbitrateList [][][]*types.TxElement, inlog *actor.WorkerThreadLogger, generationIdx, batchIdx int) ([]*evmCommon.Hash, []uint32, []uint32) {
+func (rca *RpcClientArbitrate) Do(arbitrateList [][][]*mtypes.TxElement, inlog *actor.WorkerThreadLogger, generationIdx, batchIdx int) ([]*evmCommon.Hash, []uint32, []uint32) {
 	results := make([]*evmCommon.Hash, 0, len(arbitrateList))
 	cpairLeft := make([]uint32, 0, len(arbitrateList))
 	cpairRight := make([]uint32, 0, len(arbitrateList))
@@ -55,13 +55,13 @@ func (rca *RpcClientArbitrate) Do(arbitrateList [][][]*types.TxElement, inlog *a
 		request := actor.Message{
 			Msgid: common.GenerateUUID(),
 			Name:  actor.MsgArbitrateList,
-			Data: &types.ArbitratorRequest{
+			Data: &mtypes.ArbitratorRequest{
 				TxsListGroup: list,
 			},
 			Height: inlog.LatestMessage.Height,
 			Round:  inlog.LatestMessage.Round,
 		}
-		response := types.ArbitratorResponse{}
+		response := mtypes.ArbitratorResponse{}
 
 		inlog.CheckPoint("start arbitrate >>>>>>>>>>>>>>>>>>>", zap.Int("group idx", i), zap.Int("txs", len(list)), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
 		arbBegin = time.Now()

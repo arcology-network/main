@@ -7,17 +7,18 @@ import (
 	cmntyp "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	"github.com/arcology-network/main/modules/tools"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type batch struct {
 	context    *processContext
-	sequences  []*cmntyp.ExecutingSequence
+	sequences  []*mtypes.ExecutingSequence
 	msgsToExec map[evmCommon.Hash]*schtyp.Message
 }
 
 // newBatch create the first batch for a generation.
-func newBatch(context *processContext, sequences []*cmntyp.ExecutingSequence) *batch {
+func newBatch(context *processContext, sequences []*mtypes.ExecutingSequence) *batch {
 	msgsToExec := make(map[evmCommon.Hash]*schtyp.Message)
 	for _, seq := range sequences {
 		for i := range seq.Txids {
@@ -152,21 +153,21 @@ func (b *batch) setMsgPrecedings() []*evmCommon.Hash {
 }
 
 func (b *batch) makeArbitrateParam(
-	responses map[evmCommon.Hash]*cmntyp.ExecuteResponse,
+	responses map[evmCommon.Hash]*mtypes.ExecuteResponse,
 	execTree *execTree,
-) [][][]*cmntyp.TxElement {
+) [][][]*mtypes.TxElement {
 
-	var arbitrateParam [][][]*cmntyp.TxElement
+	var arbitrateParam [][][]*mtypes.TxElement
 	// if len(deferId2Responses) == 0 {
 	// The last batch, do arbitration among all the branches.
 	branches := execTree.getBranches()
 	if len(branches) > 1 {
-		groups := make([][]*cmntyp.TxElement, len(branches))
+		groups := make([][]*mtypes.TxElement, len(branches))
 		for i, branch := range branches {
-			group := make([]*cmntyp.TxElement, 0, len(branch.layers[0])+len(branch.layers)-1)
+			group := make([]*mtypes.TxElement, 0, len(branch.layers[0])+len(branch.layers)-1)
 			for lid, layer := range branch.layers {
 				for j := range layer {
-					group = append(group, &cmntyp.TxElement{
+					group = append(group, &mtypes.TxElement{
 						TxHash:  &layer[j],
 						Batchid: uint64(lid),
 						Txid:    b.context.txHash2IdBiMap.Get(layer[j]),
@@ -175,7 +176,7 @@ func (b *batch) makeArbitrateParam(
 			}
 			groups[i] = group
 		}
-		arbitrateParam = [][][]*cmntyp.TxElement{groups}
+		arbitrateParam = [][][]*mtypes.TxElement{groups}
 	}
 
 	(&schtyp.GasCache{DictionaryHash: b.context.txHash2Gas}).CostCalculateSort(&arbitrateParam)

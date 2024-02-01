@@ -43,7 +43,6 @@
             "prometheus_fetch_step":"3",
             "coefficient":130
         },
-        "storage_debug": {},
         "storage.statesyncstore": {
             "slice_db_root": "/home/weizp/monacos/slices/",
             "sync_point_root": "/home/weizp/monacos/sync_point/",
@@ -53,7 +52,6 @@
         "exec_rpc": {},
         "snapshot_maker": {},
         "executor": {
-            "gatherexeclog": true,
             "chain_id": "__global__"
         },
         "stateless_euresult_aggr_selector": {},

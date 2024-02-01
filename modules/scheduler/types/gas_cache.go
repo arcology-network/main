@@ -4,7 +4,7 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -13,7 +13,7 @@ type GasCache struct {
 	lock           sync.RWMutex
 }
 
-func (gc *GasCache) CostCalculateSort(txElements *[][][]*types.TxElement) {
+func (gc *GasCache) CostCalculateSort(txElements *[][][]*mtypes.TxElement) {
 	gc.lock.Lock()
 	defer gc.lock.Unlock()
 
@@ -36,7 +36,7 @@ func (gc *GasCache) CostCalculateSort(txElements *[][][]*types.TxElement) {
 		costItems := CostItems(costs)
 		sort.Sort(costItems)
 
-		sortedList := make([][]*types.TxElement, len(firstDemension))
+		sortedList := make([][]*mtypes.TxElement, len(firstDemension))
 		for i, item := range costItems {
 			sortedList[i] = firstDemension[item.idx]
 		}

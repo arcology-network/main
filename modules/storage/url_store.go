@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"math/big"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/concurrenturl/interfaces"
 	"github.com/arcology-network/main/components/storage"
 	strtyp "github.com/arcology-network/main/modules/storage/types"
@@ -102,7 +101,7 @@ func (us *UrlStore) GetEthStorage(ctx context.Context, request *UrlEthStorageGet
 	return nil
 }
 
-func (us *UrlStore) ApplyData(ctx context.Context, request *cmntyp.SyncDataRequest, _ *int) error {
+func (us *UrlStore) ApplyData(ctx context.Context, request *mtypes.SyncDataRequest, _ *int) error {
 	// var numSlice int
 	// // var slices []ethcmn.Hash
 	// if request.To-request.From > 1 { // Sync point.

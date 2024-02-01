@@ -33,7 +33,7 @@ type AggrSelector struct {
 
 	opAdaptor *OpAdaptor
 	chainID   *big.Int
-	resultch  chan *types.BlockResult
+	resultch  chan *mtypes.BlockResult
 
 	noOp bool //no opnode
 }
@@ -57,7 +57,7 @@ func NewAggrSelector(concurrency int, groupid string) actor.IWorkerEx {
 	initRpcOnce.Do(func() {
 		rpcInstance = &AggrSelector{
 			state:    poolStateInit,
-			resultch: make(chan *types.BlockResult, 1),
+			resultch: make(chan *mtypes.BlockResult, 1),
 		}
 		rpcInstance.(*AggrSelector).Set(concurrency, groupid)
 	})
@@ -112,7 +112,7 @@ func (a *AggrSelector) reap(height uint64) {
 	a.AddLog(log.LogLevel_Info, "Reap done, switch to poolStateCherryPick")
 }
 
-func (a *AggrSelector) returnResult(result *types.BlockResult) {
+func (a *AggrSelector) returnResult(result *mtypes.BlockResult) {
 	if !a.noOp {
 		a.resultch <- result
 	}
@@ -151,11 +151,11 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 			a.pool.Add(msgs.Txs, msgs.Src, msg.Height)
 		case actor.MsgReapCommand:
 			if a.noOp {
-				a.MsgBroker.Send(actor.MsgOpCommand, &types.OpRequest{
+				a.MsgBroker.Send(actor.MsgOpCommand, &mtypes.OpRequest{
 					Withdrawals:  evmTypes.Withdrawals{},
 					Transactions: []*types.StandardTransaction{},
 				})
-				a.MsgBroker.Send(actor.MsgBlockParams, &types.BlockParams{
+				a.MsgBroker.Send(actor.MsgBlockParams, &mtypes.BlockParams{
 					Random:     evmCommon.Hash{},
 					BeaconRoot: &evmCommon.Hash{},
 					Times:      0,
@@ -167,7 +167,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 				a.reap(msg.Height)
 			}
 		case actor.MsgOpCommand:
-			oprequest := msg.Data.(*types.OpRequest)
+			oprequest := msg.Data.(*mtypes.OpRequest)
 			a.AddLog(log.LogLevel_Debug, "oprequest received", zap.Int("oprequest.Transactions", len(oprequest.Transactions)), zap.Int("oprequest.Withdrawals", len(oprequest.Withdrawals)))
 			if a.opAdaptor.AddOpCommand(oprequest.Transactions, oprequest.Withdrawals) {
 				a.reap(msg.Height)
@@ -208,7 +208,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 			}
 
 		case actor.MsgPendingBlock:
-			block := msg.Data.(*types.MonacoBlock)
+			block := msg.Data.(*mtypes.MonacoBlock)
 			if ok, result := a.opAdaptor.AddBlock(block); ok {
 				a.returnResult(result)
 			}
@@ -225,7 +225,7 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 			hashes[i] = &reaped[i].TxHash
 		}
 
-		a.MsgBroker.Send(actor.MsgMetaBlock, &types.MetaBlock{
+		a.MsgBroker.Send(actor.MsgMetaBlock, &mtypes.MetaBlock{
 			Txs:      [][]byte{},
 			Hashlist: a.opAdaptor.AppendList(hashes),
 		}, height)
@@ -279,7 +279,7 @@ func (a *AggrSelector) Height() uint64 {
 	return a.height
 }
 
-func (a *AggrSelector) ReceivedMessages(ctx context.Context, request *types.OpRequest, response *types.QueryResult) error {
+func (a *AggrSelector) ReceivedMessages(ctx context.Context, request *mtypes.OpRequest, response *mtypes.QueryResult) error {
 	a.MsgBroker.Send(actor.MsgOpCommand, request, a.height)
 	a.MsgBroker.Send(actor.MsgBlockParams, request.BlockParam, a.height)
 
@@ -297,9 +297,9 @@ func (a *AggrSelector) ReceivedMessages(ctx context.Context, request *types.OpRe
 	return nil
 }
 
-func (a *AggrSelector) Query(ctx context.Context, request *types.QueryRequest, response *types.QueryResult) error {
+func (a *AggrSelector) Query(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
 	switch request.QueryType {
-	case types.QueryType_Transaction:
+	case mtypes.QueryType_Transaction:
 		hash := request.Data.(evmCommon.Hash)
 		st := a.pool.QueryByHash(evmCommon.BytesToHash(hash.Bytes()))
 		if st == nil {

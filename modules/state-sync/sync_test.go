@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"
 )
@@ -54,19 +54,19 @@ func TestBasic(t *testing.T) {
 	}
 
 	storageSrvs := []*storageMock{
-		newStorageMock(&cmntyp.SyncStatus{
+		newStorageMock(&mtypes.SyncStatus{
 			SyncPoint: 0,
 			Height:    0,
 		}),
-		newStorageMock(&cmntyp.SyncStatus{
+		newStorageMock(&mtypes.SyncStatus{
 			SyncPoint: 100,
 			Height:    110,
 		}),
-		newStorageMock(&cmntyp.SyncStatus{
+		newStorageMock(&mtypes.SyncStatus{
 			SyncPoint: 100,
 			Height:    120,
 		}),
-		newStorageMock(&cmntyp.SyncStatus{
+		newStorageMock(&mtypes.SyncStatus{
 			SyncPoint: 100,
 			Height:    130,
 		}),

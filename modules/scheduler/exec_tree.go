@@ -3,6 +3,7 @@ package scheduler
 import (
 	cmncmn "github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -35,7 +36,7 @@ func newExecTree() *execTree {
 	}
 }
 
-func (tree *execTree) createBranches(sequences []*cmntyp.ExecutingSequence) {
+func (tree *execTree) createBranches(sequences []*mtypes.ExecutingSequence) {
 	for _, seq := range sequences {
 		if seq.Parallel {
 			for _, msg := range seq.Msgs {

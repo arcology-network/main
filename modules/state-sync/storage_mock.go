@@ -3,53 +3,53 @@ package statesync
 import (
 	"fmt"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type storageMock struct {
-	status *cmntyp.SyncStatus
+	status *mtypes.SyncStatus
 }
 
-func newStorageMock(status *cmntyp.SyncStatus) *storageMock {
+func newStorageMock(status *mtypes.SyncStatus) *storageMock {
 	return &storageMock{
 		status: status,
 	}
 }
 
-func (m *storageMock) GetSyncStatus() *cmntyp.SyncStatus {
+func (m *storageMock) GetSyncStatus() *mtypes.SyncStatus {
 	return m.status
 }
 
-func (m *storageMock) GetSyncPoint(height uint64) *cmntyp.SyncPoint {
+func (m *storageMock) GetSyncPoint(height uint64) *mtypes.SyncPoint {
 	if m.status == nil || m.status.SyncPoint == 0 {
 		return nil
 	}
 
-	return &cmntyp.SyncPoint{
+	return &mtypes.SyncPoint{
 		From:   0,
 		To:     m.status.SyncPoint,
-		Slices: make([]evmCommon.Hash, cmntyp.SlicePerSyncPoint),
-		Parent: &cmntyp.ParentInfo{},
+		Slices: make([]evmCommon.Hash, mtypes.SlicePerSyncPoint),
+		Parent: &mtypes.ParentInfo{},
 	}
 }
 
-func (m *storageMock) WriteSlice(response *cmntyp.SyncDataResponse) {
+func (m *storageMock) WriteSlice(response *mtypes.SyncDataResponse) {
 	fmt.Printf("StorageMock: write slice [%v]\n", response)
 }
 
-func (m *storageMock) ReadSlice(request *cmntyp.SyncDataRequest) *cmntyp.SyncDataResponse {
+func (m *storageMock) ReadSlice(request *mtypes.SyncDataRequest) *mtypes.SyncDataResponse {
 	if m.status == nil || m.status.Height < request.To {
 		return nil
 	}
 
-	return &cmntyp.SyncDataResponse{
+	return &mtypes.SyncDataResponse{
 		SyncDataRequest: *request,
 		Data:            make([]byte, request.Slice+1),
 	}
 }
 
-func (m *storageMock) ApplyData(request *cmntyp.SyncDataRequest) {
+func (m *storageMock) ApplyData(request *mtypes.SyncDataRequest) {
 	fmt.Printf("StorageMock: apply data [%v]\n", request)
 }
 

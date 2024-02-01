@@ -4,7 +4,7 @@ import (
 	"context"
 	"sync"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
@@ -63,12 +63,12 @@ func (rpc *RpcService) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (rpc *RpcService) GetConfig(ctx context.Context, _ *int, config *cmntyp.ExecutorConfig) error {
+func (rpc *RpcService) GetConfig(ctx context.Context, _ *int, config *mtypes.ExecutorConfig) error {
 	config.Concurrency = rpc.Concurrency
 	return nil
 }
 
-func (rpc *RpcService) ExecTxs(ctx context.Context, request *actor.Message, response *cmntyp.ExecutorResponses) error {
+func (rpc *RpcService) ExecTxs(ctx context.Context, request *actor.Message, response *mtypes.ExecutorResponses) error {
 	chResults := make(chan []*ExecutorResponse)
 	rpc.pendingTxsGuard.Lock()
 	rpc.pendingTxs[request.Msgid] = chResults
@@ -78,7 +78,7 @@ func (rpc *RpcService) ExecTxs(ctx context.Context, request *actor.Message, resp
 	results := <-chResults
 
 	// The following code were copied from exec v1.
-	args := request.Data.(*cmntyp.ExecutorRequest)
+	args := request.Data.(*mtypes.ExecutorRequest)
 	total := 0
 	for _, sequence := range args.Sequences {
 		total = total + len(sequence.Msgs)

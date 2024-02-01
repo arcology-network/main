@@ -3,20 +3,20 @@ package types
 import (
 	"fmt"
 
-	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/modules/scheduler/lib"
+	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type ExecutingSchedule struct {
-	Batches   [][]*types.ExecutingSequence
+	Batches   [][]*mtypes.ExecutingSequence
 	batchIdx  int
 	scheduler *lib.Scheduler
 }
 
 func NewExecutingSchedule(scheduler *lib.Scheduler) *ExecutingSchedule {
 	return &ExecutingSchedule{
-		Batches:   [][]*types.ExecutingSequence{},
+		Batches:   [][]*mtypes.ExecutingSequence{},
 		batchIdx:  -1,
 		scheduler: scheduler,
 	}

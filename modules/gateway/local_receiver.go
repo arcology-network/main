@@ -7,6 +7,7 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
@@ -47,7 +48,7 @@ func (lr *LocalReceiver) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (lr *LocalReceiver) ReceivedTransactions(ctx context.Context, args *types.SendTransactionArgs, reply *types.SendTransactionReply) error {
+func (lr *LocalReceiver) ReceivedTransactions(ctx context.Context, args *mtypes.SendTransactionArgs, reply *mtypes.SendTransactionReply) error {
 	txLen := len(args.Txs)
 	checkingtxs := make([][]byte, txLen)
 	common.ParallelWorker(txLen, lr.Concurrency, lr.txWorker, args.Txs, &checkingtxs)
@@ -63,7 +64,7 @@ func (lr *LocalReceiver) ReceivedTransactions(ctx context.Context, args *types.S
 	return nil
 }
 
-func (lr *LocalReceiver) SendRawTransaction(ctx context.Context, args *types.RawTransactionArgs, reply *types.RawTransactionReply) error {
+func (lr *LocalReceiver) SendRawTransaction(ctx context.Context, args *mtypes.RawTransactionArgs, reply *mtypes.RawTransactionReply) error {
 	txLen := 1
 	checkingtxs := make([][]byte, txLen)
 	common.ParallelWorker(txLen, lr.Concurrency, lr.txWorker, [][]byte{args.Tx}, &checkingtxs)

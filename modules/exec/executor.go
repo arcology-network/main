@@ -28,13 +28,14 @@ import (
 	eucommon "github.com/arcology-network/eu/common"
 	"github.com/arcology-network/eu/execution"
 	eushared "github.com/arcology-network/eu/shared"
+	mtypes "github.com/arcology-network/main/types"
 	apihandler "github.com/arcology-network/vm-adaptor/apihandler"
 	intf "github.com/arcology-network/vm-adaptor/interface"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type ExecutorResponse struct {
-	Responses       []*types.ExecuteResponse
+	Responses       []*mtypes.ExecuteResponse
 	ContractAddress []evmCommon.Address
 	CallResults     [][]byte
 }
@@ -51,7 +52,7 @@ type pendingTask struct {
 	baseOn             *interfaces.Datastore
 	totalPrecedingSize int
 
-	sequence  *types.ExecutingSequence
+	sequence  *mtypes.ExecutingSequence
 	timestamp *big.Int
 	debug     bool
 }
@@ -127,14 +128,11 @@ func (exec *Executor) Outputs() map[string]int {
 		actor.MsgEuResults:         100, // Exec results.
 		actor.MsgTxAccessRecords:   100, // Access records for arbitrator.
 		actor.MsgTxsExecuteResults: 1,   // To wake up rpc service.
-		actor.MsgExecutingLogs:     1,   // Exec logs.
+		// actor.MsgExecutingLogs:     1,   // Exec logs.
 	}
 }
 
 func (exec *Executor) Config(params map[string]interface{}) {
-	if v, ok := params["gatherexeclog"]; ok {
-		exec.genExecLog = v.(bool)
-	}
 	exec.chainId = params["chain_id"].(*big.Int)
 }
 
@@ -163,7 +161,7 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 		combined := msg.Data.(*actor.CombinerElements)
 		coinbase := evmCommon.BytesToAddress(combined.Get(actor.MsgBlockStart).Data.(*actor.BlockStart).Coinbase.Bytes())
 		exec.execParams = &exetyp.ExecutorParameter{
-			ParentInfo: combined.Get(actor.MsgParentInfo).Data.(*types.ParentInfo),
+			ParentInfo: combined.Get(actor.MsgParentInfo).Data.(*mtypes.ParentInfo),
 			Coinbase:   &coinbase,
 			Height:     combined.Get(actor.MsgBlockStart).Height,
 		}
@@ -171,7 +169,7 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 	case execStateReady:
 		switch msg.Name {
 		case actor.MsgTxsToExecute:
-			request := msg.Data.(*types.ExecutorRequest)
+			request := msg.Data.(*mtypes.ExecutorRequest)
 			exec.numTasks = len(request.Sequences)
 			exec.requestId = msg.Msgid
 			exec.pendingTasks = make(map[evmCommon.Hash][]*pendingTask)
@@ -262,7 +260,7 @@ func (exec *Executor) Height() uint64 {
 func (exec *Executor) sendNewTask(
 	snapshot interfaces.Datastore,
 	timestamp *big.Int,
-	sequence *types.ExecutingSequence,
+	sequence *mtypes.ExecutingSequence,
 	debug bool,
 ) {
 	//db := curstorage.NewTransientDB(snapshot)
@@ -355,7 +353,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	contractAddress := []evmCommon.Address{}
 	nilAddress := evmCommon.Address{}
 	sendingCallResults := make([][]byte, counter)
-	txsResults := make([]*types.ExecuteResponse, counter)
+	txsResults := make([]*mtypes.ExecuteResponse, counter)
 	failed := 0
 	for i, result := range results {
 		accesses := univaluepk.Univalues(array.Clone(result.Transitions())).To(importer.ITAccess{})
@@ -388,7 +386,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 
 		sendingCallResults[i] = result.EvmResult.ReturnData
 
-		txsResults[i] = &types.ExecuteResponse{
+		txsResults[i] = &mtypes.ExecuteResponse{
 			Hash:    evmCommon.BytesToHash([]byte(euresult.H)),
 			Status:  euresult.Status,
 			GasUsed: euresult.GasUsed,
