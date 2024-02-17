@@ -5,6 +5,7 @@ import (
 	"math"
 	"math/big"
 
+	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/exp/array"
 	"github.com/arcology-network/common-lib/types"
@@ -299,7 +300,9 @@ func toJobSequence(msgs []*types.StandardTransaction, ids []uint32) []*eucommon.
 	}
 	return nmsgs
 }
-
+func GetThreadD(hash evmCommon.Hash) uint64 {
+	return uint64(codec.Uint64(0).Decode(hash.Bytes()[:8]).(codec.Uint64))
+}
 func (exec *Executor) startExec() {
 	for i := 0; i < int(exec.Concurrency); i++ {
 		index := i
@@ -317,7 +320,7 @@ func (exec *Executor) startExec() {
 
 						localCache := cache.NewWriteCache(*task.Snapshot)
 						api := apihandler.NewAPIHandler(localCache)
-						job.Run(task.Config, api)
+						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 
 						results = append(results, job.Results...)
 					}
@@ -335,7 +338,7 @@ func (exec *Executor) startExec() {
 					localCache := cache.NewWriteCache(*task.Snapshot)
 					api := apihandler.NewAPIHandler(localCache)
 
-					job.Run(task.Config, api)
+					job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 
 					exec.sendResults(job.Results, task.Sequence.Txids, task.Debug)
 				}
@@ -358,6 +361,12 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	for i, result := range results {
 		accesses := univaluepk.Univalues(array.Clone(result.Transitions())).To(importer.ITAccess{})
 		transitions := univaluepk.Univalues(array.Clone(result.Transitions())).To(importer.ITTransition{})
+
+		// fmt.Printf("-----------------------------------main/modules/exec/executor.go-------------\n")
+		// transitions.Print()
+
+		// fmt.Printf("====================================main/modules/exec/executor.go================\n")
+		// accesses.Print()
 
 		if result.Receipt.Status == 0 {
 			failed++
