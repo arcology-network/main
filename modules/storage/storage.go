@@ -1,7 +1,6 @@
 package storage
 
 import (
-	"fmt"
 	"math/big"
 	"net/http"
 	"sync"
@@ -146,7 +145,6 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		mapReceipts := make(map[evmCommon.Hash]*evmTypes.Receipt, len(receipts))
 		for _, receipt := range receipts {
 			mapReceipts[receipt.TxHash] = receipt
-			s.AddLog(log.LogLevel_Debug, "****************** receipt ", zap.Uint64("status", receipt.Status), zap.String("txhash", fmt.Sprintf("%x", receipt.TxHash.Bytes())))
 		}
 
 		blockHash := block.Hash()

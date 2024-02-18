@@ -309,6 +309,7 @@ func (exec *Executor) startExec() {
 		go func(index int) {
 			for {
 				task := <-exec.taskCh
+				exec.AddLog(log.LogLevel_Debug, "Task Style", zap.Bool("Parallel", task.Sequence.Parallel), zap.String("SequenceId", fmt.Sprintf("%x", task.Sequence.SequenceId.Bytes())), zap.Int("Size", len(task.Sequence.Msgs)))
 				if task.Sequence.Parallel {
 					results := make([]*execution.Result, 0, len(task.Sequence.Msgs))
 					for j := range task.Sequence.Msgs {
@@ -387,8 +388,6 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		sendingAccessRecords[i] = &accessRecord
 
 		sendingReceipts[i] = result.Receipt
-		exec.AddLog(log.LogLevel_Debug, "****************execute receipt", zap.String("txhash", fmt.Sprintf("%x", result.Receipt.TxHash.Bytes())), zap.Uint64("status", result.Receipt.Status))
-
 		if result.Receipt.ContractAddress != nilAddress {
 			contractAddress = append(contractAddress, result.Receipt.ContractAddress)
 		}
