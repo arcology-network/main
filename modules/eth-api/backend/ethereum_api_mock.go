@@ -273,3 +273,6 @@ func (mock *EthereumAPIMock) GetFilterChanges(id ID) (interface{}, error) {
 func (mock *EthereumAPIMock) GetFilterLogs(id ID) ([]*ethtyp.Log, error) {
 	return []*ethtyp.Log{}, nil
 }
+func (mock *EthereumAPIMock) SendRawTransactions(rawTxs [][]byte) (uint64, error) {
+	return 0, nil
+}

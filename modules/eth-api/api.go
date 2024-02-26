@@ -5,11 +5,9 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"log"
 	"math"
 	"math/big"
 	"net/http"
-	"os"
 	"time"
 
 	"github.com/BurntSushi/toml"
@@ -452,6 +450,21 @@ func sendRawTransaction(ctx context.Context, params []interface{}) (interface{},
 	}
 	return hash.Hex(), nil
 }
+func sendRawTransactions(ctx context.Context, params []interface{}) (interface{}, error) {
+	txs := make([][]byte, len(params))
+	for i := range params {
+		bytes, err := ToBytes(params[i])
+		if err != nil {
+			return nil, jsonrpc.InvalidParams("invalid raw transaction given %v", params[i])
+		}
+		txs[i] = bytes
+	}
+	result, err := backend.SendRawTransactions(txs)
+	if err != nil {
+		return nil, jsonrpc.InternalError(err)
+	}
+	return result, nil
+}
 
 func call(ctx context.Context, params []interface{}) (interface{}, error) {
 	msg, err := ToCallMsg(params[0], true)
@@ -823,13 +836,13 @@ func startJsonRpc() {
 
 	privateKeys := LoadKeys(options.KeyFile)
 
-	logFile, err := os.OpenFile("./rpc.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	if err != nil {
-		fmt.Println("open log file failed, err:", err)
-		return
-	}
-	log.SetOutput(logFile)
-	log.SetFlags(log.Lmicroseconds | log.Ldate)
+	// logFile, err := os.OpenFile("./rpc.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	// if err != nil {
+	// 	fmt.Println("open log file failed, err:", err)
+	// 	return
+	// }
+	// log.SetOutput(logFile)
+	// log.SetFlags(log.Lmicroseconds | log.Ldate)
 
 	server := jsonrpc.New()
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
@@ -909,5 +922,6 @@ var methods = map[string]jsonrpc.MethodFunc{
 	"eth_getHeaderByNumber":    getHeaderByNumber,
 	"eth_maxPriorityFeePerGas": maxPriorityFeePerGas,
 
-	"eth_getProof": getProof,
+	"eth_getProof":                 getProof,
+	"arcology_sendRawTransactions": sendRawTransactions,
 }

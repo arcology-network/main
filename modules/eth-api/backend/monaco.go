@@ -379,6 +379,16 @@ func (m *Monaco) SendRawTransaction(rawTx []byte) (ethcmn.Hash, error) {
 	}
 	return response.TxHash.(ethcmn.Hash), nil
 }
+func (m *Monaco) SendRawTransactions(rawTxs [][]byte) (uint64, error) {
+	var response mtypes.SendTransactionReply
+	err := intf.Router.Call("gateway", "ReceivedTransactions", &mtypes.SendTransactionArgs{
+		Txs: rawTxs,
+	}, &response)
+	if err != nil {
+		return 0, err
+	}
+	return uint64(len(rawTxs)), nil
+}
 
 func (m *Monaco) GetTransactionReceipt(hash ethcmn.Hash) (*types.Receipt, error) {
 	var response mtypes.QueryResult

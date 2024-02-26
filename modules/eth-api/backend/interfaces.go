@@ -70,4 +70,6 @@ type EthereumAPI interface {
 	SignalSuperchainV1(signal *catalyst.SuperchainSignal) (params.ProtocolVersion, error)
 
 	GetProof(rq *mtypes.RequestProof) (*ccdb.AccountResult, error)
+
+	SendRawTransactions(rawTxs [][]byte) (uint64, error)
 }
