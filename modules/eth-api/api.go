@@ -922,6 +922,6 @@ var methods = map[string]jsonrpc.MethodFunc{
 	"eth_getHeaderByNumber":    getHeaderByNumber,
 	"eth_maxPriorityFeePerGas": maxPriorityFeePerGas,
 
-	"eth_getProof":                 getProof,
-	"arcology_sendRawTransactions": sendRawTransactions,
+	"eth_getProof":              getProof,
+	"arcol_sendRawTransactions": sendRawTransactions,
 }
