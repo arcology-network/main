@@ -1,10 +1,13 @@
 package types
 
-import "encoding/gob"
+import (
+	"encoding/gob"
+)
 
 var arEncoder *arbReqEncoder
 var arDecoder *arbReqDecoder
-var bytesPool chan []byte
+
+// var bytesPool chan []byte
 
 func init() {
 	gob.Register(&RPCTransaction{})
@@ -41,8 +44,9 @@ func init() {
 	arEncoder = newArbReqEncoder()
 	arDecoder = newArbReqDecoder()
 
-	bytesPool = make(chan []byte, 100)
-	for i := 0; i < 100; i++ {
-		bytesPool <- make([]byte, 0, 2*1024*1024)
-	}
+	// bytesPool = make(chan []byte, 100)
+	// for i := 0; i < 100; i++ {
+	// 	bytesPool <- make([]byte, 0, 2*1024*1024)
+	// }
+
 }

@@ -36,10 +36,11 @@ func (p *EuResultPreProcessor) OnMessageArrived(msgs []*actor.Message) error {
 
 	processed := make([]*types.AccessRecord, len(results))
 	worker := func(start, end, idx int, args ...interface{}) {
-		recordPool := types.RecordPool
-		uniPool := types.UnivaluePool
+		// recordPool := types.RecordPool
+		// uniPool := types.UnivaluePool
 		for i := start; i < end; i++ {
-			processed[i] = types.Decode(results[i], recordPool, uniPool)
+			// processed[i] = types.Decode(results[i], recordPool, uniPool)
+			processed[i] = types.Decode(results[i])
 		}
 	}
 	common.ParallelWorker(len(results), p.Concurrency, worker)
