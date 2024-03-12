@@ -5,7 +5,7 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/tools"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 )
@@ -20,8 +20,8 @@ func TestExecutorRequestEncodingAndDeconing(t *testing.T) {
 	ethMsg_serial_1 := core.NewMessage(from, &to, 3, big.NewInt(int64(100)), 200, big.NewInt(int64(9)), []byte{4, 5, 6}, nil, false)
 	fmt.Printf("ethMsg_serial_0=%v\n", ethMsg_serial_0)
 	fmt.Printf("ethMsg_serial_1=%v\n", ethMsg_serial_1)
-	hash1 := types.RlpHash(ethMsg_serial_0)
-	hash2 := types.RlpHash(ethMsg_serial_1)
+	hash1 := tools.RlpHash(ethMsg_serial_0)
+	hash2 := tools.RlpHash(ethMsg_serial_1)
 	fmt.Printf("hash1=%v\n", hash1)
 	fmt.Printf("hash2=%v\n", hash2)
 }

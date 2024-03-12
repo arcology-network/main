@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/tools"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 	evmRlp "github.com/ethereum/go-ethereum/rlp"
@@ -44,7 +44,7 @@ func TestRlp(t *testing.T) {
 			fmt.Printf("deocode txs[%d] err: %v!\n", i, err)
 			return
 		}
-		types.RlpHash(otx)
+		tools.RlpHash(otx)
 
 	}
 	fmt.Printf("dencode txsnums=%v transactions time=%v ms\n", txnums, time.Now().Sub(startTime1))

@@ -3,7 +3,7 @@ package types
 import (
 	"strings"
 
-	"github.com/arcology-network/vm-adaptor/eth"
+	"github.com/arcology-network/evm-adaptor/eth"
 	evmcommon "github.com/ethereum/go-ethereum/common"
 )
 
