@@ -1,37 +1,37 @@
 package exec
 
 import (
-	"fmt"
 	"math"
 	"math/big"
 
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/exp/array"
 	"github.com/arcology-network/common-lib/types"
-	ccurl "github.com/arcology-network/concurrenturl"
-	"github.com/arcology-network/concurrenturl/commutative"
-	"github.com/arcology-network/concurrenturl/interfaces"
-	ccdb "github.com/arcology-network/concurrenturl/storage"
 	"github.com/arcology-network/main/components/storage"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
+	ccurl "github.com/arcology-network/storage-committer"
+	"github.com/arcology-network/storage-committer/commutative"
+	"github.com/arcology-network/storage-committer/interfaces"
+	ccdb "github.com/arcology-network/storage-committer/storage"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 
-	concurrenturlcommon "github.com/arcology-network/concurrenturl/common"
-	"github.com/arcology-network/concurrenturl/importer"
-	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 	eupk "github.com/arcology-network/eu"
 	"github.com/arcology-network/eu/cache"
+	concurrenturlcommon "github.com/arcology-network/storage-committer/common"
+	"github.com/arcology-network/storage-committer/importer"
+	univaluepk "github.com/arcology-network/storage-committer/univalue"
 
+	"github.com/arcology-network/common-lib/exp/mempool"
+	"github.com/arcology-network/common-lib/exp/slice"
 	eucommon "github.com/arcology-network/eu/common"
 	"github.com/arcology-network/eu/execution"
 	eushared "github.com/arcology-network/eu/shared"
+	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
+	intf "github.com/arcology-network/evm-adaptor/interface"
 	mtypes "github.com/arcology-network/main/types"
-	apihandler "github.com/arcology-network/vm-adaptor/apihandler"
-	intf "github.com/arcology-network/vm-adaptor/interface"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -142,8 +142,13 @@ func (exec *Executor) OnStart() {
 		persistentDB := ccdb.NewParallelEthMemDataStore() //cachedstorage.NewDataStore()
 		persistentDB.Inject(concurrenturlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
 		db := ccdb.NewTransientDB(persistentDB)
-		localCache := cache.NewWriteCache(db)
-		api := apihandler.NewAPIHandler(localCache)
+		// localCache := cache.NewWriteCache(db)
+		// api := apihandler.NewAPIHandler(localCache)
+
+		api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
+			return cache.NewWriteCache(db, 32, 1)
+		}, (&cache.WriteCache{}).Reset))
+
 		exec.apis[i] = api
 
 	}
@@ -214,10 +219,11 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 				// The following code were copied from exec v1.
 				db := ccdb.NewTransientDB(*pt[0].baseOn)
 				exec.stateCommitter.Init(db)
-				_, transitions := storage.GetTransitions(results)
+				ids, transitions := storage.GetTransitions(results)
 				exec.stateCommitter.Import(transitions)
 				exec.stateCommitter.Sort()
-				exec.stateCommitter.CopyToDbBuffer()
+				// exec.stateCommitter.CopyToDbBuffer()
+				exec.stateCommitter.Precommit(ids)
 				exec.stateCommitter.Commit()
 				exec.snapshotDict.AddItem(hash, pt[0].totalPrecedingSize, &db)
 
@@ -309,20 +315,25 @@ func (exec *Executor) startExec() {
 		go func(index int) {
 			for {
 				task := <-exec.taskCh
-				exec.AddLog(log.LogLevel_Debug, "Task Style", zap.Bool("Parallel", task.Sequence.Parallel), zap.String("SequenceId", fmt.Sprintf("%x", task.Sequence.SequenceId.Bytes())), zap.Int("Size", len(task.Sequence.Msgs)))
+
 				if task.Sequence.Parallel {
 					results := make([]*execution.Result, 0, len(task.Sequence.Msgs))
 					for j := range task.Sequence.Msgs {
+
 						job := eupk.JobSequence{
 							ID:        uint32(j),
 							StdMsgs:   toJobSequence([]*types.StandardTransaction{task.Sequence.Msgs[j]}, []uint32{task.Sequence.Txids[j]}),
 							ApiRouter: exec.apis[index],
 						}
 
-						localCache := cache.NewWriteCache(*task.Snapshot)
-						api := apihandler.NewAPIHandler(localCache)
-						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
+						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
+							return cache.NewWriteCache(*task.Snapshot, 32, 1)
+						}, (&cache.WriteCache{}).Reset))
 
+						// localCache := cache.NewWriteCache(*task.Snapshot)
+						// api := apihandler.NewAPIHandler(localCache)
+
+						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
 					}
 					exec.sendResults(results, task.Sequence.Txids, task.Debug)
@@ -333,17 +344,17 @@ func (exec *Executor) startExec() {
 						ApiRouter: exec.apis[index],
 					}
 
-					// url := ccurl.NewConcurrentUrl(*task.Snapshot)
-					// api := ccapi.NewAPI(url)
-
-					localCache := cache.NewWriteCache(*task.Snapshot)
-					api := apihandler.NewAPIHandler(localCache)
+					// localCache := cache.NewWriteCache(*task.Snapshot)
+					// api := apihandler.NewAPIHandler(localCache)
+					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
+						return cache.NewWriteCache(*task.Snapshot, 32, 1)
+					}, (&cache.WriteCache{}).Reset))
 
 					job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 
 					exec.sendResults(job.Results, task.Sequence.Txids, task.Debug)
 				}
-
+				// exec.AddLog(log.LogLevel_Debug, "Task Style", zap.Duration("exectime", time.Since(timeStart)), zap.Bool("Parallel", task.Sequence.Parallel), zap.String("SequenceId", fmt.Sprintf("%x", task.Sequence.SequenceId.Bytes())), zap.Int("Size", len(task.Sequence.Msgs)))
 			}
 		}(index)
 	}
@@ -360,8 +371,8 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	txsResults := make([]*mtypes.ExecuteResponse, counter)
 	failed := 0
 	for i, result := range results {
-		accesses := univaluepk.Univalues(array.Clone(result.Transitions())).To(importer.ITAccess{})
-		transitions := univaluepk.Univalues(array.Clone(result.Transitions())).To(importer.ITTransition{})
+		accesses := univaluepk.Univalues(slice.Clone(result.Transitions())).To(importer.ITAccess{})
+		transitions := univaluepk.Univalues(slice.Clone(result.Transitions())).To(importer.ITTransition{})
 
 		// fmt.Printf("-----------------------------------main/modules/exec/executor.go-------------\n")
 		// transitions.Print()

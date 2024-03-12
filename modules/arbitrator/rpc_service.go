@@ -7,13 +7,13 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/exp/array"
+	"github.com/arcology-network/common-lib/exp/slice"
 	ctypes "github.com/arcology-network/common-lib/types"
-	arbitratorn "github.com/arcology-network/concurrenturl/arbitrator"
-	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 	eu "github.com/arcology-network/eu"
 	"github.com/arcology-network/main/modules/arbitrator/types"
 	mtypes "github.com/arcology-network/main/types"
+	arbitratorn "github.com/arcology-network/storage-committer/arbitrator"
+	univaluepk "github.com/arcology-network/storage-committer/univalue"
 	"github.com/arcology-network/streamer/actor"
 	kafkalib "github.com/arcology-network/streamer/kafka/lib"
 	"github.com/arcology-network/streamer/log"
@@ -134,7 +134,7 @@ func parseRequests(txsListGroup [][]*mtypes.TxElement, results *[]*types.AccessR
 		transactations := []*univaluepk.Univalue{}
 		for _, e := range row {
 			result := mp[[32]byte(e.TxHash.Bytes())]
-			ids = append(ids, array.Fill(make([]uint32, len(result.Accesses)), uint32(i))...)
+			ids = append(ids, slice.Fill(make([]uint32, len(result.Accesses)), uint32(i))...)
 			transactations = append(transactations, result.Accesses...)
 		}
 		groupIDs[i] = ids
