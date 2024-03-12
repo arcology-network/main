@@ -7,6 +7,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/arcology-network/common-lib/tools"
 	"github.com/arcology-network/common-lib/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -32,12 +33,12 @@ func TestScheduler(t *testing.T) {
 	ethMsg_serial_3 := core.NewMessage(from3, &to3, 4, big.NewInt(int64(2000)), 400, big.NewInt(int64(11)), []byte{10, 11, 12}, nil, false)
 	ethMsg_serial_4 := core.NewMessage(from4, nil, 5, big.NewInt(int64(321)), 500, big.NewInt(int64(12)), []byte{13, 14, 15}, nil, false)
 	ethMsg_serial_5 := core.NewMessage(from5, &to5, 6, big.NewInt(int64(134)), 600, big.NewInt(int64(13)), []byte{16, 17, 18}, nil, false)
-	hash1 := types.RlpHash(&ethMsg_serial_0)
-	hash2 := types.RlpHash(&ethMsg_serial_1)
-	hash3 := types.RlpHash(&ethMsg_serial_2)
-	hash4 := types.RlpHash(&ethMsg_serial_3)
-	hash5 := types.RlpHash(&ethMsg_serial_4)
-	hash6 := types.RlpHash(&ethMsg_serial_5)
+	hash1 := tools.RlpHash(&ethMsg_serial_0)
+	hash2 := tools.RlpHash(&ethMsg_serial_1)
+	hash3 := tools.RlpHash(&ethMsg_serial_2)
+	hash4 := tools.RlpHash(&ethMsg_serial_3)
+	hash5 := tools.RlpHash(&ethMsg_serial_4)
+	hash6 := tools.RlpHash(&ethMsg_serial_5)
 	fmt.Printf("hash1=%v\n", hash1)
 	fmt.Printf("hash2=%v\n", hash2)
 	fmt.Printf("hash3=%v\n", hash3)
@@ -103,12 +104,12 @@ func TestSchedule(t *testing.T) {
 	ethMsg_serial_3 := core.NewMessage(from3, &to1, 4, big.NewInt(int64(2000)), 400, big.NewInt(int64(11)), []byte{10, 11, 12}, nil, false)
 	ethMsg_serial_4 := core.NewMessage(from4, &to1, 5, big.NewInt(int64(321)), 500, big.NewInt(int64(12)), []byte{13, 14, 15}, nil, false)
 	ethMsg_serial_5 := core.NewMessage(from5, &to1, 6, big.NewInt(int64(134)), 600, big.NewInt(int64(13)), []byte{16, 17, 18}, nil, false)
-	hash1 := types.RlpHash(&ethMsg_serial_0)
-	hash2 := types.RlpHash(&ethMsg_serial_1)
-	hash3 := types.RlpHash(&ethMsg_serial_2)
-	hash4 := types.RlpHash(&ethMsg_serial_3)
-	hash5 := types.RlpHash(&ethMsg_serial_4)
-	hash6 := types.RlpHash(&ethMsg_serial_5)
+	hash1 := tools.RlpHash(&ethMsg_serial_0)
+	hash2 := tools.RlpHash(&ethMsg_serial_1)
+	hash3 := tools.RlpHash(&ethMsg_serial_2)
+	hash4 := tools.RlpHash(&ethMsg_serial_3)
+	hash5 := tools.RlpHash(&ethMsg_serial_4)
+	hash6 := tools.RlpHash(&ethMsg_serial_5)
 	fmt.Printf("hash1=%v\n", hash1)
 	fmt.Printf("hash2=%v\n", hash2)
 	fmt.Printf("hash3=%v\n", hash3)
@@ -166,7 +167,7 @@ func TestScheduleProfermance(t *testing.T) {
 		msgs = append(msgs, &types.StandardTransaction{
 			Source:        0,
 			NativeMessage: &native,
-			TxHash:        types.RlpHash(&native),
+			TxHash:        tools.RlpHash(&native),
 		})
 	}
 	pk_count := 16638
@@ -177,7 +178,7 @@ func TestScheduleProfermance(t *testing.T) {
 		msgs = append(msgs, &types.StandardTransaction{
 			Source:        0,
 			NativeMessage: &native,
-			TxHash:        types.RlpHash(&native),
+			TxHash:        tools.RlpHash(&native),
 		})
 	}
 	transfer_count := 16794
@@ -188,7 +189,7 @@ func TestScheduleProfermance(t *testing.T) {
 		msgs = append(msgs, &types.StandardTransaction{
 			Source:        0,
 			NativeMessage: &native,
-			TxHash:        types.RlpHash(&native),
+			TxHash:        tools.RlpHash(&native),
 		})
 	}
 	scheduler, err := Start("history.binn")
@@ -232,7 +233,7 @@ func TestScheduleCase(t *testing.T) {
 		msgs = append(msgs, &types.StandardTransaction{
 			Source:        0,
 			NativeMessage: &native,
-			TxHash:        types.RlpHash(&native),
+			TxHash:        tools.RlpHash(&native),
 		})
 	}
 	pk_count := 10
@@ -243,7 +244,7 @@ func TestScheduleCase(t *testing.T) {
 		msgs = append(msgs, &types.StandardTransaction{
 			Source:        0,
 			NativeMessage: &native,
-			TxHash:        types.RlpHash(&native),
+			TxHash:        tools.RlpHash(&native),
 		})
 	}
 	transfer_count := 10
@@ -254,7 +255,7 @@ func TestScheduleCase(t *testing.T) {
 		msgs = append(msgs, &types.StandardTransaction{
 			Source:        0,
 			NativeMessage: &native,
-			TxHash:        types.RlpHash(&native),
+			TxHash:        tools.RlpHash(&native),
 		})
 	}
 	scheduler, err := Start("history.binn")

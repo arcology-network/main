@@ -6,8 +6,8 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/common"
-	concurrenturlcommon "github.com/arcology-network/concurrenturl/common"
-	"github.com/arcology-network/concurrenturl/commutative"
+	concurrenturlcommon "github.com/arcology-network/storage-committer/common"
+	"github.com/arcology-network/storage-committer/commutative"
 )
 
 var (

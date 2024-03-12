@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/arcology-network/concurrenturl/interfaces"
 	"github.com/arcology-network/main/components/storage"
 	strtyp "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/storage-committer/interfaces"
 )
 
 type UrlContainerGetRequest struct {

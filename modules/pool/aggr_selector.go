@@ -9,8 +9,8 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/concurrenturl/interfaces"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/storage-committer/interfaces"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"

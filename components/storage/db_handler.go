@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"time"
 
-	ccurl "github.com/arcology-network/concurrenturl"
+	ccurl "github.com/arcology-network/storage-committer"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 
-	"github.com/arcology-network/concurrenturl/interfaces"
-	ccdb "github.com/arcology-network/concurrenturl/storage"
-	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 	eushared "github.com/arcology-network/eu/shared"
+	"github.com/arcology-network/storage-committer/interfaces"
+	ccdb "github.com/arcology-network/storage-committer/storage"
+	univaluepk "github.com/arcology-network/storage-committer/univalue"
 )
 
 type DBOperation interface {
@@ -57,11 +57,14 @@ func (op *BasicDBOperation) PostImport(euResults []*eushared.EuResult, height ui
 }
 
 func (op *BasicDBOperation) PreCommit(euResults []*eushared.EuResult, height uint64) {
-	op.StateCommitter.Finalize(GetTransitionIds(euResults))
+	//op.StateCommitter.Finalize(GetTransitionIds(euResults))
+	op.stateRoot = op.StateCommitter.Precommit(GetTransitionIds(euResults))
+	op.Keys = []string{}
+	op.Values = []interface{}{}
 }
 
 func (op *BasicDBOperation) PostCommit(euResults []*eushared.EuResult, height uint64) {
-	op.stateRoot, op.Keys, op.Values = op.StateCommitter.CopyToDbBuffer()
+	// op.stateRoot, op.Keys, op.Values = op.StateCommitter.CopyToDbBuffer()
 }
 
 func (op *BasicDBOperation) Finalize() {
@@ -172,7 +175,9 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 		}
 	case dbStateDone:
 		if msg.Name == handler.finalizeMsg {
+			handler.AddLog(log.LogLevel_Info, "Before Finalize.")
 			handler.op.Finalize()
+			handler.AddLog(log.LogLevel_Info, "After Finalize.")
 			handler.state = dbStateInit
 		}
 	}

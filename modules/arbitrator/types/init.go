@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/arcology-network/common-lib/mempool"
-	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	univaluepk "github.com/arcology-network/storage-committer/univalue"
 )
 
 var UnivaluePool *mempool.Mempool[univaluepk.Univalue]

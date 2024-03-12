@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"strings"
 
-	commutative "github.com/arcology-network/concurrenturl/commutative"
-	univaluepk "github.com/arcology-network/concurrenturl/univalue"
 	eushared "github.com/arcology-network/eu/shared"
+	commutative "github.com/arcology-network/storage-committer/commutative"
+	univaluepk "github.com/arcology-network/storage-committer/univalue"
 	"github.com/arcology-network/streamer/actor"
 )
 

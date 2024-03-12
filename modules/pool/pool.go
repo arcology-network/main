@@ -5,14 +5,15 @@ import (
 
 	cmncmn "github.com/arcology-network/common-lib/common"
 	ccmap "github.com/arcology-network/common-lib/container/map"
+	"github.com/arcology-network/common-lib/exp/mempool"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/concurrenturl/interfaces"
-	"github.com/arcology-network/vm-adaptor/eth"
+	"github.com/arcology-network/evm-adaptor/eth"
+	"github.com/arcology-network/storage-committer/interfaces"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	"github.com/arcology-network/eu/cache"
-	apihandler "github.com/arcology-network/vm-adaptor/apihandler"
+	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
 )
 
 type Pool struct {
@@ -30,8 +31,11 @@ type Pool struct {
 }
 
 func NewPool(db interfaces.Datastore, obsoleteTime uint64, closeCheck bool) *Pool {
-	localCache := cache.NewWriteCache(db)
-	api := apihandler.NewAPIHandler(localCache)
+	// localCache := cache.NewWriteCache(db)
+	// api := apihandler.NewAPIHandler(localCache)
+	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
+		return cache.NewWriteCache(db, 32, 1)
+	}, (&cache.WriteCache{}).Reset))
 
 	return &Pool{
 		ObsoleteTime: obsoleteTime,

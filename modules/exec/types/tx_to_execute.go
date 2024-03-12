@@ -3,8 +3,8 @@ package types
 import (
 	"math/big"
 
-	"github.com/arcology-network/concurrenturl/interfaces"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/storage-committer/interfaces"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 

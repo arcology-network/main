@@ -4,9 +4,9 @@ import (
 	"math/big"
 
 	"github.com/arcology-network/common-lib/codec"
-	"github.com/arcology-network/concurrenturl/commutative"
-	"github.com/arcology-network/concurrenturl/interfaces"
-	"github.com/arcology-network/concurrenturl/noncommutative"
+	"github.com/arcology-network/storage-committer/commutative"
+	"github.com/arcology-network/storage-committer/interfaces"
+	"github.com/arcology-network/storage-committer/noncommutative"
 	"github.com/holiman/uint256"
 )
 

@@ -5,11 +5,11 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/storage/transactional"
 
-	"github.com/arcology-network/common-lib/exp/array"
-	"github.com/arcology-network/concurrenturl/commutative"
-	"github.com/arcology-network/concurrenturl/interfaces"
-	univaluepk "github.com/arcology-network/concurrenturl/univalue"
+	"github.com/arcology-network/common-lib/exp/slice"
 	eushared "github.com/arcology-network/eu/shared"
+	"github.com/arcology-network/storage-committer/commutative"
+	"github.com/arcology-network/storage-committer/interfaces"
+	univaluepk "github.com/arcology-network/storage-committer/univalue"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 )
@@ -37,8 +37,8 @@ func NewGeneralUrl(apcHandleName string) *GeneralUrl {
 	}
 }
 
-func (url *GeneralUrl) PostCommit(euResults []*eushared.EuResult, height uint64) {
-	url.BasicDBOperation.PostCommit(euResults, height)
+func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) {
+	url.BasicDBOperation.PreCommit(euResults, height)
 	if url.generateAcctRoot {
 		url.MsgBroker.Send(actor.MsgAcctHash, url.BasicDBOperation.stateRoot)
 	}
@@ -68,10 +68,10 @@ func (url *GeneralUrl) PostCommit(euResults []*eushared.EuResult, height uint64)
 		common.ParallelWorker(len(keys), 4, worker)
 
 		filter := func(_ int, v []byte) bool { return v == nil }
-		array.Remove(&keys, "")
-		array.RemoveIf(&encodedValues, filter)
-		array.Remove(&metaKeys, "")
-		array.RemoveIf(&encodedMetas, filter)
+		slice.Remove(&keys, "")
+		slice.RemoveIf(&encodedValues, filter)
+		slice.Remove(&metaKeys, "")
+		slice.RemoveIf(&encodedMetas, filter)
 
 		var na int
 		if len(keys) > 0 {

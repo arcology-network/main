@@ -1,7 +1,7 @@
 package types
 
 import (
-	"github.com/arcology-network/concurrenturl/interfaces"
+	"github.com/arcology-network/storage-committer/interfaces"
 
 	"github.com/arcology-network/eu/execution"
 	eushared "github.com/arcology-network/eu/shared"

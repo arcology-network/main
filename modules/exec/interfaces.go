@@ -3,11 +3,11 @@ package exec
 import (
 	eupk "github.com/arcology-network/eu"
 
-	ccurl "github.com/arcology-network/concurrenturl"
-	"github.com/arcology-network/concurrenturl/interfaces"
 	eucommon "github.com/arcology-network/eu/common"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	mtypes "github.com/arcology-network/main/types"
+	ccurl "github.com/arcology-network/storage-committer"
+	"github.com/arcology-network/storage-committer/interfaces"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )

@@ -3,8 +3,8 @@ package types
 import (
 	"sort"
 
-	"github.com/arcology-network/concurrenturl/interfaces"
 	"github.com/arcology-network/main/modules/tools"
+	"github.com/arcology-network/storage-committer/interfaces"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 

@@ -7,16 +7,17 @@ import (
 	"testing"
 
 	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/exp/mempool"
 	badgerpk "github.com/arcology-network/common-lib/storage/badger"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	ccurl "github.com/arcology-network/concurrenturl"
-	ccurlcommon "github.com/arcology-network/concurrenturl/common"
-	"github.com/arcology-network/concurrenturl/commutative"
-	"github.com/arcology-network/concurrenturl/interfaces"
-	ccdb "github.com/arcology-network/concurrenturl/storage"
 	"github.com/arcology-network/eu/cache"
-	apihandler "github.com/arcology-network/vm-adaptor/apihandler"
-	"github.com/arcology-network/vm-adaptor/eth"
+	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
+	"github.com/arcology-network/evm-adaptor/eth"
+	ccurl "github.com/arcology-network/storage-committer"
+	ccurlcommon "github.com/arcology-network/storage-committer/common"
+	"github.com/arcology-network/storage-committer/commutative"
+	"github.com/arcology-network/storage-committer/interfaces"
+	ccdb "github.com/arcology-network/storage-committer/storage"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 )
@@ -248,8 +249,12 @@ func initdb(path string) (interfaces.Datastore, *badgerpk.ParaBadgerDB) {
 }
 
 func initAccounts(db interfaces.Datastore, from, to int) {
-	localCache := cache.NewWriteCache(db)
-	api := apihandler.NewAPIHandler(localCache)
+	// localCache := cache.NewWriteCache(db)
+	// api := apihandler.NewAPIHandler(localCache)
+	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
+		return cache.NewWriteCache(db, 32, 1)
+	}, (&cache.WriteCache{}).Reset))
+
 	stateDB := eth.NewImplStateDB(api)
 	stateCommitter := ccurl.NewStorageCommitter(db)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
@@ -259,17 +264,21 @@ func initAccounts(db interfaces.Datastore, from, to int) {
 		stateDB.SetBalance(address, new(big.Int).SetUint64(100))
 		stateDB.SetNonce(address, 0)
 	}
-	_, transitions := localCache.ExportAll()
+	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()
 	stateCommitter.Import(transitions)
 	stateCommitter.Sort()
-	stateCommitter.Finalize([]uint32{0})
-	stateCommitter.CopyToDbBuffer()
+	stateCommitter.Precommit([]uint32{0})
+	// stateCommitter.CopyToDbBuffer()
 	stateCommitter.Commit()
 }
 
 func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardTransaction) {
-	localCache := cache.NewWriteCache(db)
-	api := apihandler.NewAPIHandler(localCache)
+	// localCache := cache.NewWriteCache(db)
+	// api := apihandler.NewAPIHandler(localCache)
+	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
+		return cache.NewWriteCache(db, 32, 1)
+	}, (&cache.WriteCache{}).Reset))
+
 	stateDB := eth.NewImplStateDB(api)
 	stateCommitter := ccurl.NewStorageCommitter(db)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
@@ -277,11 +286,10 @@ func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardTransaction) {
 		address := evmCommon.BytesToAddress(txs[i].NativeMessage.From.Bytes())
 		stateDB.SetNonce(address, 0)
 	}
-	_, transitions := localCache.ExportAll()
+	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()
 	stateCommitter.Import(transitions)
 	stateCommitter.Sort()
-	stateCommitter.Finalize([]uint32{0})
-	stateCommitter.CopyToDbBuffer()
+	stateCommitter.Precommit([]uint32{0})
 	stateCommitter.Commit()
 }
 
