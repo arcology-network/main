@@ -7,7 +7,6 @@ import (
 	"time"
 
 	cmncmn "github.com/arcology-network/common-lib/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
 	ccdb "github.com/arcology-network/storage-committer/storage"
 	"github.com/arcology-network/streamer/actor"
@@ -23,6 +22,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 
+	eucommon "github.com/arcology-network/eu/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
 )
@@ -345,10 +345,10 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 		Data: &mtypes.ExecutorRequest{
 			Sequences: []*mtypes.ExecutingSequence{
 				{
-					Msgs: []*cmntyp.StandardTransaction{
+					Msgs: []*eucommon.StandardMessage{
 						{
-							TxHash:        hash,
-							NativeMessage: &message,
+							TxHash: hash,
+							Native: &message,
 						},
 					},
 					Parallel:   true,

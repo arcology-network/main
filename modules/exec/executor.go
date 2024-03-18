@@ -6,7 +6,6 @@ import (
 
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/components/storage"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	ccurl "github.com/arcology-network/storage-committer"
@@ -293,19 +292,19 @@ func (exec *Executor) collectResults() {
 	exec.MsgBroker.Send(actor.MsgTxsExecuteResults, responses, exec.height, exec.requestId)
 }
 
-func toJobSequence(msgs []*types.StandardTransaction, ids []uint32) []*eucommon.StandardMessage {
-	nmsgs := make([]*eucommon.StandardMessage, len(msgs))
-	for i, msg := range msgs {
-		msg.NativeMessage.SkipAccountChecks = true
-		nmsgs[i] = &eucommon.StandardMessage{
-			TxHash: msg.TxHash,
-			Native: msg.NativeMessage,
-			Source: msg.Source,
-			ID:     uint64(ids[i]),
-		}
-	}
-	return nmsgs
-}
+//	func toJobSequence(msgs []*eucommon.StandardMessage, ids []uint32) []*eucommon.StandardMessage {
+//		nmsgs := make([]*eucommon.StandardMessage, len(msgs))
+//		for i, msg := range msgs {
+//			msg.NativeMessage.SkipAccountChecks = true
+//			nmsgs[i] = &eucommon.StandardMessage{
+//				TxHash: msg.TxHash,
+//				Native: msg.NativeMessage,
+//				Source: msg.Source,
+//				ID:     uint64(ids[i]),
+//			}
+//		}
+//		return nmsgs
+//	}
 func GetThreadD(hash evmCommon.Hash) uint64 {
 	return uint64(codec.Uint64(0).Decode(hash.Bytes()[:8]).(codec.Uint64))
 }
@@ -315,23 +314,20 @@ func (exec *Executor) startExec() {
 		go func(index int) {
 			for {
 				task := <-exec.taskCh
-
+				exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>start execute", zap.Bool("Sequence.Parallel", task.Sequence.Parallel), zap.Int("txs counter", len(task.Sequence.Msgs)))
 				if task.Sequence.Parallel {
 					results := make([]*execution.Result, 0, len(task.Sequence.Msgs))
 					for j := range task.Sequence.Msgs {
 
 						job := eupk.JobSequence{
 							ID:        uint32(j),
-							StdMsgs:   toJobSequence([]*types.StandardTransaction{task.Sequence.Msgs[j]}, []uint32{task.Sequence.Txids[j]}),
+							StdMsgs:   []*eucommon.StandardMessage{task.Sequence.Msgs[j]},
 							ApiRouter: exec.apis[index],
 						}
 
 						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 							return cache.NewWriteCache(*task.Snapshot, 32, 1)
 						}, (&cache.WriteCache{}).Reset))
-
-						// localCache := cache.NewWriteCache(*task.Snapshot)
-						// api := apihandler.NewAPIHandler(localCache)
 
 						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
@@ -340,12 +336,10 @@ func (exec *Executor) startExec() {
 				} else {
 					job := eupk.JobSequence{
 						ID:        uint32(0),
-						StdMsgs:   toJobSequence(task.Sequence.Msgs, task.Sequence.Txids),
+						StdMsgs:   task.Sequence.Msgs,
 						ApiRouter: exec.apis[index],
 					}
 
-					// localCache := cache.NewWriteCache(*task.Snapshot)
-					// api := apihandler.NewAPIHandler(localCache)
 					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 						return cache.NewWriteCache(*task.Snapshot, 32, 1)
 					}, (&cache.WriteCache{}).Reset))

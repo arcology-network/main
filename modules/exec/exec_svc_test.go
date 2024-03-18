@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/types"
+	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
 	ccdb "github.com/arcology-network/storage-committer/storage"
 	"github.com/arcology-network/streamer/actor"
@@ -26,7 +26,7 @@ func TestExecSvcBasic(t *testing.T) {
 		Data: &mtypes.ExecutorRequest{
 			Sequences: []*mtypes.ExecutingSequence{
 				{
-					Msgs: []*types.StandardTransaction{
+					Msgs: []*eucommon.StandardMessage{
 						{},
 					},
 					Parallel: true,
@@ -59,14 +59,14 @@ func TestExecSvcMakeSnapshot(t *testing.T) {
 		Data: &mtypes.ExecutorRequest{
 			Sequences: []*mtypes.ExecutingSequence{
 				{
-					Msgs: []*types.StandardTransaction{
+					Msgs: []*eucommon.StandardMessage{
 						{},
 					},
 					Parallel: true,
 					Txids:    []uint32{1},
 				},
 				{
-					Msgs: []*types.StandardTransaction{
+					Msgs: []*eucommon.StandardMessage{
 						{},
 					},
 					Parallel: true,

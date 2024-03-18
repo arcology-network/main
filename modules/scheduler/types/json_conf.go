@@ -5,13 +5,11 @@ import (
 	"os"
 )
 
-type ContractEntrance struct {
-	ContractAddress string
-}
-
 type ConflictItem struct {
-	Left  []ContractEntrance
-	Right []ContractEntrance
+	LeftAddr  string
+	RightAddr string
+	LeftSign  string
+	RightSign string
 }
 
 func LoadingConf(file string) ([]ConflictItem, error) {

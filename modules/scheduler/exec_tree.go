@@ -2,7 +2,7 @@ package scheduler
 
 import (
 	cmncmn "github.com/arcology-network/common-lib/common"
-	cmntyp "github.com/arcology-network/common-lib/types"
+	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
@@ -12,7 +12,7 @@ type branch struct {
 	layers [][]evmCommon.Hash
 }
 
-func newBranch(id evmCommon.Hash, msgs []*cmntyp.StandardTransaction) *branch {
+func newBranch(id evmCommon.Hash, msgs []*eucommon.StandardMessage) *branch {
 	layer := make([]evmCommon.Hash, len(msgs))
 	for i, m := range msgs {
 		layer[i] = m.TxHash
@@ -40,7 +40,7 @@ func (tree *execTree) createBranches(sequences []*mtypes.ExecutingSequence) {
 	for _, seq := range sequences {
 		if seq.Parallel {
 			for _, msg := range seq.Msgs {
-				tree.id2Branch[msg.TxHash] = newBranch(msg.TxHash, []*cmntyp.StandardTransaction{msg})
+				tree.id2Branch[msg.TxHash] = newBranch(msg.TxHash, []*eucommon.StandardMessage{msg})
 				tree.txHash2BranchId[msg.TxHash] = msg.TxHash
 			}
 		} else {

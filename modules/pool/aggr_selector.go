@@ -9,6 +9,7 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/types"
+	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/storage-committer/interfaces"
 	"github.com/arcology-network/streamer/actor"
@@ -231,7 +232,17 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 		}, height)
 	} else {
 		msgs, transactions, txs := a.opAdaptor.ReapEnd(reaped)
-		a.MsgBroker.Send(actor.MsgMessagersReaped, msgs, height)
+		sendMsgs := make([]*eucommon.StandardMessage, len(msgs))
+		for i := range msgs {
+			sendMsgs[i] = &eucommon.StandardMessage{
+				ID:     uint64(i + 1),
+				TxHash: msgs[i].TxHash,
+				Native: msgs[i].NativeMessage,
+				Source: msgs[i].Source,
+			}
+			sendMsgs[i].Native.SkipAccountChecks = true
+		}
+		a.MsgBroker.Send(actor.MsgMessagersReaped, sendMsgs, height)
 		a.CheckPoint("send messagersReaped", zap.Int("msgs", len(msgs)))
 		txhash := evmTypes.EmptyTxsHash
 		if len(transactions) > 0 {

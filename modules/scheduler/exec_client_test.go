@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/arcology-network/common-lib/types"
+	eucommon "github.com/arcology-network/eu/common"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
@@ -137,9 +137,9 @@ func runExecClientTestCase(
 	worker := &workerMock{}
 	worker.Init("mock worker", brokerpk.NewStatefulStreamer())
 
-	msgs := make([]*types.StandardTransaction, numMsgs)
+	msgs := make([]*eucommon.StandardMessage, numMsgs)
 	for i := range msgs {
-		msgs[i] = &types.StandardTransaction{}
+		msgs[i] = &eucommon.StandardMessage{}
 	}
 	ids := make([]uint32, len(msgs))
 	client := NewExecClient(executors, 100)

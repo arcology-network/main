@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"testing"
 
-	cmntyp "github.com/arcology-network/common-lib/types"
+	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
@@ -12,17 +12,17 @@ import (
 func TestExecTreeBasic(t *testing.T) {
 	tree := newExecTree()
 	sequences := []*mtypes.ExecutingSequence{
-		mtypes.NewExecutingSequence([]*cmntyp.StandardTransaction{
+		mtypes.NewExecutingSequence([]*eucommon.StandardMessage{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{1}),
 			},
 		}, true),
-		mtypes.NewExecutingSequence([]*cmntyp.StandardTransaction{
+		mtypes.NewExecutingSequence([]*eucommon.StandardMessage{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{2}),
 			},
 		}, true),
-		mtypes.NewExecutingSequence([]*cmntyp.StandardTransaction{
+		mtypes.NewExecutingSequence([]*eucommon.StandardMessage{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{3}),
 			},
@@ -30,12 +30,12 @@ func TestExecTreeBasic(t *testing.T) {
 				TxHash: evmCommon.BytesToHash([]byte{4}),
 			},
 		}, false),
-		mtypes.NewExecutingSequence([]*cmntyp.StandardTransaction{
+		mtypes.NewExecutingSequence([]*eucommon.StandardMessage{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{5}),
 			},
 		}, true),
-		mtypes.NewExecutingSequence([]*cmntyp.StandardTransaction{
+		mtypes.NewExecutingSequence([]*eucommon.StandardMessage{
 			{
 				TxHash: evmCommon.BytesToHash([]byte{6}),
 			},

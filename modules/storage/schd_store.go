@@ -25,6 +25,9 @@ type SchdState struct {
 	NewContracts      []evmCommon.Address
 	ConflictionLefts  []evmCommon.Address
 	ConflictionRights []evmCommon.Address
+
+	ConflictionLeftSigns  [][4]byte
+	ConflictionRightSigns [][4]byte
 }
 
 type SchdStore struct {
@@ -121,10 +124,12 @@ func (ss *SchdStore) readFromFile(states *[]SchdState) error {
 			panic(err)
 		}
 		*states = append(*states, SchdState{
-			Height:            uint64(height),
-			NewContracts:      parseAddressArray(segments[1]),
-			ConflictionLefts:  parseAddressArray(segments[2]),
-			ConflictionRights: parseAddressArray(segments[3]),
+			Height:                uint64(height),
+			NewContracts:          parseAddressArray(segments[1]),
+			ConflictionLefts:      parseAddressArray(segments[2]),
+			ConflictionRights:     parseAddressArray(segments[3]),
+			ConflictionLeftSigns:  parseSignArray(segments[4]),
+			ConflictionRightSigns: parseSignArray(segments[5]),
 		})
 	}
 	return nil
@@ -157,6 +162,20 @@ func formatState(state *SchdState) string {
 		}
 		sb.WriteString(addr.Hex())
 	}
+	sb.WriteString("$")
+	for i, sign := range state.ConflictionLeftSigns {
+		if i != 0 {
+			sb.WriteString(",")
+		}
+		sb.WriteString(fmt.Sprintf("%x", sign))
+	}
+	sb.WriteString("$")
+	for i, sign := range state.ConflictionRightSigns {
+		if i != 0 {
+			sb.WriteString(",")
+		}
+		sb.WriteString(fmt.Sprintf("%x", sign))
+	}
 	sb.WriteString("|\n")
 	return sb.String()
 }
@@ -172,4 +191,17 @@ func parseAddressArray(str string) []evmCommon.Address {
 		addrs = append(addrs, evmCommon.HexToAddress(segment))
 	}
 	return addrs
+}
+
+func parseSignArray(str string) [][4]byte {
+	if len(str) == 0 {
+		return [][4]byte{}
+	}
+
+	segments := strings.Split(str, ",")
+	var signs [][4]byte
+	for _, segment := range segments {
+		signs = append(signs, [4]byte([]byte(segment)))
+	}
+	return signs
 }

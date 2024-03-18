@@ -7,20 +7,21 @@ import (
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
+	eucommon "github.com/arcology-network/eu/common"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type ExecutingSequence struct {
-	Msgs       []*types.StandardTransaction
+	Msgs       []*eucommon.StandardMessage
 	Parallel   bool
 	SequenceId ethCommon.Hash
 	Txids      []uint32
 }
 
-func NewExecutingSequence(msgs []*types.StandardTransaction, parallel bool) *ExecutingSequence {
+func NewExecutingSequence(msgs []*eucommon.StandardMessage, parallel bool) *ExecutingSequence {
 	buffers := make([][]byte, len(msgs))
 	for i, msg := range msgs {
-		buffers[i] = msg.TxHash.Bytes()
+		buffers[i] = msg.TxHash[:]
 	}
 
 	hash := sha256.Sum256(codec.Byteset(buffers).Encode())
@@ -44,7 +45,7 @@ func (this ExecutingSequences) Encode() ([]byte, error) {
 		executingSequences := args[0].([]interface{})[0].(ExecutingSequences)
 		data := args[0].([]interface{})[1].([][]byte)
 		for i := start; i < end; i++ {
-			standardMessages := types.StandardTransactions(executingSequences[i].Msgs)
+			standardMessages := eucommon.StandardMessages(executingSequences[i].Msgs)
 			standardMessagesData, err := standardMessages.Encode()
 			if err != nil {
 				standardMessagesData = []byte{}
@@ -76,9 +77,9 @@ func (this *ExecutingSequences) Decode(data []byte) ([]*ExecutingSequence, error
 			executingSequence := new(ExecutingSequence)
 
 			datafields := codec.Byteset{}.Decode(data[i]).(codec.Byteset)
-			msgResults, err := new(types.StandardTransactions).Decode(datafields[0])
+			msgResults, err := new(eucommon.StandardMessages).Decode(datafields[0])
 			if err != nil {
-				msgResults = types.StandardTransactions{}
+				msgResults = []*eucommon.StandardMessage{}
 			}
 			executingSequence.Msgs = msgResults
 			parallels := new(codec.Bools).Decode(datafields[1]).([]bool)

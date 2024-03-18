@@ -494,12 +494,6 @@ func runBlock(
 	for _, contract := range contracts {
 		schd.contractDict[contract] = struct{}{}
 	}
-	if len(conflicts[0]) > 0 {
-		schd.schdEngine.Update(
-			cmncmn.ToReferencedSlice(conflicts[0]),
-			cmncmn.ToReferencedSlice(conflicts[1]),
-		)
-	}
 
 	schd.OnMessageArrived(b.getMsgs())
 	time.Sleep(1 * time.Second)

@@ -1,37 +1,8 @@
 [
-	{"Left":[
-			{"ContractAddress":"842d4bfdb1904503ac152483527f338cd5d9bcba"}
-		],
-	 "Right":[
-	 		{"ContractAddress":"842d4bfdb1904503ac152483527f338cd5d9bcba"}
-	 	]
-	},
-	{"Left":[
-			{"ContractAddress":"b1e0e9e68297aae01347f6ce0ff21d5f72d3fa0f"}
-		],
-	 "Right":[
-	 		{"ContractAddress":"b1e0e9e68297aae01347f6ce0ff21d5f72d3fa0f"}
-	 	]
-	},
-	{"Left":[
-			{"ContractAddress":"309eced01e331f3128f34932f5971e4127d2c6e6"}
-		],
-	 "Right":[
-	 		{"ContractAddress":"309eced01e331f3128f34932f5971e4127d2c6e6"}
-	 	]
-	},
-	{"Left":[
-			{"ContractAddress":"fae2694ffb49e84f85517eddd009799e93d6c493"}
-		],
-	 "Right":[
-	 		{"ContractAddress":"fae2694ffb49e84f85517eddd009799e93d6c493"}
-	 	]
-	},
-	{"Left":[
-			{"ContractAddress":"e7d0fbde97522d441563aba8eeac7531f103a88d"}
-		],
-	 "Right":[
-	 		{"ContractAddress":"e7d0fbde97522d441563aba8eeac7531f103a88d"}
-	 	]
+	{
+		"LeftAddr":"b1e0e9e68297aae01347f6ce0ff21d5f72d3fa0f",
+		"LeftSign":"4f2be91f",
+		"RightAddr":"b1e0e9e68297aae01347f6ce0ff21d5f72d3fa0f",
+		"RightSign":"4f2be91f"
 	}
 ]
