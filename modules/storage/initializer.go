@@ -14,7 +14,6 @@ import (
 	ccurl "github.com/arcology-network/storage-committer"
 	"github.com/arcology-network/storage-committer/commutative"
 	"github.com/arcology-network/storage-committer/interfaces"
-	ccdb "github.com/arcology-network/storage-committer/storage"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/ethereum/go-ethereum/cmd/utils"
@@ -29,6 +28,7 @@ import (
 	"github.com/arcology-network/common-lib/exp/mempool"
 	"github.com/arcology-network/common-lib/exp/slice"
 	mtypes "github.com/arcology-network/main/types"
+	committerStorage "github.com/arcology-network/storage-committer/storage"
 	univaluepk "github.com/arcology-network/storage-committer/univalue"
 )
 
@@ -94,7 +94,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			return nil
 		})
 
-		db, rootHash = i.initGenesisAccounts(genesis)
+		db, rootHash = i.initGenesisAccounts(genesis, uint64(height))
 
 		evmblock := genesis.ToBlock()
 
@@ -114,7 +114,10 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 	} else {
 
 		//db = ccdb.NewParallelEthMemDataStore()
-		db = ccdb.NewLevelDBDataStore(i.storage_db_path)
+		// db = ccdb.NewLevelDBDataStore(i.storage_db_path)
+
+		db = committerStorage.NewHybirdStore()
+		// db.(*committerStorage.StoreRouter).DisableCache()
 
 		db.Inject(RootPrefix, commutative.NewPath())
 
@@ -204,22 +207,21 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis) (interfaces.Datastore, evmCommon.Hash) {
-	db := ccdb.NewLevelDBDataStore(i.storage_db_path)
+func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis, height uint64) (interfaces.Datastore, evmCommon.Hash) {
+	// db := ccdb.NewLevelDBDataStore(i.storage_db_path)
 	//db := ccdb.NewParallelEthMemDataStore()
+	db := committerStorage.NewHybirdStore()
+	// db.DisableCache()
 
 	db.Inject(RootPrefix, commutative.NewPath())
 
-	transitions := i.createTransitions(db, genesis.Alloc) //i.generateTransitions(db, accounts)
+	transitions := i.createTransitions(db, genesis.Alloc)
 
 	stateCommitter := ccurl.NewStorageCommitter(db)
 
 	stateCommitter.Import(slice.Clone(transitions))
-	stateCommitter.Sort()
-	// stateCommitter.Finalize([]uint32{0})
-	// rootHash, _, _ := stateCommitter.CopyToDbBuffer()
 	rootHash := stateCommitter.Precommit([]uint32{0})
-	stateCommitter.Commit()
+	stateCommitter.Commit(height)
 	return db, rootHash
 }
 
@@ -245,11 +247,9 @@ func (i *Initializer) createTransitions(db interfaces.Datastore, genesisAlloc ev
 }
 
 func getTransition(db interfaces.Datastore, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
-	// localCache := cache.NewWriteCache(db)
-	// api := apihandler.NewAPIHandler(localCache)
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
-	}, (&cache.WriteCache{}).Reset))
+	}, func(cache *cache.WriteCache) { cache.Reset() }))
 
 	stateDB := eth.NewImplStateDB(api)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)

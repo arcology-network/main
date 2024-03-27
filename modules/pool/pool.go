@@ -31,11 +31,9 @@ type Pool struct {
 }
 
 func NewPool(db interfaces.Datastore, obsoleteTime uint64, closeCheck bool) *Pool {
-	// localCache := cache.NewWriteCache(db)
-	// api := apihandler.NewAPIHandler(localCache)
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
-	}, (&cache.WriteCache{}).Reset))
+	}, func(cache *cache.WriteCache) { cache.Reset() }))
 
 	return &Pool{
 		ObsoleteTime: obsoleteTime,

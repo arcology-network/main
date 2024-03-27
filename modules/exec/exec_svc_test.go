@@ -8,7 +8,7 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
-	ccdb "github.com/arcology-network/storage-committer/storage"
+	committerStorage "github.com/arcology-network/storage-committer/storage"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"
 	intf "github.com/arcology-network/streamer/interface"
@@ -141,7 +141,8 @@ func setup(tb testing.TB) (*brokerpk.StatefulStreamer, *mockWorker) {
 	// 	ccdb.Rlp{}.Encode,
 	// 	ccdb.Rlp{}.Decode,
 	// )
-	db := ccdb.NewParallelEthMemDataStore()
+
+	db := committerStorage.NewHybirdStore()
 
 	mock.MsgBroker.Send(
 		actor.CombinedName(actor.MsgApcHandle, actor.MsgCached),

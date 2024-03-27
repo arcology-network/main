@@ -42,13 +42,13 @@ func (tx TxElement) Size() uint32 {
 type TxElements []*TxElement
 
 func (elems TxElements) Encode() []byte {
-	byteset := slice.ParallelAppend(elems, 4, func(i int, _ *TxElement) []byte { return elems[i].Encode() })
+	byteset := slice.ParallelTransform(elems, 4, func(i int, _ *TxElement) []byte { return elems[i].Encode() })
 	return codec.Byteset(byteset).Encode()
 }
 
 func (TxElements) Decode(bytes []byte) TxElements {
 	bytesset := codec.Byteset{}.Decode(bytes).(codec.Byteset)
-	return slice.ParallelAppend(bytesset, 4, func(i int, _ []byte) *TxElement {
+	return slice.ParallelTransform(bytesset, 4, func(i int, _ []byte) *TxElement {
 		ele := &TxElement{}
 		ele.Decode(bytesset[i])
 		return ele
@@ -78,7 +78,7 @@ func (request *ArbitratorRequest) Encode() []byte {
 
 func (ArbitratorRequest) Decode(bytes []byte) *ArbitratorRequest {
 	byteset := codec.Byteset{}.Decode(bytes).(codec.Byteset)
-	elems := slice.ParallelAppend(byteset, 2, func(i int, _ []byte) []*TxElement {
+	elems := slice.ParallelTransform(byteset, 2, func(i int, _ []byte) []*TxElement {
 		return TxElements{}.Decode(byteset[i])
 	})
 	return &ArbitratorRequest{elems}

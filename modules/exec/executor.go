@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 
@@ -31,6 +32,7 @@ import (
 	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
 	intf "github.com/arcology-network/evm-adaptor/interface"
 	mtypes "github.com/arcology-network/main/types"
+	committerStorage "github.com/arcology-network/storage-committer/storage"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -138,15 +140,14 @@ func (exec *Executor) Config(params map[string]interface{}) {
 
 func (exec *Executor) OnStart() {
 	for i := 0; i < int(exec.Concurrency); i++ {
-		persistentDB := ccdb.NewParallelEthMemDataStore() //cachedstorage.NewDataStore()
+		persistentDB := committerStorage.NewHybirdStore()
+
 		persistentDB.Inject(concurrenturlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
 		db := ccdb.NewTransientDB(persistentDB)
-		// localCache := cache.NewWriteCache(db)
-		// api := apihandler.NewAPIHandler(localCache)
 
 		api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 			return cache.NewWriteCache(db, 32, 1)
-		}, (&cache.WriteCache{}).Reset))
+		}, func(cache *cache.WriteCache) { cache.Reset() }))
 
 		exec.apis[i] = api
 
@@ -215,15 +216,12 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 		}
 		for hash, pt := range exec.pendingTasks {
 			if pt[0].match(results) {
-				// The following code were copied from exec v1.
 				db := ccdb.NewTransientDB(*pt[0].baseOn)
 				exec.stateCommitter.Init(db)
 				ids, transitions := storage.GetTransitions(results)
 				exec.stateCommitter.Import(transitions)
-				exec.stateCommitter.Sort()
-				// exec.stateCommitter.CopyToDbBuffer()
 				exec.stateCommitter.Precommit(ids)
-				exec.stateCommitter.Commit()
+				exec.stateCommitter.Commit(msg.Height)
 				exec.snapshotDict.AddItem(hash, pt[0].totalPrecedingSize, &db)
 
 				for _, task := range pt {
@@ -327,7 +325,7 @@ func (exec *Executor) startExec() {
 
 						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 							return cache.NewWriteCache(*task.Snapshot, 32, 1)
-						}, (&cache.WriteCache{}).Reset))
+						}, func(cache *cache.WriteCache) { cache.Reset() }))
 
 						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
@@ -342,7 +340,7 @@ func (exec *Executor) startExec() {
 
 					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 						return cache.NewWriteCache(*task.Snapshot, 32, 1)
-					}, (&cache.WriteCache{}).Reset))
+					}, func(cache *cache.WriteCache) { cache.Reset() }))
 
 					job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 
@@ -368,8 +366,8 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		accesses := univaluepk.Univalues(slice.Clone(result.Transitions())).To(importer.ITAccess{})
 		transitions := univaluepk.Univalues(slice.Clone(result.Transitions())).To(importer.ITTransition{})
 
-		// fmt.Printf("-----------------------------------main/modules/exec/executor.go-------------\n")
-		// transitions.Print()
+		fmt.Printf("-----------------------------------main/modules/exec/executor.go-------------\n")
+		transitions.Print()
 
 		// fmt.Printf("====================================main/modules/exec/executor.go================\n")
 		// accesses.Print()

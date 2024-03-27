@@ -103,11 +103,11 @@ func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) 
 	}
 }
 
-func (url *GeneralUrl) Finalize() {
+func (url *GeneralUrl) Commit(height uint64) {
 	if !url.inited {
 		url.inited = true
 	} else {
-		url.BasicDBOperation.Finalize()
+		url.BasicDBOperation.Commit(height)
 	}
 
 	if url.generateApcHandle {

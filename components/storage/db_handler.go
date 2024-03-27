@@ -10,17 +10,15 @@ import (
 
 	eushared "github.com/arcology-network/eu/shared"
 	"github.com/arcology-network/storage-committer/interfaces"
-	ccdb "github.com/arcology-network/storage-committer/storage"
+	committerStorage "github.com/arcology-network/storage-committer/storage"
 	univaluepk "github.com/arcology-network/storage-committer/univalue"
 )
 
 type DBOperation interface {
 	Init(db interfaces.Datastore, stateCommitter *ccurl.StateCommitter, broker *actor.MessageWrapper)
 	Import(transitions []*univaluepk.Univalue)
-	PostImport(euResults []*eushared.EuResult, height uint64)
 	PreCommit(euResults []*eushared.EuResult, height uint64)
-	PostCommit(euResults []*eushared.EuResult, height uint64)
-	Finalize()
+	Commit(height uint64)
 	Outputs() map[string]int
 	Config(params map[string]interface{})
 }
@@ -48,27 +46,14 @@ func (op *BasicDBOperation) Import(transitions []*univaluepk.Univalue) {
 	op.StateCommitter.Import(transitions)
 }
 
-func (op *BasicDBOperation) PostImport(euResults []*eushared.EuResult, height uint64) {
-	if height == 0 {
-		_, transitions := GetTransitions(euResults)
-		op.StateCommitter.Import(transitions)
-	}
-	op.StateCommitter.Sort()
-}
-
 func (op *BasicDBOperation) PreCommit(euResults []*eushared.EuResult, height uint64) {
-	//op.StateCommitter.Finalize(GetTransitionIds(euResults))
 	op.stateRoot = op.StateCommitter.Precommit(GetTransitionIds(euResults))
 	op.Keys = []string{}
 	op.Values = []interface{}{}
 }
 
-func (op *BasicDBOperation) PostCommit(euResults []*eushared.EuResult, height uint64) {
-	// op.stateRoot, op.Keys, op.Values = op.StateCommitter.CopyToDbBuffer()
-}
-
-func (op *BasicDBOperation) Finalize() {
-	op.StateCommitter.Commit()
+func (op *BasicDBOperation) Commit(height uint64) {
+	op.StateCommitter.Commit(height)
 }
 
 func (op *BasicDBOperation) Outputs() map[string]int {
@@ -123,7 +108,7 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 	} else {
 		if !v.(bool) {
 
-			handler.db = ccdb.NewParallelEthMemDataStore()
+			handler.db = committerStorage.NewHybirdStore()
 
 			handler.stateCommitter = ccurl.NewStorageCommitter(handler.db)
 
@@ -163,21 +148,20 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 					data = append(data, item.(*eushared.EuResult))
 				}
 			}
-
-			handler.AddLog(log.LogLevel_Info, "Before PostImport.")
-			handler.op.PostImport(data, msg.Height)
+			if msg.Height == 0 {
+				_, transitions := GetTransitions(data)
+				handler.op.Import(transitions)
+			}
 			handler.AddLog(log.LogLevel_Info, "Before PreCommit.")
 			handler.op.PreCommit(data, msg.Height)
-			handler.AddLog(log.LogLevel_Info, "Before PostCommit.")
-			handler.op.PostCommit(data, msg.Height)
-			handler.AddLog(log.LogLevel_Info, "After PostCommit.")
+			handler.AddLog(log.LogLevel_Info, "After PreCommit.")
 			handler.state = dbStateDone
 		}
 	case dbStateDone:
 		if msg.Name == handler.finalizeMsg {
-			handler.AddLog(log.LogLevel_Info, "Before Finalize.")
-			handler.op.Finalize()
-			handler.AddLog(log.LogLevel_Info, "After Finalize.")
+			handler.AddLog(log.LogLevel_Info, "Before Commit.")
+			handler.op.Commit(msg.Height)
+			handler.AddLog(log.LogLevel_Info, "After Commit.")
 			handler.state = dbStateInit
 		}
 	}

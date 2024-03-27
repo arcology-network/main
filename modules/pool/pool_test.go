@@ -17,7 +17,7 @@ import (
 	ccurlcommon "github.com/arcology-network/storage-committer/common"
 	"github.com/arcology-network/storage-committer/commutative"
 	"github.com/arcology-network/storage-committer/interfaces"
-	ccdb "github.com/arcology-network/storage-committer/storage"
+	committerStorage "github.com/arcology-network/storage-committer/storage"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 )
@@ -242,18 +242,16 @@ func TestPoolCleanObsolete(t *testing.T) {
 func initdb(path string) (interfaces.Datastore, *badgerpk.ParaBadgerDB) {
 	badger := badgerpk.NewParaBadgerDB(path, common.Remainder)
 
-	db := ccdb.NewParallelEthMemDataStore()
+	db := committerStorage.NewHybirdStore()
 
 	db.Inject(ccurlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
 	return db, badger
 }
 
 func initAccounts(db interfaces.Datastore, from, to int) {
-	// localCache := cache.NewWriteCache(db)
-	// api := apihandler.NewAPIHandler(localCache)
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
-	}, (&cache.WriteCache{}).Reset))
+	}, func(cache *cache.WriteCache) { cache.Reset() }))
 
 	stateDB := eth.NewImplStateDB(api)
 	stateCommitter := ccurl.NewStorageCommitter(db)
@@ -266,18 +264,14 @@ func initAccounts(db interfaces.Datastore, from, to int) {
 	}
 	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()
 	stateCommitter.Import(transitions)
-	stateCommitter.Sort()
 	stateCommitter.Precommit([]uint32{0})
-	// stateCommitter.CopyToDbBuffer()
-	stateCommitter.Commit()
+	stateCommitter.Commit(0)
 }
 
 func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardTransaction) {
-	// localCache := cache.NewWriteCache(db)
-	// api := apihandler.NewAPIHandler(localCache)
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
-	}, (&cache.WriteCache{}).Reset))
+	}, func(cache *cache.WriteCache) { cache.Reset() }))
 
 	stateDB := eth.NewImplStateDB(api)
 	stateCommitter := ccurl.NewStorageCommitter(db)
@@ -288,9 +282,8 @@ func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardTransaction) {
 	}
 	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()
 	stateCommitter.Import(transitions)
-	stateCommitter.Sort()
 	stateCommitter.Precommit([]uint32{0})
-	stateCommitter.Commit()
+	stateCommitter.Commit(0)
 }
 
 func genUncheckedTxs(from, to int) []*cmntyp.StandardTransaction {

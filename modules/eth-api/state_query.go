@@ -60,8 +60,8 @@ func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
 		case actor.MsgApcHandle: //actor.MsgInitDB: //
-			ddb := (*v.Data.(*interfaces.Datastore)).(*ccdb.EthDataStore)
-			cache := ccdb.NewMerkleProofCache(2, ddb.EthDB())
+			ddb := (*v.Data.(*interfaces.Datastore)).(*ccdb.StoreRouter)
+			cache := ccdb.NewMerkleProofCache(2, ddb.EthStore().EthDB())
 			sq.ProofCache = cache
 		}
 	}
