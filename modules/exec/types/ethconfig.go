@@ -4,7 +4,7 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/arcology-network/eu/execution"
+	evmcommon "github.com/arcology-network/evm-adaptor/common"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -27,9 +27,9 @@ func (chain *fakeChain) Engine() consensus.Engine {
 // var coinbase = common.BytesToAddress([]byte{100, 100, 100})
 var coinbase = common.HexToAddress("0x3d361736e7c94ee64f74c57a82b2af7ee17c2bf1")
 
-func MainConfig(chainid *big.Int) *execution.Config {
+func MainConfig(chainid *big.Int) *evmcommon.Config {
 	vmConfig := vm.Config{}
-	cfg := &execution.Config{
+	cfg := &evmcommon.Config{
 		ChainConfig: params.MainnetChainConfig,
 		VMConfig:    &vmConfig,
 		BlockNumber: new(big.Int).SetUint64(10000000),

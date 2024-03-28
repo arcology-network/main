@@ -249,7 +249,7 @@ func (i *Initializer) createTransitions(db interfaces.Datastore, genesisAlloc ev
 func getTransition(db interfaces.Datastore, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
-	}, func(cache *cache.WriteCache) { cache.Reset() }))
+	}, func(cache *cache.WriteCache) { cache.Clear() }))
 
 	stateDB := eth.NewImplStateDB(api)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)

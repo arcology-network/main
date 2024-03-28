@@ -251,7 +251,7 @@ func initdb(path string) (interfaces.Datastore, *badgerpk.ParaBadgerDB) {
 func initAccounts(db interfaces.Datastore, from, to int) {
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
-	}, func(cache *cache.WriteCache) { cache.Reset() }))
+	}, func(cache *cache.WriteCache) { cache.Clear() }))
 
 	stateDB := eth.NewImplStateDB(api)
 	stateCommitter := ccurl.NewStorageCommitter(db)
@@ -271,7 +271,7 @@ func initAccounts(db interfaces.Datastore, from, to int) {
 func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardTransaction) {
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
-	}, func(cache *cache.WriteCache) { cache.Reset() }))
+	}, func(cache *cache.WriteCache) { cache.Clear() }))
 
 	stateDB := eth.NewImplStateDB(api)
 	stateCommitter := ccurl.NewStorageCommitter(db)

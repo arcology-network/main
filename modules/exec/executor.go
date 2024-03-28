@@ -12,7 +12,6 @@ import (
 	ccurl "github.com/arcology-network/storage-committer"
 	"github.com/arcology-network/storage-committer/commutative"
 	"github.com/arcology-network/storage-committer/interfaces"
-	ccdb "github.com/arcology-network/storage-committer/storage"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
@@ -143,11 +142,11 @@ func (exec *Executor) OnStart() {
 		persistentDB := committerStorage.NewHybirdStore()
 
 		persistentDB.Inject(concurrenturlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
-		db := ccdb.NewTransientDB(persistentDB)
+		// db := ccdb.NewTransientDB(persistentDB)
 
 		api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
-			return cache.NewWriteCache(db, 32, 1)
-		}, func(cache *cache.WriteCache) { cache.Reset() }))
+			return cache.NewWriteCache(persistentDB, 32, 1)
+		}, func(cache *cache.WriteCache) { cache.Clear() }))
 
 		exec.apis[i] = api
 
@@ -216,8 +215,9 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 		}
 		for hash, pt := range exec.pendingTasks {
 			if pt[0].match(results) {
-				db := ccdb.NewTransientDB(*pt[0].baseOn)
-				exec.stateCommitter.Init(db)
+
+				persistentDB := committerStorage.NewHybirdStore()
+				exec.stateCommitter = ccurl.NewStorageCommitter(persistentDB)
 				ids, transitions := storage.GetTransitions(results)
 				exec.stateCommitter.Import(transitions)
 				exec.stateCommitter.Precommit(ids)
@@ -325,7 +325,7 @@ func (exec *Executor) startExec() {
 
 						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 							return cache.NewWriteCache(*task.Snapshot, 32, 1)
-						}, func(cache *cache.WriteCache) { cache.Reset() }))
+						}, func(cache *cache.WriteCache) { cache.Clear() }))
 
 						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
@@ -340,7 +340,7 @@ func (exec *Executor) startExec() {
 
 					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 						return cache.NewWriteCache(*task.Snapshot, 32, 1)
-					}, func(cache *cache.WriteCache) { cache.Reset() }))
+					}, func(cache *cache.WriteCache) { cache.Clear() }))
 
 					job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 

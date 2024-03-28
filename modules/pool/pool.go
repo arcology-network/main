@@ -33,7 +33,7 @@ type Pool struct {
 func NewPool(db interfaces.Datastore, obsoleteTime uint64, closeCheck bool) *Pool {
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
-	}, func(cache *cache.WriteCache) { cache.Reset() }))
+	}, func(cache *cache.WriteCache) { cache.Clear() }))
 
 	return &Pool{
 		ObsoleteTime: obsoleteTime,

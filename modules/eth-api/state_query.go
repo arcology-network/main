@@ -7,6 +7,7 @@ import (
 
 	apifunc "github.com/arcology-network/main/modules/eth-api/backend"
 	mtypes "github.com/arcology-network/main/types"
+	ethdb "github.com/arcology-network/storage-committer/ethstorage"
 	"github.com/arcology-network/storage-committer/interfaces"
 	opadapter "github.com/arcology-network/storage-committer/op"
 	ccdb "github.com/arcology-network/storage-committer/storage"
@@ -23,7 +24,7 @@ var (
 type StateQuery struct {
 	actor.WorkerThread
 	// store  *ccdb.EthDataStore
-	ProofCache *ccdb.MerkleProofCache
+	ProofCache *ethdb.MerkleProofCache
 }
 
 // return a Subscriber struct
@@ -61,7 +62,7 @@ func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
 		switch v.Name {
 		case actor.MsgApcHandle: //actor.MsgInitDB: //
 			ddb := (*v.Data.(*interfaces.Datastore)).(*ccdb.StoreRouter)
-			cache := ccdb.NewMerkleProofCache(2, ddb.EthStore().EthDB())
+			cache := ethdb.NewMerkleProofCache(2, ddb.EthStore().EthDB())
 			sq.ProofCache = cache
 		}
 	}

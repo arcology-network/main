@@ -6,7 +6,7 @@ import (
 	"sync"
 
 	mtypes "github.com/arcology-network/main/types"
-	ccdb "github.com/arcology-network/storage-committer/storage"
+	ccdb "github.com/arcology-network/storage-committer/ethstorage"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"

@@ -3,8 +3,8 @@ package types
 import (
 	"github.com/arcology-network/storage-committer/interfaces"
 
-	"github.com/arcology-network/eu/execution"
 	eushared "github.com/arcology-network/eu/shared"
+	evmAdaptorCommon "github.com/arcology-network/evm-adaptor/common"
 	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
@@ -12,7 +12,7 @@ import (
 
 type ExecMessagers struct {
 	Snapshot *interfaces.Datastore
-	Config   *execution.Config
+	Config   *evmAdaptorCommon.Config
 	Sequence *mtypes.ExecutingSequence
 	// Uuid     uint64
 	// SerialID int

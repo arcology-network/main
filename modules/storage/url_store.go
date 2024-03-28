@@ -2,7 +2,6 @@ package storage
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 
 	"github.com/arcology-network/main/components/storage"
@@ -46,17 +45,17 @@ func (us *UrlStore) Init(ctx context.Context, db interfaces.Datastore, _ *int) e
 }
 
 func (us *UrlStore) Query(ctx context.Context, pattern *string, response *storage.QueryResponse) error {
-	keys, vals, err := us.db.Query(*pattern, mtypes.Under)
-	if err != nil {
-		return err
-	}
-	response.Keys = keys
-	response.Values = vals
+	// keys, vals, err := us.db.Query(*pattern, mtypes.Under)
+	// if err != nil {
+	// 	return err
+	// }
+	// response.Keys = keys
+	// response.Values = vals
 	return nil
 }
 
 func (us *UrlStore) Get(ctx context.Context, keys *[]string, values *[][]byte, T []any) error {
-	us.db.BatchRetrive(*keys, T)
+	// us.db.BatchRetrive(*keys, T)
 	// data := make([][]byte, len(objs))
 	// for i := range *keys {
 	// 	data[i] = ccdb.Codec{}.Encode("", objs[i]) //urltyp.ToBytes(objs[i])
@@ -183,8 +182,8 @@ func (us *UrlStore) ApplyData(ctx context.Context, request *mtypes.SyncDataReque
 }
 
 func (us *UrlStore) RewriteMeta(ctx context.Context, _ *int, _ *int) error {
-	keys, values := us.indexer.ExportMetas()
-	fmt.Printf("[UrlStore.RewriteMeta] Update %d meta keys\n", len(keys))
-	us.db.BatchInject(keys, values)
+	// keys, values := us.indexer.ExportMetas()
+	// fmt.Printf("[UrlStore.RewriteMeta] Update %d meta keys\n", len(keys))
+	// us.db.BatchInject(keys, values)
 	return nil
 }
