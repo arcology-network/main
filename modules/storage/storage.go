@@ -157,7 +157,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		if inclusive != nil {
 			for i, hash := range inclusive.HashList {
 				if !inclusive.Successful[i] {
-					conflictTxs[*hash] = i
+					conflictTxs[hash] = i
 				}
 			}
 		}

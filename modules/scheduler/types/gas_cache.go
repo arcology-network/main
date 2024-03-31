@@ -4,7 +4,6 @@ import (
 	"sort"
 	"sync"
 
-	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -13,36 +12,31 @@ type GasCache struct {
 	lock           sync.RWMutex
 }
 
-func (gc *GasCache) CostCalculateSort(txElements *[][][]*mtypes.TxElement) {
+func (gc *GasCache) CostCalculateSort(txElements [][]evmCommon.Hash) [][]evmCommon.Hash {
 	gc.lock.Lock()
 	defer gc.lock.Unlock()
 
-	if txElements == nil {
-		return
+	if len(txElements) == 0 {
+		return txElements
 	}
 
-	for idx, firstDemension := range *txElements {
-		costs := make([]CostItem, len(firstDemension))
-		for i, secondDemension := range firstDemension {
-			costs[i].idx = i
-			for _, element := range secondDemension {
-				if gasused, ok := gc.DictionaryHash[*element.TxHash]; ok {
-					costs[i].cost = costs[i].cost + gasused
-				}
-
+	costs := make([]CostItem, len(txElements))
+	for i, firstDemension := range txElements {
+		costs[i].idx = i
+		for _, element := range firstDemension {
+			if gasused, ok := gc.DictionaryHash[element]; ok {
+				costs[i].cost = costs[i].cost + gasused
 			}
 		}
-
-		costItems := CostItems(costs)
-		sort.Sort(costItems)
-
-		sortedList := make([][]*mtypes.TxElement, len(firstDemension))
-		for i, item := range costItems {
-			sortedList[i] = firstDemension[item.idx]
-		}
-		(*txElements)[idx] = sortedList
 	}
+	costItems := CostItems(costs)
+	sort.Sort(costItems)
 
+	sortedList := make([][]evmCommon.Hash, len(txElements))
+	for i, item := range costItems {
+		sortedList[i] = txElements[item.idx]
+	}
+	return sortedList
 }
 
 type CostItem struct {

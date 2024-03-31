@@ -8,13 +8,11 @@ import (
 	"time"
 
 	eucommon "github.com/arcology-network/eu/common"
-	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/log"
-	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type execRpcMock struct {
@@ -144,11 +142,11 @@ func runExecClientTestCase(
 	ids := make([]uint32, len(msgs))
 	client := NewExecClient(executors, 100)
 	client.Run(
-		map[evmCommon.Hash]*schtyp.Message{
-			{}: {
-				Precedings: &[]*evmCommon.Hash{},
-			},
-		},
+		// map[evmCommon.Hash]*schtyp.Message{
+		// 	{}: {
+		// 		Precedings: &[]*evmCommon.Hash{},
+		// 	},
+		// },
 		[]*mtypes.ExecutingSequence{
 			{
 				Msgs:     msgs,
@@ -159,8 +157,8 @@ func runExecClientTestCase(
 		new(big.Int),
 		&actor.Message{},
 		worker.GetLogger(0),
+		uint64(1),
 		parallelism,
-		1,
 		1,
 	)
 

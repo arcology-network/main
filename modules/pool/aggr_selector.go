@@ -186,11 +186,12 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 			}
 		case actor.MsgReapinglist:
 			a.CheckPoint("pool received reapinglist")
-			list := make([]evmCommon.Hash, len(msg.Data.(*types.ReapingList).List))
-			for i := range list {
-				list[i] = *msg.Data.(*types.ReapingList).List[i]
-			}
-			reaped := a.pool.CherryPick(a.opAdaptor.ClipReapList(list))
+			// list := make([]evmCommon.Hash, len(msg.Data.(*types.ReapingList).List))
+			// for i := range list {
+			// 	list[i] = *msg.Data.(*types.ReapingList).List[i]
+			// }
+
+			reaped := a.pool.CherryPick(a.opAdaptor.ClipReapList(msg.Data.(*types.ReapingList).List))
 			if reaped != nil {
 				a.send(reaped, false, msg.Height)
 				a.state = resultCollect

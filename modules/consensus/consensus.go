@@ -241,10 +241,9 @@ func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.T
 	txID := fmt.Sprintf("%d", height)
 	intf.Router.Call("transactionalstore", "BeginTransaction", &txID, &na)
 
-	reapHashlist := make([]*evmCommon.Hash, len(hashes))
+	reapHashlist := make([]evmCommon.Hash, len(hashes))
 	for i, h := range hashes {
-		hash := evmCommon.BytesToHash(h)
-		reapHashlist[i] = &hash
+		reapHashlist[i] = evmCommon.BytesToHash(h)
 	}
 	c.AddLog(log.LogLevel_Info, "start send reapinglist", zap.Int("reapinglist hashes length", len(reapHashlist)))
 	c.MsgBroker.Send(actor.MsgExtReapingList, &types.ReapingList{

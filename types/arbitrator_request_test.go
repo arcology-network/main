@@ -21,55 +21,9 @@ func PrepareNewArbitrator() *ArbitratorRequest {
 		ethCommon.BytesToHash([]byte{16, 17, 18}),
 		ethCommon.BytesToHash([]byte{19, 20, 21}),
 	}
-	list := [][]*TxElement{
-		{
-			{
-				TxHash:  &hashes[0],
-				Batchid: 1,
-				Txid:    11,
-			},
-		},
-		{
-			{
-				TxHash:  &hashes[1],
-				Batchid: 2,
-				Txid:    12,
-			},
-			{
-				TxHash:  &hashes[2],
-				Batchid: 3,
-				Txid:    13,
-			},
-		},
-		{
-			{
-				TxHash:  &hashes[3],
-				Batchid: 4,
-				Txid:    14,
-			},
-			{
-				TxHash:  &hashes[4],
-				Batchid: 5,
-				Txid:    15,
-			},
-		},
-		{
-			{
-				TxHash:  &hashes[5],
-				Batchid: 6,
-				Txid:    16,
-			},
-		},
-		{
-			{
-				TxHash:  &hashes[6],
-				Batchid: 7,
-			},
-		},
-	}
 
 	return &ArbitratorRequest{
-		TxsListGroup: list,
+		TxsListGroup: [][]ethCommon.Hash{hashes},
 	}
 }
 
@@ -117,13 +71,10 @@ func TestEncodeDecode(t *testing.T) {
 
 func BenchmarkArbitratorRequestEncode(b *testing.B) {
 	size := 500000
-	list := make([][]*TxElement, size)
+	list := make([][]ethCommon.Hash, size)
 	for i := 0; i < size; i++ {
-		list[i] = []*TxElement{
-			{
-				TxHash:  &ethCommon.Hash{},
-				Batchid: 1,
-			},
+		list[i] = []ethCommon.Hash{
+			ethCommon.Hash{},
 		}
 	}
 
@@ -139,13 +90,10 @@ func BenchmarkArbitratorRequestEncode(b *testing.B) {
 
 func BenchmarkArbitratorRequestDecode(b *testing.B) {
 	size := 500000
-	list := make([][]*TxElement, size)
+	list := make([][]ethCommon.Hash, size)
 	for i := 0; i < size; i++ {
-		list[i] = []*TxElement{
-			{
-				TxHash:  &ethCommon.Hash{},
-				Batchid: 1,
-			},
+		list[i] = []ethCommon.Hash{
+			ethCommon.Hash{},
 		}
 	}
 	var buf bytes.Buffer
@@ -174,12 +122,12 @@ func TestArbitratorRequestPerformanec(t *testing.T) {
 	t0 := time.Now()
 	rows := 1000
 	cols := 500
-	txInfo := make([][]*TxElement, rows)
+	txInfo := make([][]ethCommon.Hash, rows)
 	for i := 0; i < len(txInfo); i++ {
-		txInfo[i] = []*TxElement{}
+		txInfo[i] = []ethCommon.Hash{}
 		for j := 0; j < cols; j++ {
 			hash := ethCommon.BytesToHash([]byte{1})
-			txInfo[i] = append(txInfo[i], &TxElement{&hash, uint64(i), uint32(0)})
+			txInfo[i] = append(txInfo[i], hash)
 
 		}
 	}

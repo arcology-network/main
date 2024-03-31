@@ -4,8 +4,8 @@ import (
 	"encoding/gob"
 )
 
-var arEncoder *arbReqEncoder
-var arDecoder *arbReqDecoder
+// var arEncoder *arbReqEncoder
+// var arDecoder *arbReqDecoder
 
 // var bytesPool chan []byte
 
@@ -41,8 +41,8 @@ func init() {
 	gob.Register(&ExecutorRequest{})
 	gob.Register(&ExecutorResponses{})
 
-	arEncoder = newArbReqEncoder()
-	arDecoder = newArbReqDecoder()
+	// arEncoder = newArbReqEncoder()
+	// arDecoder = newArbReqDecoder()
 
 	// bytesPool = make(chan []byte, 100)
 	// for i := 0; i < 100; i++ {

@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/arcology-network/common-lib/codec"
-	cmncmn "github.com/arcology-network/common-lib/common"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/modules/storage"
 	mtypes "github.com/arcology-network/main/types"
@@ -19,6 +18,10 @@ import (
 	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+)
+
+var (
+	nilHash = evmCommon.Hash{}
 )
 
 func TestSchedulerEmptyBlock(t *testing.T) {
@@ -64,7 +67,7 @@ func TestSchedulerTransferOnly(t *testing.T) {
 		map[string]interface{}{
 			actor.MsgSchdState: &storage.SchdState{},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
-				HashList:   []*evmCommon.Hash{nil, nil},
+				HashList:   []evmCommon.Hash{nilHash, nilHash},
 				Successful: []bool{true, true},
 			},
 			// actor.MsgSpawnedRelations: []*cmntyp.SpawnedRelation{},
@@ -118,7 +121,7 @@ func TestSchedulerMixedTxs(t *testing.T) {
 		map[string]interface{}{
 			actor.MsgSchdState: &storage.SchdState{},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
-				HashList:   []*evmCommon.Hash{nil, nil, nil, nil},
+				HashList:   []evmCommon.Hash{nilHash, nilHash, nilHash, nilHash},
 				Successful: []bool{true, true, true, true},
 			},
 			// actor.MsgSpawnedRelations: []*cmntyp.SpawnedRelation{},
@@ -176,7 +179,7 @@ func TestSchedulerContractWithDefer(t *testing.T) {
 		map[string]interface{}{
 			actor.MsgSchdState: &storage.SchdState{},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
-				HashList:   []*evmCommon.Hash{nil, nil, nil, nil, nil},
+				HashList:   []evmCommon.Hash{nilHash, nilHash, nilHash, nilHash, nilHash},
 				Successful: []bool{true, true, true, true, true},
 			},
 		},
@@ -215,7 +218,7 @@ func TestSchedulerContractWithConfliction(t *testing.T) {
 		},
 		[]*mtypes.ArbitratorResponse{
 			{
-				ConflictedList: []*evmCommon.Hash{&conflictHash},
+				ConflictedList: []evmCommon.Hash{conflictHash},
 				CPairLeft:      []uint32{256},
 				CPairRight:     []uint32{512},
 			},
@@ -226,7 +229,7 @@ func TestSchedulerContractWithConfliction(t *testing.T) {
 				ConflictionRights: []evmCommon.Address{{}},
 			},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
-				HashList:   []*evmCommon.Hash{nil, nil},
+				HashList:   []evmCommon.Hash{nilHash, nilHash},
 				Successful: []bool{true, false},
 			},
 		},
@@ -268,7 +271,7 @@ func TestSchedulerSequentialTxs(t *testing.T) {
 		map[string]interface{}{
 			actor.MsgSchdState: &storage.SchdState{},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
-				HashList:   []*evmCommon.Hash{nil, nil, nil},
+				HashList:   []evmCommon.Hash{nilHash, nilHash, nilHash},
 				Successful: []bool{true, true, true},
 			},
 		},
@@ -326,13 +329,13 @@ func TestSchedulerConflictionInDefer(t *testing.T) {
 		},
 		[]*mtypes.ArbitratorResponse{
 			{
-				ConflictedList: []*evmCommon.Hash{&txHashes[1]},
+				ConflictedList: []evmCommon.Hash{txHashes[1]},
 				CPairLeft:      []uint32{256},
 				CPairRight:     []uint32{512},
 			},
 			{},
 			{
-				ConflictedList: []*evmCommon.Hash{&txHashes[2], &txHashes[3], &txHashes[5]},
+				ConflictedList: []evmCommon.Hash{txHashes[2], txHashes[3], txHashes[5]},
 				CPairLeft:      []uint32{257},
 				CPairRight:     []uint32{768},
 			},
@@ -343,7 +346,7 @@ func TestSchedulerConflictionInDefer(t *testing.T) {
 				ConflictionRights: []evmCommon.Address{{}, {}},
 			},
 			actor.MsgInclusive: &cmntyp.InclusiveList{
-				HashList:   cmncmn.ToReferencedSlice(txHashes),
+				HashList:   txHashes,
 				Successful: []bool{true, false, false, false, true, false},
 			},
 		},
@@ -382,12 +385,12 @@ func (mock *mockConsumer) check(data interface{}) {
 		if len(expected.HashList) != len(got.HashList) {
 			panic(fmt.Sprintf("check %s failed, expected %v, got %v", msgName, expected, got))
 		}
-		if len(expected.HashList) > 0 && expected.HashList[0] != nil {
+		if len(expected.HashList) > 0 {
 			expectedDict := make(map[evmCommon.Hash]bool)
 			gotDict := make(map[evmCommon.Hash]bool)
 			for i := range expected.HashList {
-				expectedDict[*expected.HashList[i]] = expected.Successful[i]
-				gotDict[*got.HashList[i]] = got.Successful[i]
+				expectedDict[expected.HashList[i]] = expected.Successful[i]
+				gotDict[got.HashList[i]] = got.Successful[i]
 			}
 			if !reflect.DeepEqual(expectedDict, gotDict) {
 				panic(fmt.Sprintf("check %s failed, expected %v, got %v", msgName, expected, got))

@@ -6,7 +6,6 @@ import (
 	"time"
 
 	cmncmn "github.com/arcology-network/common-lib/common"
-	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
@@ -51,14 +50,14 @@ func NewExecClient(executors []string, batchSize int) *ExecClient {
 }
 
 func (client *ExecClient) Run(
-	messages map[evmCommon.Hash]*schtyp.Message,
+	// messages map[evmCommon.Hash]*schtyp.Message,
 	sequences []*mtypes.ExecutingSequence,
 	timestamp *big.Int,
 	msgTemplate *actor.Message,
 	inlog *actor.WorkerThreadLogger,
+	height uint64,
 	parallelism int,
-	generationIdx,
-	batchIdx int,
+	generationIdx int,
 ) (
 	map[evmCommon.Hash]*mtypes.ExecuteResponse,
 	[]evmCommon.Address,
@@ -66,7 +65,6 @@ func (client *ExecClient) Run(
 	requests := make([]*mtypes.ExecutorRequest, 0, int(50000/client.batchSize))
 	for _, sequence := range sequences {
 		if sequence.Parallel {
-			msg := messages[sequence.Msgs[0].TxHash]
 			for i := 0; i < len(sequence.Msgs); i += client.batchSize {
 				end := cmncmn.Min(len(sequence.Msgs), i+client.batchSize)
 				requests = append(requests, &mtypes.ExecutorRequest{
@@ -77,18 +75,17 @@ func (client *ExecClient) Run(
 							Parallel: true,
 						},
 					},
-					Precedings:    [][]*evmCommon.Hash{*msg.Precedings},
-					PrecedingHash: []evmCommon.Hash{msg.PrecedingHash},
+					Height:        height,
+					GenerationIdx: uint64(generationIdx),
 					Timestamp:     timestamp,
 					Debug:         false,
 				})
 			}
 		} else {
-			msg := messages[sequence.SequenceId]
 			requests = append(requests, &mtypes.ExecutorRequest{
 				Sequences:     []*mtypes.ExecutingSequence{sequence},
-				Precedings:    [][]*evmCommon.Hash{*msg.Precedings},
-				PrecedingHash: []evmCommon.Hash{msg.PrecedingHash},
+				Height:        height,
+				GenerationIdx: uint64(generationIdx),
 				Timestamp:     timestamp,
 				Debug:         false,
 			})
@@ -106,7 +103,7 @@ func (client *ExecClient) Run(
 	var wg sync.WaitGroup
 	//requestIdx := 0
 	responses := make([][]*mtypes.ExecutorResponses, len(client.executors))
-	inlog.CheckPoint("exec preparation complete,start exec transactions", zap.Int("parallelism", parallelism), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
+	inlog.CheckPoint("exec preparation complete,start exec transactions", zap.Int("parallelism", parallelism), zap.Int("generationIdx", generationIdx))
 	for i := 0; i < len(requests); {
 		execIdx := <-idleExec
 		// Reach concurrency limit.
@@ -127,13 +124,13 @@ func (client *ExecClient) Run(
 			msg.Msgid = cmncmn.GenerateUUID()
 			msg.Data = data
 
-			inlog.CheckPoint(">>>>>>>>>>>>>>>>>>>>>", zap.Int("execIdx", execIdx), zap.Int("idx", requestIdx), zap.Int("sequences", len(data.Sequences)), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
+			inlog.CheckPoint(">>>>>>>>>>>>>>>>>>>>>", zap.Int("execIdx", execIdx), zap.Int("idx", requestIdx), zap.Int("sequences", len(data.Sequences)), zap.Int("generationIdx", generationIdx))
 			response := mtypes.ExecutorResponses{}
 			err := intf.Router.Call(client.executors[execIdx], "ExecTxs", &msg, &response)
 			if err != nil {
 				panic(err)
 			}
-			inlog.CheckPoint("<<<<<<<<<<<<<<<<<<<<<", zap.Int("execIdx", execIdx), zap.Int("idx", requestIdx), zap.Int("sequences", len(data.Sequences)), zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
+			inlog.CheckPoint("<<<<<<<<<<<<<<<<<<<<<", zap.Int("execIdx", execIdx), zap.Int("idx", requestIdx), zap.Int("sequences", len(data.Sequences)), zap.Int("generationIdx", generationIdx))
 			responses[execIdx] = append(responses[execIdx], &response)
 			ccGuard.Lock()
 			concurrency -= len(requests)
@@ -144,7 +141,7 @@ func (client *ExecClient) Run(
 		i += numThread
 	}
 	wg.Wait()
-	inlog.CheckPoint(".......................................................... exec completed", zap.Int("generationIdx", generationIdx), zap.Int("batchIdx", batchIdx))
+	inlog.CheckPoint(".......................................................... exec completed", zap.Int("generationIdx", generationIdx))
 	ExecTime.Observe(time.Since(execBegin).Seconds())
 	ExecTimeGauge.Set(time.Since(execBegin).Seconds())
 
@@ -172,17 +169,13 @@ func (client *ExecClient) Run(
 
 func mergeRequests(requests []*mtypes.ExecutorRequest) *mtypes.ExecutorRequest {
 	sequences := make([]*mtypes.ExecutingSequence, len(requests))
-	precedings := make([][]*evmCommon.Hash, len(requests))
-	precedingHash := make([]evmCommon.Hash, len(requests))
 	for i, request := range requests {
 		sequences[i] = request.Sequences[0]
-		precedings[i] = request.Precedings[0]
-		precedingHash[i] = request.PrecedingHash[0]
 	}
 	return &mtypes.ExecutorRequest{
 		Sequences:     sequences,
-		Precedings:    precedings,
-		PrecedingHash: precedingHash,
+		Height:        requests[0].Height,
+		GenerationIdx: requests[0].GenerationIdx,
 		Timestamp:     requests[0].Timestamp,
 		Debug:         requests[0].Debug,
 	}

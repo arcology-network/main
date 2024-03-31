@@ -111,13 +111,14 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 	})
 
 	var stdMsgs []*eucommon.StandardMessage
+	height := uint64(0)
 	for _, msg := range msgs {
 		switch msg.Name {
 		case actor.MsgBlockStart:
 			schd.context.timestamp = msg.Data.(*actor.BlockStart).Timestamp
 		case actor.MsgMessagersReaped:
 			schd.CheckPoint("received messagersReaped")
-
+			height = msg.Height
 			stdMsgs = msg.Data.([]*eucommon.StandardMessage)
 			fmt.Printf("start new schedule height:%v\n", msg.Height)
 		}
@@ -127,7 +128,7 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 	schd.splitMessagesByType(stdMsgs)
 
 	timeStart := time.Now()
-	schd.context.onNewBlock()
+	schd.context.onNewBlock(height)
 	schd.context.msgTemplate = msgs[0]
 	schd.context.logger = schd.GetLogger(schd.AddLog(log.LogLevel_Info, "Before first generation"))
 	schd.context.parallelism = schd.parallelism
@@ -153,7 +154,7 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 	// Inclusive list.
 	flags := make([]bool, len(schd.context.executed))
 	for i, hash := range schd.context.executed {
-		if _, ok := schd.context.deletedDict[*hash]; !ok {
+		if _, ok := schd.context.deletedDict[hash]; !ok {
 			flags[i] = true
 		}
 	}
@@ -220,14 +221,12 @@ func (schd *Scheduler) createGenerations() []*generation {
 	if len(schd.transfers) > 0 {
 		res = append(res, newGeneration(
 			schd.context,
-			[]*batch{newBatch(
-				schd.context,
-				[]*mtypes.ExecutingSequence{mtypes.NewExecutingSequence(schd.transfers, true)},
-			)},
+
+			[]*mtypes.ExecutingSequence{mtypes.NewExecutingSequence(schd.transfers, true)},
 		))
 	}
 	for _, gen := range gens {
-		res = append(res, newGeneration(schd.context, []*batch{newBatch(schd.context, gen)}))
+		res = append(res, newGeneration(schd.context, gen))
 	}
 	return res
 }

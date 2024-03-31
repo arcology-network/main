@@ -1,31 +1,127 @@
 package scheduler
 
+import (
+	"github.com/arcology-network/common-lib/common"
+	schtyp "github.com/arcology-network/main/modules/scheduler/types"
+	mtypes "github.com/arcology-network/main/types"
+	evmCommon "github.com/ethereum/go-ethereum/common"
+)
+
 type generation struct {
-	context  *processContext
-	batches  []*batch
-	execTree *execTree
+	context   *processContext
+	sequences []*mtypes.ExecutingSequence
 }
 
-func newGeneration(context *processContext, batches []*batch) *generation {
-	execTree := newExecTree()
-	execTree.createBranches(batches[0].sequences)
+func newGeneration(context *processContext, sequences []*mtypes.ExecutingSequence) *generation {
+	for _, seq := range sequences {
+		for i := range seq.Txids {
+			seq.Txids[i] = context.txId
+			context.txId++
 
-	return &generation{
-		context:  context,
-		batches:  batches,
-		execTree: execTree,
-	}
-}
-
-func (gen *generation) process() {
-	nextBatch := gen.batches[0]
-	for {
-		gen.context.onNewBatch()
-		nextBatch = nextBatch.process(gen.execTree)
-		if nextBatch != nil {
-			gen.batches = append(gen.batches, nextBatch)
-		} else {
-			return
+			context.txHash2IdBiMap.Add(seq.Msgs[i].TxHash, seq.Txids[i])
 		}
 	}
+	return &generation{
+		context:   context,
+		sequences: sequences,
+	}
+}
+
+func (g *generation) process() {
+	executed := g.setMsgProperty()
+	// Process txs on executors.
+	responses, newContracts := g.context.executor.Run(
+		g.sequences,
+		g.context.timestamp,
+		g.context.msgTemplate,
+		g.context.logger,
+		g.context.height,
+		g.context.parallelism,
+		g.context.generation,
+	)
+	g.context.executed = append(g.context.executed, executed...)
+	g.context.newContracts = append(g.context.newContracts, newContracts...)
+
+	arbitrateParam := g.makeArbitrateParam(responses)
+	conflictedHashes, cpLeft, cpRight := g.context.arbitrator.Do(
+		arbitrateParam,
+		g.context.logger,
+		g.context.generation,
+	)
+
+	// cpLeft, cpRight = b.backtraceConflictionPairs(execTree, cpLeft, cpRight)
+	for i := range cpLeft {
+		ltxhash := g.context.txHash2IdBiMap.GetInverse(cpLeft[i])
+		leftAddr, ok := g.context.txHash2Callee[ltxhash]
+		if !ok {
+			continue
+		}
+		leftSign, ok := g.context.txHash2Sign[ltxhash]
+		if !ok {
+			continue
+		}
+
+		rtxhash := g.context.txHash2IdBiMap.GetInverse(cpRight[i])
+		rightAddr, ok := g.context.txHash2Callee[rtxhash]
+		if !ok {
+			continue
+		}
+		rightSign, ok := g.context.txHash2Sign[rtxhash]
+		if !ok {
+			continue
+		}
+		g.context.conflicts.Add(&mtypes.ConflictInfo{
+			LeftAddress:  leftAddr,
+			LeftSign:     leftSign,
+			RightAddress: rightAddr,
+			RightSign:    rightSign,
+		})
+	}
+
+	deletedDict := make(map[evmCommon.Hash]struct{})
+	for _, ch := range conflictedHashes {
+		deletedDict[ch] = struct{}{}
+	}
+
+	common.MergeMaps(g.context.deletedDict, deletedDict)
+}
+
+func (g *generation) makeArbitrateParam(
+	responses map[evmCommon.Hash]*mtypes.ExecuteResponse,
+) [][]evmCommon.Hash {
+	arbitrateParam := make([][]evmCommon.Hash, 0, len(g.sequences))
+	for i := range g.sequences {
+		hashes := make([]evmCommon.Hash, 0, len(g.sequences[i].Msgs))
+		for j := range g.sequences[i].Msgs {
+			hashes = append(hashes, g.sequences[i].Msgs[j].TxHash)
+		}
+		arbitrateParam = append(arbitrateParam, hashes)
+	}
+	for h, response := range responses {
+		g.context.txHash2Gas[h] = response.GasUsed
+	}
+	return (&schtyp.GasCache{DictionaryHash: g.context.txHash2Gas}).CostCalculateSort(arbitrateParam)
+}
+
+// 1. Update `context.txHash2Callee` for each message;
+// 2. Update `context.txHash2Sign` for each message;
+// 3. Collect parallel messages' hash, put them into `executed` and return.
+func (g *generation) setMsgProperty() []evmCommon.Hash {
+	executed := make([]evmCommon.Hash, 0, 50000)
+
+	for _, seq := range g.sequences {
+		for _, msg := range seq.Msgs {
+			if msg.Native.To != nil {
+				g.context.txHash2Callee[msg.TxHash] = *msg.Native.To
+				sign := msg.Native.Data
+				if len(msg.Native.Data) > 4 {
+					sign = sign[:4]
+				}
+				g.context.txHash2Sign[msg.TxHash] = [4]byte(sign)
+			}
+			h := evmCommon.BytesToHash(msg.TxHash[:])
+			executed = append(executed, h)
+		}
+	}
+	return executed
 }

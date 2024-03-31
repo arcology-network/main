@@ -86,7 +86,7 @@ func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, 
 	selectedReceipts := make([]*evmTypes.Receipt, 0, len(receipts))
 	for i, hash := range inclusiveList.HashList {
 		if inclusiveList.Successful[i] {
-			if rcpt, ok := receiptslist[*hash]; ok {
+			if rcpt, ok := receiptslist[hash]; ok {
 				if rcpt != nil {
 					selectedReceipts = append(selectedReceipts, rcpt)
 					gasused += rcpt.GasUsed

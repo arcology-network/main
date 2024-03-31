@@ -77,14 +77,9 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	lstMessage := request.CopyHeader()
 	rs.ChangeEnvironment(lstMessage)
 	params := request.Data.(*mtypes.ArbitratorRequest)
-	list := []*evmCommon.Hash{}
-	for _, rows := range params.TxsListGroup {
-		for _, element := range rows {
-			list = append(list, element.TxHash)
-		}
-	}
+
 	reapinglist := ctypes.ReapingList{
-		List: list,
+		List: slice.Flatten(params.TxsListGroup),
 	}
 
 	rs.msgid = rs.msgid + 1
@@ -114,6 +109,7 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 		gen := eu.NewGeneration(0, 0, nil)
 		conflicts := gen.Detect(parseRequests(params.TxsListGroup, resultSelected))
 		// conflicts.Print()
+
 		response.ConflictedList, response.CPairLeft, response.CPairRight = parseResult(params.TxsListGroup, conflicts)
 		rs.CheckPoint("arbitrate return results***********", zap.Int("ConflictedList", len(response.ConflictedList)), zap.Int("left", len(response.CPairLeft)), zap.Int("right", len(response.CPairRight)))
 		return nil
@@ -122,7 +118,7 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	return nil
 }
 
-func parseRequests(txsListGroup [][]*mtypes.TxElement, results *[]*types.AccessRecord) ([][]uint32, [][]*univaluepk.Univalue) {
+func parseRequests(txsListGroup [][]evmCommon.Hash, results *[]*types.AccessRecord) ([][]uint32, [][]*univaluepk.Univalue) {
 	mp := map[[32]byte]*types.AccessRecord{}
 	for _, result := range *results {
 		mp[result.TxHash] = result
@@ -133,7 +129,7 @@ func parseRequests(txsListGroup [][]*mtypes.TxElement, results *[]*types.AccessR
 		ids := make([]uint32, 0, len(row))
 		transactations := []*univaluepk.Univalue{}
 		for _, e := range row {
-			result := mp[[32]byte(e.TxHash.Bytes())]
+			result := mp[[32]byte(e.Bytes())]
 			ids = append(ids, slice.Fill(make([]uint32, len(result.Accesses)), uint32(i))...)
 			transactations = append(transactations, result.Accesses...)
 		}
@@ -143,18 +139,13 @@ func parseRequests(txsListGroup [][]*mtypes.TxElement, results *[]*types.AccessR
 	return groupIDs, records
 }
 
-func parseResult(txsListGroup [][]*mtypes.TxElement, conflits arbitratorn.Conflicts) ([]*evmCommon.Hash, []uint32, []uint32) {
-	dic := map[uint32]*evmCommon.Hash{}
-	for _, row := range txsListGroup {
-		for _, e := range row {
-			dic[e.Txid] = e.TxHash
-		}
-	}
+func parseResult(txsListGroup [][]evmCommon.Hash, conflits arbitratorn.Conflicts) ([]evmCommon.Hash, []uint32, []uint32) {
 	idsmp, _, pairs := conflits.ToDict()
-	confiltList := []*evmCommon.Hash{}
+	confiltList := []evmCommon.Hash{}
 	for _, id := range common.MapKeys(idsmp) {
-		confiltList = append(confiltList, dic[id])
+		confiltList = append(confiltList, txsListGroup[id]...)
 	}
+
 	left := make([]uint32, 0, len(pairs))
 	right := make([]uint32, 0, len(pairs))
 	for _, pair := range pairs {
