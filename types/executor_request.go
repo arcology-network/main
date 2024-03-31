@@ -98,11 +98,12 @@ func (this *ExecutingSequences) Decode(data []byte) ([]*ExecutingSequence, error
 
 type ExecutorRequest struct {
 	Sequences     []*ExecutingSequence
-	Precedings    [][]*ethCommon.Hash
-	PrecedingHash []ethCommon.Hash
-	Timestamp     *big.Int
-	Parallelism   uint64
-	Debug         bool
+	Height        uint64
+	GenerationIdx uint64
+
+	Timestamp   *big.Int
+	Parallelism uint64
+	Debug       bool
 }
 
 func (this *ExecutorRequest) GobEncode() ([]byte, error) {
@@ -112,12 +113,6 @@ func (this *ExecutorRequest) GobEncode() ([]byte, error) {
 		return []byte{}, err
 	}
 
-	precedingsBytes := make([][]byte, len(this.Precedings))
-	for i := range this.Precedings {
-		precedings := types.Ptr2Arr(this.Precedings[i])
-		precedingsBytes[i] = types.Hashes(precedings).Encode()
-	}
-
 	timeStampData := []byte{}
 	if this.Timestamp != nil {
 		timeStampData = this.Timestamp.Bytes()
@@ -125,8 +120,8 @@ func (this *ExecutorRequest) GobEncode() ([]byte, error) {
 
 	data := [][]byte{
 		executingSequencesData,
-		codec.Byteset(precedingsBytes).Encode(),
-		types.Hashes(this.PrecedingHash).Encode(),
+		common.Uint64ToBytes(this.Height),
+		common.Uint64ToBytes(this.GenerationIdx),
 		timeStampData,
 		common.Uint64ToBytes(this.Parallelism),
 		codec.Bool(this.Debug).Encode(),
@@ -141,14 +136,8 @@ func (this *ExecutorRequest) GobDecode(data []byte) error {
 		return err
 	}
 	this.Sequences = msgResults
-
-	precedingsBytes := codec.Byteset{}.Decode(fields[1]).(codec.Byteset)
-	this.Precedings = make([][]*ethCommon.Hash, len(precedingsBytes))
-	for i := range precedingsBytes {
-		this.Precedings[i] = types.Arr2Ptr(types.Hashes([]ethCommon.Hash{}).Decode(precedingsBytes[i]))
-	}
-
-	this.PrecedingHash = types.Hashes([]ethCommon.Hash{}).Decode(fields[2])
+	this.Height = common.BytesToUint64(fields[1])
+	this.GenerationIdx = common.BytesToUint64(fields[2])
 	this.Timestamp = new(big.Int).SetBytes(fields[3])
 	this.Parallelism = common.BytesToUint64(fields[4])
 	this.Debug = bool(codec.Bool(this.Debug).Decode(fields[5]).(codec.Bool))
