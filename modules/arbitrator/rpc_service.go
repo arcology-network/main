@@ -140,12 +140,12 @@ func parseRequests(txsListGroup [][]evmCommon.Hash, results *[]*types.AccessReco
 }
 
 func parseResult(txsListGroup [][]evmCommon.Hash, conflits arbitratorn.Conflicts) ([]evmCommon.Hash, []uint32, []uint32) {
-	idsmp, _, pairs := conflits.ToDict()
+	_, groupmp, pairs := conflits.ToDict()
 	confiltList := []evmCommon.Hash{}
-	for _, id := range common.MapKeys(idsmp) {
-		confiltList = append(confiltList, txsListGroup[id]...)
-	}
 
+	for _, groupid := range common.MapKeys(groupmp) {
+		confiltList = append(confiltList, txsListGroup[groupid]...)
+	}
 	left := make([]uint32, 0, len(pairs))
 	right := make([]uint32, 0, len(pairs))
 	for _, pair := range pairs {

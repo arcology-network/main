@@ -14,10 +14,7 @@ type ExecMessagers struct {
 	Snapshot *interfaces.Datastore
 	Config   *evmAdaptorCommon.Config
 	Sequence *mtypes.ExecutingSequence
-	// Uuid     uint64
-	// SerialID int
-	// Total    int
-	Debug bool
+	Debug    bool
 }
 
 type ExecutionResponse struct {

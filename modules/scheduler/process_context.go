@@ -35,7 +35,6 @@ type processContext struct {
 	logger      *actor.WorkerThreadLogger
 	parallelism int
 	generation  int
-	// batch       int
 
 	height uint64
 
@@ -52,7 +51,7 @@ func createProcessContext() *processContext {
 		txHash2Gas:     make(map[evmCommon.Hash]uint64),
 
 		deletedDict: make(map[evmCommon.Hash]struct{}),
-		conflicts:   mtypes.NewConflictInfos(), //make(map[evmCommon.Address][]evmCommon.Address),
+		conflicts:   mtypes.NewConflictInfos(),
 		txId:        1,
 	}
 }
@@ -76,7 +75,7 @@ func (c *processContext) onNewBlock(height uint64) {
 	c.executed = c.executed[:0]
 	c.deletedDict = make(map[evmCommon.Hash]struct{})
 	c.txId = 1
-	c.generation = 0
+	c.generation = -1
 	c.newContracts = c.newContracts[:0]
 	c.conflicts.Reset()
 

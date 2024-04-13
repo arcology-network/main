@@ -142,7 +142,7 @@ func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 			fmt.Printf("[DecisionMaker.OnMessageArrived] in dmStateFastSync, on MsgExtReapingList\n")
 			dm.MsgBroker.Send(actor.MsgMetaBlock, &mtypes.MetaBlock{
 				Txs:      [][]byte{},
-				Hashlist: []*evmCommon.Hash{},
+				Hashlist: []evmCommon.Hash{},
 			})
 		}
 

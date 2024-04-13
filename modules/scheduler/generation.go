@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"github.com/arcology-network/common-lib/common"
+	types "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
@@ -27,7 +28,7 @@ func newGeneration(context *processContext, sequences []*mtypes.ExecutingSequenc
 	}
 }
 
-func (g *generation) process() {
+func (g *generation) process() *types.InclusiveList {
 	executed := g.setMsgProperty()
 	// Process txs on executors.
 	responses, newContracts := g.context.executor.Run(
@@ -43,13 +44,18 @@ func (g *generation) process() {
 	g.context.newContracts = append(g.context.newContracts, newContracts...)
 
 	arbitrateParam := g.makeArbitrateParam(responses)
+	if len(arbitrateParam) <= 1 {
+		return &types.InclusiveList{
+			HashList:   []evmCommon.Hash{},
+			Successful: []bool{},
+		}
+	}
 	conflictedHashes, cpLeft, cpRight := g.context.arbitrator.Do(
 		arbitrateParam,
 		g.context.logger,
 		g.context.generation,
 	)
 
-	// cpLeft, cpRight = b.backtraceConflictionPairs(execTree, cpLeft, cpRight)
 	for i := range cpLeft {
 		ltxhash := g.context.txHash2IdBiMap.GetInverse(cpLeft[i])
 		leftAddr, ok := g.context.txHash2Callee[ltxhash]
@@ -83,7 +89,19 @@ func (g *generation) process() {
 		deletedDict[ch] = struct{}{}
 	}
 
+	flags := make([]bool, len(executed))
+	for i, hash := range executed {
+		if _, ok := deletedDict[hash]; !ok {
+			flags[i] = true
+		}
+	}
+
 	common.MergeMaps(g.context.deletedDict, deletedDict)
+
+	return &types.InclusiveList{
+		HashList:   executed,
+		Successful: flags,
+	}
 }
 
 func (g *generation) makeArbitrateParam(
@@ -91,11 +109,17 @@ func (g *generation) makeArbitrateParam(
 ) [][]evmCommon.Hash {
 	arbitrateParam := make([][]evmCommon.Hash, 0, len(g.sequences))
 	for i := range g.sequences {
-		hashes := make([]evmCommon.Hash, 0, len(g.sequences[i].Msgs))
-		for j := range g.sequences[i].Msgs {
-			hashes = append(hashes, g.sequences[i].Msgs[j].TxHash)
+		if g.sequences[i].Parallel {
+			for j := range g.sequences[i].Msgs {
+				arbitrateParam = append(arbitrateParam, []evmCommon.Hash{g.sequences[i].Msgs[j].TxHash})
+			}
+		} else {
+			hashes := make([]evmCommon.Hash, 0, len(g.sequences[i].Msgs))
+			for j := range g.sequences[i].Msgs {
+				hashes = append(hashes, g.sequences[i].Msgs[j].TxHash)
+			}
+			arbitrateParam = append(arbitrateParam, hashes)
 		}
-		arbitrateParam = append(arbitrateParam, hashes)
 	}
 	for h, response := range responses {
 		g.context.txHash2Gas[h] = response.GasUsed

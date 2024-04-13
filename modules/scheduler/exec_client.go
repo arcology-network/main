@@ -76,7 +76,7 @@ func (client *ExecClient) Run(
 						},
 					},
 					Height:        height,
-					GenerationIdx: uint64(generationIdx),
+					GenerationIdx: uint32(generationIdx),
 					Timestamp:     timestamp,
 					Debug:         false,
 				})
@@ -85,7 +85,7 @@ func (client *ExecClient) Run(
 			requests = append(requests, &mtypes.ExecutorRequest{
 				Sequences:     []*mtypes.ExecutingSequence{sequence},
 				Height:        height,
-				GenerationIdx: uint64(generationIdx),
+				GenerationIdx: uint32(generationIdx),
 				Timestamp:     timestamp,
 				Debug:         false,
 			})

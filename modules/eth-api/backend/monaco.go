@@ -8,7 +8,7 @@ import (
 
 	cmncmn "github.com/arcology-network/common-lib/common"
 	mtypes "github.com/arcology-network/main/types"
-	ccdb "github.com/arcology-network/storage-committer/ethstorage"
+	ccdb "github.com/arcology-network/storage-committer/storage/ethstorage"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	eth "github.com/ethereum/go-ethereum"

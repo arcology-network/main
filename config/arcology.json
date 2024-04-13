@@ -2,7 +2,7 @@
     "settings": {
         "prometheus_listen_addr": ":19000",
         "envs": {
-            "generate_apc_handle": true,
+            "generate_apc_handle": "block",
             "generate_url_update": true,
             "generate_acct_root": true,
             "init_db": true,
@@ -14,7 +14,7 @@
     "actors": {
         "-general_url-stateful_euresult_aggr_selector": {
             "general_url": {
-                "generate_apc_handle": "__env__",
+                "generate_apc_handle": "generation",
                 "generate_url_update": "__env__",
                 "generate_acct_root": "__env__",
                 "init_db": "__env__",
@@ -22,7 +22,7 @@
                 "transactional":"__env__"
             },
             "stateful_euresult_aggr_selector": {
-                "output": "selectedexecuted"
+                "output": "executed"
             }
         },
         "storage.initializer": {
@@ -54,7 +54,6 @@
         "executor": {
             "chain_id": "__global__"
         },
-        "stateless_euresult_aggr_selector": {},
         "access_record_pre_processor": {},
         "access_record_aggr_selector": {},
         "arbitrator_rpc": {},
@@ -65,7 +64,7 @@
         },
         "-nonce_url-stateful_euresult_aggr_selector4pool": {
             "nonce_url": {
-                "generate_apc_handle": true,
+                "generate_apc_handle": "block",
                 "generate_url_update": false,
                 "generate_acct_root": false,
                 "init_db": false,

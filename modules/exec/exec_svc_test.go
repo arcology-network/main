@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"fmt"
 	"math/big"
 	"testing"
 	"time"
@@ -8,14 +9,20 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
-	committerStorage "github.com/arcology-network/storage-committer/storage"
+	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/log"
-	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
+func TestForEachDo(t *testing.T) {
+	ss := make([][]int, 2)
+	for i := range ss {
+		ss[i] = append(ss[i], i)
+	}
+	fmt.Printf("====ss:%v\n", ss)
+}
 func TestExecSvcBasic(t *testing.T) {
 	setup(t)
 
@@ -33,12 +40,6 @@ func TestExecSvcBasic(t *testing.T) {
 					Txids:    []uint32{1},
 				},
 			},
-			Precedings: [][]*evmCommon.Hash{
-				{},
-			},
-			PrecedingHash: []evmCommon.Hash{
-				{},
-			},
 			Timestamp:   new(big.Int),
 			Parallelism: 1,
 			Debug:       false,
@@ -52,7 +53,6 @@ func TestExecSvcMakeSnapshot(t *testing.T) {
 	_, mock := setup(t)
 
 	var response mtypes.ExecutorResponses
-	precedingHash := evmCommon.BytesToHash([]byte{1})
 	intf.Router.Call("executor-1", "ExecTxs", &actor.Message{
 		Msgid:  common.GenerateUUID(),
 		Height: 2,
@@ -72,16 +72,6 @@ func TestExecSvcMakeSnapshot(t *testing.T) {
 					Parallel: true,
 					Txids:    []uint32{2},
 				},
-			},
-			Precedings: [][]*evmCommon.Hash{
-				{},
-				{
-					&precedingHash,
-				},
-			},
-			PrecedingHash: []evmCommon.Hash{
-				{},
-				{},
 			},
 			Timestamp:   new(big.Int),
 			Parallelism: 1,
@@ -110,7 +100,7 @@ func setup(tb testing.TB) (*brokerpk.StatefulStreamer, *mockWorker) {
 	intf.Router.Register("executor-1", rpc, "rpc-server-addr", "zk-server-addr")
 
 	execImpl := NewExecutor(1, "exec-impl").(*Executor)
-	execImpl.snapshotDict = &mockSnapshotDict{}
+	// execImpl.snapshotDict = &mockSnapshotDict{}
 	baseWorker := actor.NewHeightController()
 	baseWorker.Next(actor.NewFSMController()).EndWith(execImpl)
 	baseWorker.OnStart()
@@ -142,7 +132,7 @@ func setup(tb testing.TB) (*brokerpk.StatefulStreamer, *mockWorker) {
 	// 	ccdb.Rlp{}.Decode,
 	// )
 
-	db := committerStorage.NewHybirdStore()
+	db := stgproxy.NewStoreProxy().EnableCache() //committerStorage.NewHybirdStore()
 
 	mock.MsgBroker.Send(
 		actor.CombinedName(actor.MsgApcHandle, actor.MsgCached),

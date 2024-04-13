@@ -4,18 +4,17 @@ import (
 	"fmt"
 	"time"
 
-	ccurl "github.com/arcology-network/storage-committer"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 
 	eushared "github.com/arcology-network/eu/shared"
-	"github.com/arcology-network/storage-committer/interfaces"
-	committerStorage "github.com/arcology-network/storage-committer/storage"
+	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
+	"github.com/arcology-network/storage-committer/storage/statestore"
 	univaluepk "github.com/arcology-network/storage-committer/univalue"
 )
 
 type DBOperation interface {
-	Init(db interfaces.Datastore, stateCommitter *ccurl.StateCommitter, broker *actor.MessageWrapper)
+	Init(stateStore *statestore.StateStore, broker *actor.MessageWrapper)
 	Import(transitions []*univaluepk.Univalue)
 	PreCommit(euResults []*eushared.EuResult, height uint64)
 	Commit(height uint64)
@@ -24,9 +23,10 @@ type DBOperation interface {
 }
 
 type BasicDBOperation struct {
-	DB             interfaces.Datastore
-	StateCommitter *ccurl.StateCommitter
-	MsgBroker      *actor.MessageWrapper
+	// DB interfaces.Datastore
+	// StateCommitter *ccurl.StateCommitter
+	StateStore *statestore.StateStore
+	MsgBroker  *actor.MessageWrapper
 
 	stateRoot [32]byte
 
@@ -34,26 +34,27 @@ type BasicDBOperation struct {
 	Values []interface{}
 }
 
-func (op *BasicDBOperation) Init(db interfaces.Datastore, stateCommitter *ccurl.StateCommitter, broker *actor.MessageWrapper) {
-	op.DB = db
-	op.StateCommitter = stateCommitter
+func (op *BasicDBOperation) Init(stateStore *statestore.StateStore, broker *actor.MessageWrapper) {
+	// op.DB = db
+	op.StateStore = stateStore
 	op.MsgBroker = broker
 	op.Keys = []string{}
 	op.Values = []interface{}{}
 }
 
 func (op *BasicDBOperation) Import(transitions []*univaluepk.Univalue) {
-	op.StateCommitter.Import(transitions)
+	fmt.Printf("==================main/components/storage/db_handler.go==========transitions Size:%v\n", len(transitions))
+	op.StateStore.Import(transitions)
 }
 
 func (op *BasicDBOperation) PreCommit(euResults []*eushared.EuResult, height uint64) {
-	op.stateRoot = op.StateCommitter.Precommit(GetTransitionIds(euResults))
+	op.stateRoot = op.StateStore.Precommit(GetTransitionIds(euResults))
 	op.Keys = []string{}
 	op.Values = []interface{}{}
 }
 
 func (op *BasicDBOperation) Commit(height uint64) {
-	op.StateCommitter.Commit(height)
+	op.StateStore.Commit(height)
 }
 
 func (op *BasicDBOperation) Outputs() map[string]int {
@@ -71,12 +72,11 @@ const (
 type DBHandler struct {
 	actor.WorkerThread
 
-	db             interfaces.Datastore
-	stateCommitter *ccurl.StateCommitter
-	state          int
-	commitMsg      string
-	finalizeMsg    string
-	op             DBOperation
+	StateStore  *statestore.StateStore
+	state       int
+	commitMsg   string
+	finalizeMsg string
+	op          DBOperation
 }
 
 func NewDBHandler(concurrency int, groupId string, commitMsg, finalizeMsg string, op DBOperation) *DBHandler {
@@ -108,11 +108,9 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 	} else {
 		if !v.(bool) {
 
-			handler.db = committerStorage.NewHybirdStore()
+			handler.StateStore = statestore.NewStateStore(stgproxy.NewStoreProxy().EnableCache())
 
-			handler.stateCommitter = ccurl.NewStorageCommitter(handler.db)
-
-			handler.op.Init(handler.db, handler.stateCommitter, handler.MsgBroker)
+			handler.op.Init(handler.StateStore, handler.MsgBroker)
 			handler.state = dbStateDone
 		}
 	}
@@ -120,7 +118,7 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 }
 
 func (handler *DBHandler) OnStart() {
-	handler.op.Init(handler.db, handler.stateCommitter, handler.MsgBroker)
+	handler.op.Init(handler.StateStore, handler.MsgBroker)
 }
 
 func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
@@ -128,10 +126,9 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 	switch handler.state {
 	case dbStateUninit:
 		if msg.Name == actor.MsgInitDB {
-			handler.db = msg.Data.(interfaces.Datastore)
-			handler.stateCommitter = ccurl.NewStorageCommitter(handler.db)
+			handler.StateStore = msg.Data.(*statestore.StateStore) //statestore.NewStateStore(handler.db)
 
-			handler.op.Init(handler.db, handler.stateCommitter, handler.MsgBroker)
+			handler.op.Init(handler.StateStore, handler.MsgBroker)
 			handler.state = dbStateDone
 		}
 	case dbStateInit:

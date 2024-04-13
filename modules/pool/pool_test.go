@@ -10,21 +10,27 @@ import (
 	"github.com/arcology-network/common-lib/exp/mempool"
 	badgerpk "github.com/arcology-network/common-lib/storage/badger"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/eu/cache"
 	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
-	"github.com/arcology-network/evm-adaptor/eth"
+	adaptorcommon "github.com/arcology-network/evm-adaptor/eth"
 	ccurl "github.com/arcology-network/storage-committer"
 	ccurlcommon "github.com/arcology-network/storage-committer/common"
 	"github.com/arcology-network/storage-committer/commutative"
 	"github.com/arcology-network/storage-committer/interfaces"
-	committerStorage "github.com/arcology-network/storage-committer/storage"
+	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
+	"github.com/arcology-network/storage-committer/storage/statestore"
+	cache "github.com/arcology-network/storage-committer/storage/writecache"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 )
 
+func intDb() *statestore.StateStore {
+	db := stgproxy.NewStoreProxy().EnableCache()
+	return statestore.NewStateStore(db)
+}
+
 func TestPoolWithUncheckedTx(t *testing.T) {
-	db, badger := initdb("./testdata/1/")
-	defer badger.Close()
+
+	db := intDb()
 
 	n := 500
 	txs := genUncheckedTxs(0, n)
@@ -56,11 +62,10 @@ func TestPoolWithUncheckedTx(t *testing.T) {
 }
 
 func TestPoolWithCheckedTx(t *testing.T) {
-	db, badger := initdb("./testdata/2/")
-	defer badger.Close()
+	db := intDb()
 
 	n := 500
-	initAccounts(db, 0, n)
+	initAccounts(db.Store(), 0, n)
 	txs := genCheckedTxs(0, n, 1, 100)
 
 	p := NewPool(db, 100, false)
@@ -80,7 +85,7 @@ func TestPoolWithCheckedTx(t *testing.T) {
 		t.Fail()
 	}
 
-	increaseNonce(db, picked)
+	increaseNonce(db.Store(), picked)
 	p.Clean(1)
 	if p.TxByHash.Size() != uint32(n-len(reaped)) {
 		t.Fail()
@@ -88,11 +93,11 @@ func TestPoolWithCheckedTx(t *testing.T) {
 }
 
 func TestPoolCherryPick(t *testing.T) {
-	db, badger := initdb("./testdata/3/")
-	defer badger.Close()
+
+	db := intDb()
 
 	n := 500
-	initAccounts(db, 0, n*2)
+	initAccounts(db.Store(), 0, n*2)
 	batch1 := genCheckedTxs(0, n, 1, 100)
 	batch2 := genUncheckedTxs(n, n*2)
 
@@ -121,11 +126,10 @@ func TestPoolCherryPick(t *testing.T) {
 }
 
 func TestPoolAdd(t *testing.T) {
-	db, badger := initdb("./testdata/4/")
-	defer badger.Close()
+	db := intDb()
 
 	n := 500
-	initAccounts(db, 0, n)
+	initAccounts(db.Store(), 0, n)
 
 	p := NewPool(db, 100, false)
 	txs := genCheckedTxs(0, n, 1, 100)
@@ -151,7 +155,7 @@ func TestPoolAdd(t *testing.T) {
 		t.Fail()
 	}
 
-	increaseNonce(db, picked)
+	increaseNonce(db.Store(), picked)
 	p.Clean(1)
 	if p.TxByHash.Size() != uint32(n-len(reaped)) {
 		t.Fail()
@@ -159,11 +163,10 @@ func TestPoolAdd(t *testing.T) {
 }
 
 func TestPoolReapEmptyTxSender(t *testing.T) {
-	db, badger := initdb("./testdata/5/")
-	defer badger.Close()
+	db := intDb()
 
 	n := 500
-	initAccounts(db, 0, n)
+	initAccounts(db.Store(), 0, n)
 
 	p := NewPool(db, 100, false)
 	txs := genCheckedTxs(0, n, 1, 100)
@@ -183,7 +186,7 @@ func TestPoolReapEmptyTxSender(t *testing.T) {
 		t.Fail()
 	}
 
-	increaseNonce(db, picked)
+	increaseNonce(db.Store(), picked)
 	p.Clean(1)
 	if p.TxByHash.Size() != uint32(n-len(reaped)) {
 		t.Fail()
@@ -196,11 +199,10 @@ func TestPoolReapEmptyTxSender(t *testing.T) {
 }
 
 func TestPoolCleanObsolete(t *testing.T) {
-	db, badger := initdb("./testdata/6/")
-	defer badger.Close()
+	db := intDb()
 
 	n := 500
-	initAccounts(db, 0, n)
+	initAccounts(db.Store(), 0, n)
 
 	p := NewPool(db, 100, false)
 	txs := genCheckedTxs(0, n, 1, 100)
@@ -222,7 +224,7 @@ func TestPoolCleanObsolete(t *testing.T) {
 		t.Fail()
 	}
 
-	increaseNonce(db, picked)
+	increaseNonce(db.Store(), picked)
 	p.Clean(1)
 	if p.TxByHash.Size() != uint32(n/2) || p.TxBySender.Size() != uint32(n) {
 		t.Fail()
@@ -242,7 +244,7 @@ func TestPoolCleanObsolete(t *testing.T) {
 func initdb(path string) (interfaces.Datastore, *badgerpk.ParaBadgerDB) {
 	badger := badgerpk.NewParaBadgerDB(path, common.Remainder)
 
-	db := committerStorage.NewHybirdStore()
+	db := stgproxy.NewStoreProxy().EnableCache()
 
 	db.Inject(ccurlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
 	return db, badger
@@ -253,7 +255,7 @@ func initAccounts(db interfaces.Datastore, from, to int) {
 		return cache.NewWriteCache(db, 32, 1)
 	}, func(cache *cache.WriteCache) { cache.Clear() }))
 
-	stateDB := eth.NewImplStateDB(api)
+	stateDB := adaptorcommon.NewImplStateDB(api)
 	stateCommitter := ccurl.NewStorageCommitter(db)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := from; i < to; i++ {
@@ -273,7 +275,7 @@ func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardTransaction) {
 		return cache.NewWriteCache(db, 32, 1)
 	}, func(cache *cache.WriteCache) { cache.Clear() }))
 
-	stateDB := eth.NewImplStateDB(api)
+	stateDB := adaptorcommon.NewImplStateDB(api)
 	stateCommitter := ccurl.NewStorageCommitter(db)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := range txs {

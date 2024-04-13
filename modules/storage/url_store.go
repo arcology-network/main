@@ -7,7 +7,7 @@ import (
 	"github.com/arcology-network/main/components/storage"
 	strtyp "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
-	"github.com/arcology-network/storage-committer/interfaces"
+	"github.com/arcology-network/storage-committer/storage/statestore"
 )
 
 type UrlContainerGetRequest struct {
@@ -29,7 +29,7 @@ const (
 )
 
 type UrlStore struct {
-	db      interfaces.Datastore
+	store   *statestore.StateStore
 	indexer *MetaIndexer
 }
 
@@ -39,8 +39,8 @@ func NewUrlStore() *UrlStore {
 	}
 }
 
-func (us *UrlStore) Init(ctx context.Context, db interfaces.Datastore, _ *int) error {
-	us.db = db
+func (us *UrlStore) Init(ctx context.Context, store *statestore.StateStore, _ *int) error {
+	us.store = store
 	return nil
 }
 
@@ -65,7 +65,7 @@ func (us *UrlStore) Get(ctx context.Context, keys *[]string, values *[][]byte, T
 }
 
 func (us *UrlStore) GetNonce(ctx context.Context, address *string, nonce *uint64) error {
-	non, err := strtyp.GetNonce(us.db, *address)
+	non, err := strtyp.GetNonce(us.store.Store(), *address)
 	if err != nil {
 		return err
 	}
@@ -75,7 +75,7 @@ func (us *UrlStore) GetNonce(ctx context.Context, address *string, nonce *uint64
 
 func (us *UrlStore) GetBalance(ctx context.Context, address *string, balance **big.Int) error {
 	var err error
-	*balance, err = strtyp.GetBalance(us.db, *address)
+	*balance, err = strtyp.GetBalance(us.store.Store(), *address)
 	if err != nil {
 		return err
 	}
@@ -84,7 +84,7 @@ func (us *UrlStore) GetBalance(ctx context.Context, address *string, balance **b
 
 func (us *UrlStore) GetCode(ctx context.Context, address *string, code *[]byte) error {
 	var err error
-	*code, err = strtyp.GetCode(us.db, *address)
+	*code, err = strtyp.GetCode(us.store.Store(), *address)
 	if err != nil {
 		return err
 	}
@@ -93,7 +93,7 @@ func (us *UrlStore) GetCode(ctx context.Context, address *string, code *[]byte) 
 
 func (us *UrlStore) GetEthStorage(ctx context.Context, request *UrlEthStorageGetRequest, value *[]byte) error {
 	var err error
-	*value, err = strtyp.GetStorage(us.db, request.Address, request.Key)
+	*value, err = strtyp.GetStorage(us.store.Store(), request.Address, request.Key)
 	if err != nil {
 		return err
 	}

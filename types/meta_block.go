@@ -8,7 +8,7 @@ import (
 
 type MetaBlock struct {
 	Txs      [][]byte
-	Hashlist []*ethCommon.Hash
+	Hashlist []ethCommon.Hash
 }
 
 func (this MetaBlock) HeaderSize() uint32 {
@@ -47,7 +47,7 @@ func (this MetaBlock) EncodeToBuffer(buffer []byte) {
 	offset += codec.Byteset(this.Txs).Size()
 
 	for i := 0; i < len(this.Hashlist); i++ {
-		codec.Bytes32(*this.Hashlist[i]).EncodeToBuffer(buffer[headerLen+offset:])
+		codec.Bytes32(this.Hashlist[i]).EncodeToBuffer(buffer[headerLen+offset:])
 		offset += uint32(ethCommon.HashLength)
 	}
 }
@@ -60,6 +60,6 @@ func (this *MetaBlock) GobDecode(buffer []byte) error {
 	fields := codec.Byteset{}.Decode(buffer).(codec.Byteset)
 	this.Txs = codec.Byteset{}.Decode(fields[0]).(codec.Byteset)
 	arrs := types.Hashes([]ethCommon.Hash{}).Decode(fields[1])
-	this.Hashlist = types.Arr2Ptr(arrs)
+	this.Hashlist = arrs
 	return nil
 }

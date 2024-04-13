@@ -99,7 +99,7 @@ func (this *ExecutingSequences) Decode(data []byte) ([]*ExecutingSequence, error
 type ExecutorRequest struct {
 	Sequences     []*ExecutingSequence
 	Height        uint64
-	GenerationIdx uint64
+	GenerationIdx uint32
 
 	Timestamp   *big.Int
 	Parallelism uint64
@@ -121,7 +121,7 @@ func (this *ExecutorRequest) GobEncode() ([]byte, error) {
 	data := [][]byte{
 		executingSequencesData,
 		common.Uint64ToBytes(this.Height),
-		common.Uint64ToBytes(this.GenerationIdx),
+		common.Uint32ToBytes(this.GenerationIdx),
 		timeStampData,
 		common.Uint64ToBytes(this.Parallelism),
 		codec.Bool(this.Debug).Encode(),
@@ -137,7 +137,7 @@ func (this *ExecutorRequest) GobDecode(data []byte) error {
 	}
 	this.Sequences = msgResults
 	this.Height = common.BytesToUint64(fields[1])
-	this.GenerationIdx = common.BytesToUint64(fields[2])
+	this.GenerationIdx = common.BytesToUint32(fields[2])
 	this.Timestamp = new(big.Int).SetBytes(fields[3])
 	this.Parallelism = common.BytesToUint64(fields[4])
 	this.Debug = bool(codec.Bool(this.Debug).Decode(fields[5]).(codec.Bool))

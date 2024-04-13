@@ -11,7 +11,7 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
-	"github.com/arcology-network/storage-committer/interfaces"
+	"github.com/arcology-network/storage-committer/storage/statestore"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
@@ -136,7 +136,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 		switch msg.Name {
 		case actor.MsgNonceReady:
 			if a.pool == nil {
-				a.pool = NewPool(*(msg.Data.(*interfaces.Datastore)), a.obsoleteTime, a.closeCheck)
+				a.pool = NewPool(msg.Data.(*statestore.StateStore), a.obsoleteTime, a.closeCheck)
 			} else {
 				a.pool.Clean(msg.Height)
 				a.AddLog(log.LogLevel_Info, fmt.Sprintf("Clear pool on height %d", msg.Height))
@@ -186,10 +186,6 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 			}
 		case actor.MsgReapinglist:
 			a.CheckPoint("pool received reapinglist")
-			// list := make([]evmCommon.Hash, len(msg.Data.(*types.ReapingList).List))
-			// for i := range list {
-			// 	list[i] = *msg.Data.(*types.ReapingList).List[i]
-			// }
 
 			reaped := a.pool.CherryPick(a.opAdaptor.ClipReapList(msg.Data.(*types.ReapingList).List))
 			if reaped != nil {
@@ -222,9 +218,9 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool, height uint64) {
 	a.AddLog(log.LogLevel_Debug, "reap end", zap.Int("reapeds", len(reaped)))
 	if isProposer {
-		hashes := make([]*evmCommon.Hash, len(reaped))
+		hashes := make([]evmCommon.Hash, len(reaped))
 		for i := range hashes {
-			hashes[i] = &reaped[i].TxHash
+			hashes[i] = reaped[i].TxHash
 		}
 
 		a.MsgBroker.Send(actor.MsgMetaBlock, &mtypes.MetaBlock{

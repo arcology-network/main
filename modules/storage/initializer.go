@@ -10,8 +10,8 @@ import (
 
 	"github.com/arcology-network/common-lib/storage/transactional"
 	"github.com/arcology-network/consensus-engine/state"
+	adaptorcommon "github.com/arcology-network/evm-adaptor/eth"
 	"github.com/arcology-network/main/modules/core"
-	ccurl "github.com/arcology-network/storage-committer"
 	"github.com/arcology-network/storage-committer/commutative"
 	"github.com/arcology-network/storage-committer/interfaces"
 	"github.com/arcology-network/streamer/actor"
@@ -19,17 +19,17 @@ import (
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 
-	"github.com/arcology-network/evm-adaptor/eth"
-
-	"github.com/arcology-network/eu/cache"
 	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
+	cache "github.com/arcology-network/storage-committer/storage/writecache"
 	evmcore "github.com/ethereum/go-ethereum/core"
 
 	"github.com/arcology-network/common-lib/exp/mempool"
 	"github.com/arcology-network/common-lib/exp/slice"
 	mtypes "github.com/arcology-network/main/types"
-	committerStorage "github.com/arcology-network/storage-committer/storage"
 	univaluepk "github.com/arcology-network/storage-committer/univalue"
+
+	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
+	"github.com/arcology-network/storage-committer/storage/statestore"
 )
 
 type Initializer struct {
@@ -80,7 +80,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		Extra:     genesis.ExtraData,
 	}
 
-	var db interfaces.Datastore
+	var store *statestore.StateStore
 	var rootHash evmCommon.Hash
 	if height == 0 {
 		// Make place holder for recover functions.
@@ -94,7 +94,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			return nil
 		})
 
-		db, rootHash = i.initGenesisAccounts(genesis, uint64(height))
+		store, rootHash = i.initGenesisAccounts(genesis, uint64(height))
 
 		evmblock := genesis.ToBlock()
 
@@ -113,13 +113,11 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 
 	} else {
 
-		//db = ccdb.NewParallelEthMemDataStore()
 		// db = ccdb.NewLevelDBDataStore(i.storage_db_path)
 
-		db = committerStorage.NewHybirdStore()
-		// db.(*committerStorage.StoreRouter).DisableCache()
-
+		db := stgproxy.NewStoreProxy().EnableCache()
 		db.Inject(RootPrefix, commutative.NewPath())
+		store = statestore.NewStateStore(db)
 
 		// Register recover function.
 		transactional.RegisterRecoverFunc("urlupdate", func(_ interface{}, bs []byte) error {
@@ -176,13 +174,13 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		}
 	}
 
-	intf.Router.Call("urlstore", "Init", db, &na)
+	intf.Router.Call("urlstore", "Init", store, &na)
 
 	return []*actor.Message{
 		{
 			Name:   actor.MsgInitDB,
 			Height: uint64(height),
-			Data:   db,
+			Data:   store,
 		},
 		{
 			Name:   actor.MsgStorageUp,
@@ -207,22 +205,19 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 	return nil
 }
 
-func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis, height uint64) (interfaces.Datastore, evmCommon.Hash) {
-	// db := ccdb.NewLevelDBDataStore(i.storage_db_path)
-	//db := ccdb.NewParallelEthMemDataStore()
-	db := committerStorage.NewHybirdStore()
-	// db.DisableCache()
+func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis, height uint64) (*statestore.StateStore, evmCommon.Hash) {
+	db := stgproxy.NewStoreProxy().EnableCache()
+	stateStore := statestore.NewStateStore(db)
 
 	db.Inject(RootPrefix, commutative.NewPath())
 
 	transitions := i.createTransitions(db, genesis.Alloc)
 
-	stateCommitter := ccurl.NewStorageCommitter(db)
+	stateStore.Import(slice.Clone(transitions))
+	stateStore.Precommit([]uint32{0})
+	stateStore.Commit(height)
 
-	stateCommitter.Import(slice.Clone(transitions))
-	rootHash := stateCommitter.Precommit([]uint32{0})
-	stateCommitter.Commit(height)
-	return db, rootHash
+	return stateStore, evmCommon.Hash{}
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -251,7 +246,7 @@ func getTransition(db interfaces.Datastore, addresses []evmCommon.Address, genes
 		return cache.NewWriteCache(db, 32, 1)
 	}, func(cache *cache.WriteCache) { cache.Clear() }))
 
-	stateDB := eth.NewImplStateDB(api)
+	stateDB := adaptorcommon.NewImplStateDB(api)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for _, addr := range addresses {
 		acct := genesisAlloc[addr]

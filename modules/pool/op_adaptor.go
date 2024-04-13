@@ -23,9 +23,8 @@ type OpAdaptor struct {
 	ReapCommand bool
 	Opcaches    *[]*types.StandardTransaction
 	Withdrawals []*evmTypes.Withdrawal
-	// OpMsgs      []*types.StandardMessage
-	Oplist   []*evmCommon.Hash
-	ReapSize int
+	Oplist      []evmCommon.Hash
+	ReapSize    int
 
 	//result process
 	MBlock   *mtypes.MonacoBlock
@@ -75,14 +74,14 @@ func (oa *OpAdaptor) AddReapCommand() bool {
 func (oa *OpAdaptor) AddOpCommand(txs []*types.StandardTransaction, withdrawals []*evmTypes.Withdrawal) bool {
 
 	msgs := make([]*types.StandardTransaction, 0, len(txs))
-	list := make([]*evmCommon.Hash, 0, len(txs))
+	list := make([]evmCommon.Hash, 0, len(txs))
 	for _, tx := range txs {
 		if tx.UnSign(oa.Signer) != nil {
 			panic("ReapPair.AddOpCommand unsign err")
 		}
 		tx.Signer = oa.SignerType
 		msgs = append(msgs, tx)
-		list = append(list, &tx.TxHash)
+		list = append(list, tx.TxHash)
 	}
 	oa.Opcaches = &msgs
 	oa.Oplist = list
@@ -96,7 +95,7 @@ func (oa *OpAdaptor) AddOpCommand(txs []*types.StandardTransaction, withdrawals 
 	return oa.Check()
 }
 
-func (oa *OpAdaptor) AppendList(list []*evmCommon.Hash) []*evmCommon.Hash {
+func (oa *OpAdaptor) AppendList(list []evmCommon.Hash) []evmCommon.Hash {
 	return append(oa.Oplist, list...)
 }
 

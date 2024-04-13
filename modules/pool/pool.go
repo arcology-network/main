@@ -7,13 +7,13 @@ import (
 	ccmap "github.com/arcology-network/common-lib/container/map"
 	"github.com/arcology-network/common-lib/exp/mempool"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/evm-adaptor/eth"
-	"github.com/arcology-network/storage-committer/interfaces"
+	adaptorcommon "github.com/arcology-network/evm-adaptor/eth"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
-	"github.com/arcology-network/eu/cache"
 	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
+	"github.com/arcology-network/storage-committer/storage/statestore"
+	cache "github.com/arcology-network/storage-committer/storage/writecache"
 )
 
 type Pool struct {
@@ -30,7 +30,7 @@ type Pool struct {
 	ClearList        []string
 }
 
-func NewPool(db interfaces.Datastore, obsoleteTime uint64, closeCheck bool) *Pool {
+func NewPool(db *statestore.StateStore, obsoleteTime uint64, closeCheck bool) *Pool {
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
 	}, func(cache *cache.WriteCache) { cache.Clear() }))
@@ -42,7 +42,7 @@ func NewPool(db interfaces.Datastore, obsoleteTime uint64, closeCheck bool) *Poo
 		TxByHash:     ccmap.NewConcurrentMap(),
 		TxUnchecked:  ccmap.NewConcurrentMap(),
 		SourceStat:   make(map[cmntyp.TxSource]*TxSourceStatistics),
-		StateDB:      eth.NewImplStateDB(api), // adaptor.NewStateDBV2(nil, db, url.NewConcurrentUrl(db)),
+		StateDB:      adaptorcommon.NewImplStateDB(api),
 	}
 
 }

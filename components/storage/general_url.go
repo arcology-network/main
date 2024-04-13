@@ -17,7 +17,7 @@ import (
 type GeneralUrl struct {
 	BasicDBOperation
 
-	generateApcHandle bool
+	generateApcHandle string
 	generateUrlUpdate bool
 	generateAcctRoot  bool
 	inited            bool
@@ -39,9 +39,7 @@ func NewGeneralUrl(apcHandleName string) *GeneralUrl {
 
 func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) {
 	url.BasicDBOperation.PreCommit(euResults, height)
-	if url.generateAcctRoot {
-		url.MsgBroker.Send(actor.MsgAcctHash, url.BasicDBOperation.stateRoot)
-	}
+
 	if url.generateUrlUpdate {
 		keys, values := url.BasicDBOperation.Keys, url.BasicDBOperation.Values
 		keys = codec.Strings(keys).Clone()
@@ -101,27 +99,35 @@ func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) 
 	if url.transactional {
 		url.MsgBroker.Send(actor.MsgTransactionalAddCompleted, "ok")
 	}
+
+	if url.generateApcHandle == "generation" {
+		url.MsgBroker.Send(url.apcHandleName, url.StateStore)
+	}
 }
 
 func (url *GeneralUrl) Commit(height uint64) {
+	if url.generateAcctRoot {
+		url.MsgBroker.Send(actor.MsgAcctHash, url.BasicDBOperation.stateRoot)
+	}
+
 	if !url.inited {
 		url.inited = true
+		if url.generateApcHandle == "generation" {
+			url.MsgBroker.Send(url.apcHandleName, url.StateStore)
+		}
 	} else {
 		url.BasicDBOperation.Commit(height)
 	}
 
-	if url.generateApcHandle {
-		url.MsgBroker.Send(url.apcHandleName, &url.DB)
+	if url.generateApcHandle == "block" {
+		url.MsgBroker.Send(url.apcHandleName, url.StateStore)
 	}
 
-	if url.cached {
-		url.MsgBroker.Send(actor.MsgCached, "")
-	}
 }
 
 func (url *GeneralUrl) Outputs() map[string]int {
 	outputs := make(map[string]int)
-	if url.generateApcHandle {
+	if url.generateApcHandle != "" {
 		outputs[url.apcHandleName] = 1
 	}
 	if url.generateUrlUpdate {
@@ -144,7 +150,7 @@ func (url *GeneralUrl) Config(params map[string]interface{}) {
 	if v, ok := params["generate_apc_handle"]; !ok {
 		panic("parameter not found: generate_apc_handle")
 	} else {
-		url.generateApcHandle = v.(bool)
+		url.generateApcHandle = v.(string)
 	}
 
 	if v, ok := params["generate_url_update"]; !ok {

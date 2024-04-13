@@ -72,10 +72,11 @@ func (schd *Scheduler) Inputs() ([]string, bool) {
 
 func (schd *Scheduler) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgInclusive:        1,
-		actor.MsgExecTime:         1,
-		actor.MsgSpawnedRelations: 1,
-		actor.MsgSchdState:        1,
+		actor.MsgInclusive:             1,
+		actor.MsgExecTime:              1,
+		actor.MsgSpawnedRelations:      1,
+		actor.MsgSchdState:             1,
+		actor.MsgGenerationReapingList: 1,
 	}
 }
 
@@ -132,9 +133,24 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 	schd.context.msgTemplate = msgs[0]
 	schd.context.logger = schd.GetLogger(schd.AddLog(log.LogLevel_Info, "Before first generation"))
 	schd.context.parallelism = schd.parallelism
-	for _, gen := range schd.createGenerations() {
+	gens := schd.createGenerations()
+	for i, gen := range gens {
 		schd.context.onNewGeneration()
-		gen.process()
+		generationList := gen.process()
+		generationIdx := i + 1 //for next generation execute
+		if generationIdx == len(gens) {
+			generationIdx = 0 //for next height
+		}
+		generationList.GenerationIdx = uint32(generationIdx)
+		schd.MsgBroker.Send(actor.MsgGenerationReapingList, generationList)
+	}
+	if len(gens) == 0 {
+		//this is a empty block
+		schd.MsgBroker.Send(actor.MsgGenerationReapingList, &types.InclusiveList{
+			HashList:      []evmCommon.Hash{},
+			Successful:    []bool{},
+			GenerationIdx: 0,
+		})
 	}
 
 	// Send summarized results.
@@ -159,8 +175,9 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 		}
 	}
 	schd.MsgBroker.Send(actor.MsgInclusive, &types.InclusiveList{
-		HashList:   schd.context.executed,
-		Successful: flags,
+		HashList:      schd.context.executed,
+		Successful:    flags,
+		GenerationIdx: 0,
 	})
 	schd.CheckPoint("send inclusive")
 	// Spawned transactions.

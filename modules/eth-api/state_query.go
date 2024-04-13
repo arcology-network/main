@@ -7,10 +7,10 @@ import (
 
 	apifunc "github.com/arcology-network/main/modules/eth-api/backend"
 	mtypes "github.com/arcology-network/main/types"
-	ethdb "github.com/arcology-network/storage-committer/ethstorage"
-	"github.com/arcology-network/storage-committer/interfaces"
 	opadapter "github.com/arcology-network/storage-committer/op"
-	ccdb "github.com/arcology-network/storage-committer/storage"
+	ethdb "github.com/arcology-network/storage-committer/storage/ethstorage"
+	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
+	"github.com/arcology-network/storage-committer/storage/statestore"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 	"go.uber.org/zap"
@@ -23,7 +23,6 @@ var (
 
 type StateQuery struct {
 	actor.WorkerThread
-	// store  *ccdb.EthDataStore
 	ProofCache *ethdb.MerkleProofCache
 }
 
@@ -39,7 +38,6 @@ func NewStateQuery(concurrency int, groupid string) actor.IWorkerEx {
 func (sq *StateQuery) Inputs() ([]string, bool) {
 	return []string{
 		actor.MsgApcHandle,
-		// actor.MsgInitDB,
 	}, true
 }
 
@@ -60,8 +58,8 @@ func (*StateQuery) Stop() {}
 func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
-		case actor.MsgApcHandle: //actor.MsgInitDB: //
-			ddb := (*v.Data.(*interfaces.Datastore)).(*ccdb.StoreRouter)
+		case actor.MsgApcHandle:
+			ddb := v.Data.(*statestore.StateStore).Store().(*stgproxy.StorageProxy)
 			cache := ethdb.NewMerkleProofCache(2, ddb.EthStore().EthDB())
 			sq.ProofCache = cache
 		}
