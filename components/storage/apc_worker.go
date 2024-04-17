@@ -18,14 +18,14 @@ func GetTransitions(euresults []*eushared.EuResult) ([]uint32, []*univaluepk.Uni
 	txIds := make([]uint32, len(euresults))
 	transitionsize := 0
 	for i, euresult := range euresults {
-		transitionsize = transitionsize + len(euresult.Transitions)
+		transitionsize = transitionsize + len(euresult.Trans)
 		txIds[i] = euresult.ID
 	}
 	threadNum := 6
 	transitionses := make([][]*univaluepk.Univalue, threadNum)
 	worker := func(start, end, index int, args ...interface{}) {
 		for i := start; i < end; i++ {
-			transitionses[index] = append(transitionses[index], univaluepk.Univalues{}.Decode(euresults[i].Transitions).(univaluepk.Univalues)...)
+			transitionses[index] = append(transitionses[index], euresults[i].Trans...)
 		}
 	}
 	common.ParallelWorker(len(euresults), threadNum, worker)

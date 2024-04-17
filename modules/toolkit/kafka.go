@@ -6,7 +6,6 @@ import (
 
 	eushared "github.com/arcology-network/eu/shared"
 	commutative "github.com/arcology-network/storage-committer/commutative"
-	univaluepk "github.com/arcology-network/storage-committer/univalue"
 	"github.com/arcology-network/streamer/actor"
 )
 
@@ -47,9 +46,9 @@ func (c *kafka) OnMessageArrived(msgs []*actor.Message) error {
 				data := v.Data.(*eushared.Euresults)
 				if data != nil {
 					for i := range *data {
-						transitions := (*data)[i].Transitions
+						transitions := (*data)[i].Trans
 
-						transitionData := univaluepk.Univalues{}.Decode(transitions).(univaluepk.Univalues)
+						transitionData := transitions //univaluepk.Univalues{}.Decode(transitions).(univaluepk.Univalues)
 						size := 0
 
 						for j := range transitionData {

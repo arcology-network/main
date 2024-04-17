@@ -43,7 +43,6 @@ func (op *BasicDBOperation) Init(stateStore *statestore.StateStore, broker *acto
 }
 
 func (op *BasicDBOperation) Import(transitions []*univaluepk.Univalue) {
-	fmt.Printf("==================main/components/storage/db_handler.go==========transitions Size:%v\n", len(transitions))
 	op.StateStore.Import(transitions)
 }
 
@@ -74,14 +73,16 @@ type DBHandler struct {
 
 	StateStore  *statestore.StateStore
 	state       int
+	importMsg   string
 	commitMsg   string
 	finalizeMsg string
 	op          DBOperation
 }
 
-func NewDBHandler(concurrency int, groupId string, commitMsg, finalizeMsg string, op DBOperation) *DBHandler {
+func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, finalizeMsg string, op DBOperation) *DBHandler {
 	handler := &DBHandler{
 		state:       dbStateUninit,
+		importMsg:   importMsg,
 		commitMsg:   commitMsg,
 		finalizeMsg: finalizeMsg,
 		op:          op,
@@ -91,7 +92,7 @@ func NewDBHandler(concurrency int, groupId string, commitMsg, finalizeMsg string
 }
 
 func (handler *DBHandler) Inputs() ([]string, bool) {
-	msgs := []string{actor.MsgEuResults, handler.commitMsg, handler.finalizeMsg}
+	msgs := []string{handler.importMsg, handler.commitMsg, handler.finalizeMsg}
 	if handler.state == dbStateUninit {
 		msgs = append(msgs, actor.MsgInitDB)
 	}
@@ -132,7 +133,7 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 			handler.state = dbStateDone
 		}
 	case dbStateInit:
-		if msg.Name == actor.MsgEuResults {
+		if msg.Name == handler.importMsg {
 			data := msg.Data.(*eushared.Euresults)
 			t1 := time.Now()
 			_, transitions := GetTransitions(*data)

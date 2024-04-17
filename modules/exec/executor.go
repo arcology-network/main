@@ -6,7 +6,6 @@ import (
 	"runtime"
 
 	"github.com/arcology-network/common-lib/codec"
-	"github.com/arcology-network/common-lib/common"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
@@ -90,6 +89,7 @@ func (exec *Executor) Outputs() map[string]int {
 
 		actor.MsgReceipts:          100, // Exec results.
 		actor.MsgEuResults:         100, // Exec results.
+		actor.MsgNonceEuResults:    100,
 		actor.MsgTxAccessRecords:   100, // Access records for arbitrator.
 		actor.MsgTxsExecuteResults: 1,   // To wake up rpc service.
 	}
@@ -241,6 +241,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	counter := len(results)
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))
 	sendingEuResults := make([]*eushared.EuResult, counter)
+	sendingNonceEuResults := make([]*eushared.EuResult, counter)
 	sendingAccessRecords := make([]*eushared.TxAccessRecords, counter)
 	sendingReceipts := make([]*evmTypes.Receipt, counter)
 	contractAddress := []evmCommon.Address{}
@@ -256,11 +257,9 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	faileds := make([]int, threadNum)
 	contractAddresses := make([][]evmCommon.Address, threadNum)
 	slice.ParallelForeach(results, threadNum, func(i int, result **execution.Result) {
-		accesses := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(importer.ITAccess{})
-		transitions := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(importer.ITTransition{})
+		accesses := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(importer.IPAccess{})
+		transitions := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(importer.IPTransition{})
 
-		// transitions := univaluepk.Univalues(slice.Clone(result.Transitions())).To(importer.ITTransition{})
-		// tms[1] = time.Since(t0)
 		// fmt.Printf("-----------------------------------main/modules/exec/executor.go--------size:%v-----\n", len(transitions))
 		// transitions.Print()
 		// transitions.Print(func(v *univalue.Univalue) bool {
@@ -279,14 +278,33 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		euresult.GasUsed = (*result).Receipt.GasUsed
 		euresult.Status = (*result).Receipt.Status
 		euresult.ID = txids[i]
-		euresult.Transitions = common.IfThen(len(transitions.Keys()) == 0, []byte{}, transitions.Encode())
+		euresult.Trans = transitions
 		sendingEuResults[i] = &euresult
+
+		nonceEuresult := eushared.EuResult{}
+		nonceEuresult.H = string((*result).TxHash[:])
+		nonceEuresult.Status = (*result).Receipt.Status
+		nonceEuresult.ID = txids[i]
+
+		nonceTransactions := slice.CloneIf(transitions, func(v *univaluepk.Univalue) bool {
+			path := *v.GetPath()
+			return path[len(path)-5:] == "nonce"
+		})
+
+		clonedNonceTransactitions := make([]*univaluepk.Univalue, len(nonceTransactions))
+		for i := range clonedNonceTransactitions {
+			clonedNonceTransactitions[i] = nonceTransactions[i].Clone().(*univaluepk.Univalue)
+		}
+
+		nonceEuresult.Trans = clonedNonceTransactitions //univaluepk.Univalues(nonceTransactions).Clone()
+
+		sendingNonceEuResults[i] = &nonceEuresult
 
 		accessRecord := eushared.TxAccessRecords{}
 		accessRecord.Hash = euresult.H
 		accessRecord.ID = txids[i]
 
-		accessRecord.Accesses = common.IfThen(len(accesses.Keys()) == 0, []byte{}, accesses.Encode())
+		accessRecord.Accesses = accesses
 		sendingAccessRecords[i] = &accessRecord
 
 		sendingReceipts[i] = (*result).Receipt
@@ -312,6 +330,10 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		euresults := eushared.Euresults(sendingEuResults)
 		exec.MsgBroker.Send(actor.MsgEuResults, &euresults, exec.height)
 		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult MsgEuResults", zap.Int("euresults", len(euresults)))
+
+		nonceeEuresults := eushared.Euresults(sendingNonceEuResults)
+		exec.MsgBroker.Send(actor.MsgNonceEuResults, &nonceeEuresults, exec.height)
+		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult nonceeEuresults", zap.Int("nonceeEuresults", len(nonceeEuresults)))
 	}
 	responses := ExecutorResponse{
 		Responses:       txsResults,

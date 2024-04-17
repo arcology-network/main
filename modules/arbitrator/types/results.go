@@ -16,7 +16,7 @@ import (
 
 func Decode(ars *eushared.TxAccessRecords) *AccessRecord {
 	record := &AccessRecord{}
-	record.Accesses = univaluepk.Univalues{}.Decode(ars.Accesses).(univaluepk.Univalues) //univaluepk.Univalues{}.DecodeWithMempool(ars.Accesses, uniPool.Get, nil).(univaluepk.Univalues)
+	record.Accesses = ars.Accesses
 	record.TxHash = [32]byte([]byte(ars.Hash))
 	record.TxID = ars.ID
 	// uniPool.Reclaim()
