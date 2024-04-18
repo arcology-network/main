@@ -248,14 +248,13 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	nilAddress := evmCommon.Address{}
 	sendingCallResults := make([][]byte, counter)
 	txsResults := make([]*mtypes.ExecuteResponse, counter)
-	failed := 0
 
 	threadNum := runtime.NumCPU()
 	if len(results) < 100 {
 		threadNum = 1
 	}
-	faileds := make([]int, threadNum)
-	contractAddresses := make([][]evmCommon.Address, threadNum)
+	faileds := make([]int, len(results))
+	contractAddresses := make([]evmCommon.Address, len(results))
 	slice.ParallelForeach(results, threadNum, func(i int, result **execution.Result) {
 		accesses := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(importer.IPAccess{})
 		transitions := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(importer.IPTransition{})
@@ -271,7 +270,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		// accesses.Print()
 
 		if (*result).Receipt.Status == 0 {
-			faileds[i]++
+			faileds[i] = 1
 		}
 		euresult := eushared.EuResult{}
 		euresult.H = string((*result).TxHash[:])
@@ -289,14 +288,11 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		nonceTransactions := slice.CloneIf(transitions, func(v *univaluepk.Univalue) bool {
 			path := *v.GetPath()
 			return path[len(path)-5:] == "nonce"
+		}, func(v *univaluepk.Univalue) *univaluepk.Univalue {
+			return v.Clone().(*univaluepk.Univalue)
 		})
 
-		clonedNonceTransactitions := make([]*univaluepk.Univalue, len(nonceTransactions))
-		for i := range clonedNonceTransactitions {
-			clonedNonceTransactitions[i] = nonceTransactions[i].Clone().(*univaluepk.Univalue)
-		}
-
-		nonceEuresult.Trans = clonedNonceTransactitions //univaluepk.Univalues(nonceTransactions).Clone()
+		nonceEuresult.Trans = nonceTransactions //univaluepk.Univalues(nonceTransactions).Clone()
 
 		sendingNonceEuResults[i] = &nonceEuresult
 
@@ -308,8 +304,10 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		sendingAccessRecords[i] = &accessRecord
 
 		sendingReceipts[i] = (*result).Receipt
+
+		contractAddresses[i] = nilAddress
 		if (*result).Receipt.ContractAddress != nilAddress {
-			contractAddresses[i] = append(contractAddresses[i], (*result).Receipt.ContractAddress)
+			contractAddresses[i] = (*result).Receipt.ContractAddress
 		}
 
 		sendingCallResults[i] = (*result).EvmResult.ReturnData
@@ -320,11 +318,15 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 			GasUsed: euresult.GasUsed,
 		}
 	})
-	contractAddress = slice.Flatten(contractAddresses)
-	for i := range faileds {
-		failed += faileds[i]
-	}
-	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>execute Results", zap.Int("failed", failed))
+
+	contractAddress = slice.CopyIf(contractAddresses, func(hash evmCommon.Address) bool {
+		return hash != nilAddress
+	})
+	failedss := slice.CopyIf(faileds, func(flag int) bool {
+		return flag == 1
+	})
+	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>execute Results", zap.Int("failed", len(failedss)))
+
 	//-----------------------------start sending ------------------------------
 	if !debug {
 		euresults := eushared.Euresults(sendingEuResults)
