@@ -7,7 +7,7 @@ import (
 	"github.com/arcology-network/main/components/storage"
 	strtyp "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
-	"github.com/arcology-network/storage-committer/storage/statestore"
+	statestore "github.com/arcology-network/storage-committer"
 )
 
 type UrlContainerGetRequest struct {

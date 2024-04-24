@@ -40,6 +40,8 @@ type Scheduler struct {
 
 	// Data structures used all the time.
 	contractDict map[evmCommon.Address]struct{}
+
+	generationApcHandlerCh chan int
 }
 
 var (
@@ -51,11 +53,12 @@ func NewScheduler(concurrency int, groupId string) actor.IWorkerEx {
 	initSchdOnce.Do(func() {
 		schdEngine, _ := scheduler.NewScheduler("", false)
 		schd := &Scheduler{
-			schdEngine:    schdEngine,
-			context:       createProcessContext(),
-			transfers:     make([]*eucommon.StandardMessage, 0, 50000),
-			contractCalls: make([]*eucommon.StandardMessage, 0, 50000),
-			contractDict:  make(map[evmCommon.Address]struct{}),
+			schdEngine:             schdEngine,
+			context:                createProcessContext(),
+			transfers:              make([]*eucommon.StandardMessage, 0, 50000),
+			contractCalls:          make([]*eucommon.StandardMessage, 0, 50000),
+			contractDict:           make(map[evmCommon.Address]struct{}),
+			generationApcHandlerCh: make(chan int),
 		}
 		schd.Set(concurrency, groupId)
 		schdInstance = schd
@@ -65,18 +68,19 @@ func NewScheduler(concurrency int, groupId string) actor.IWorkerEx {
 
 func (schd *Scheduler) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgMessagersReaped,
-		actor.MsgBlockStart,
-	}, true
+		actor.CombinedName(actor.MsgMessagersReaped, actor.MsgBlockStart),
+		actor.MsgApcHandle,
+	}, false
 }
 
 func (schd *Scheduler) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgInclusive:             1,
-		actor.MsgExecTime:              1,
-		actor.MsgSpawnedRelations:      1,
-		actor.MsgSchdState:             1,
-		actor.MsgGenerationReapingList: 1,
+		actor.MsgInclusive:                  1,
+		actor.MsgExecTime:                   1,
+		actor.MsgSpawnedRelations:           1,
+		actor.MsgSchdState:                  1,
+		actor.MsgGenerationReapingList:      1,
+		actor.MsgGenerationReapingCompleted: 1,
 	}
 }
 
@@ -112,25 +116,37 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 	})
 
 	var stdMsgs []*eucommon.StandardMessage
-	height := uint64(0)
 	for _, msg := range msgs {
 		switch msg.Name {
-		case actor.MsgBlockStart:
-			schd.context.timestamp = msg.Data.(*actor.BlockStart).Timestamp
-		case actor.MsgMessagersReaped:
+		case actor.MsgApcHandle:
+			// if msg.Height == 0 {
+			// 	return nil
+			// }
+			// schd.generationApcHandlerCh <- 1
+		case actor.CombinedName(actor.MsgMessagersReaped, actor.MsgBlockStart):
+			combined := msg.Data.(*actor.CombinerElements)
+			schd.context.timestamp = combined.Get(actor.MsgBlockStart).Data.(*actor.BlockStart).Timestamp
 			schd.CheckPoint("received messagersReaped")
-			height = msg.Height
-			stdMsgs = msg.Data.([]*eucommon.StandardMessage)
-			fmt.Printf("start new schedule height:%v\n", msg.Height)
+			stdMsgs = combined.Get(actor.MsgMessagersReaped).Data.([]*eucommon.StandardMessage)
+			schd.ProcessMsgs(msgs[0], stdMsgs, msg.Height)
 		}
 	}
+	return nil
+}
 
+func (schd *Scheduler) waitingApcHandler() {
+	schd.CheckPoint("Waiting apchandler .......")
+	<-schd.generationApcHandlerCh
+	schd.CheckPoint("Got apchandler")
+}
+
+func (schd *Scheduler) ProcessMsgs(msg *actor.Message, stdMsgs []*eucommon.StandardMessage, height uint64) error {
 	schd.CheckPoint("start new schedule", zap.Int("messages", len(stdMsgs)))
 	schd.splitMessagesByType(stdMsgs)
 
 	timeStart := time.Now()
 	schd.context.onNewBlock(height)
-	schd.context.msgTemplate = msgs[0]
+	schd.context.msgTemplate = msg
 	schd.context.logger = schd.GetLogger(schd.AddLog(log.LogLevel_Info, "Before first generation"))
 	schd.context.parallelism = schd.parallelism
 	gens := schd.createGenerations()
@@ -143,6 +159,7 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 		}
 		generationList.GenerationIdx = uint32(generationIdx)
 		schd.MsgBroker.Send(actor.MsgGenerationReapingList, generationList)
+		schd.waitingApcHandler()
 	}
 	if len(gens) == 0 {
 		//this is a empty block
@@ -151,13 +168,16 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 			Successful:    []bool{},
 			GenerationIdx: 0,
 		})
+		schd.waitingApcHandler()
 	}
+
+	schd.MsgBroker.Send(actor.MsgGenerationReapingCompleted, 1)
 
 	// Send summarized results.
 	// State changes of Scheduler.
 	conflictL, conflictR, conflictSL, conflictSR := schd.context.conflicts.Format()
 	schdState := &storage.SchdState{
-		Height:                msgs[0].Height,
+		Height:                height,
 		NewContracts:          schd.context.newContracts,
 		ConflictionLefts:      conflictL,
 		ConflictionRights:     conflictR,
@@ -211,6 +231,18 @@ func (schd *Scheduler) SetParallelism(
 	response *mtypes.SetReply,
 ) error {
 	schd.parallelism = request.Parallelism
+	return nil
+}
+
+func (schd *Scheduler) NotifyApchandler(
+	ctx context.Context,
+	request uint64,
+	response *int,
+) error {
+	if request == 0 {
+		return nil
+	}
+	schd.generationApcHandlerCh <- 1
 	return nil
 }
 

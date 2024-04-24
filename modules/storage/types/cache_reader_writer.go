@@ -10,7 +10,7 @@ import (
 	"github.com/holiman/uint256"
 )
 
-func GetBalance(ds interfaces.Datastore, addr string) (*big.Int, error) {
+func GetBalance(ds interfaces.ReadOnlyStore, addr string) (*big.Int, error) {
 	key := getBalancePath(addr)
 	obj, err := ds.Retrive(key, new(commutative.U256))
 	if err != nil {
@@ -26,7 +26,7 @@ func GetBalance(ds interfaces.Datastore, addr string) (*big.Int, error) {
 	// return balance, nil
 	return (&balance).ToBig(), nil
 }
-func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
+func GetNonce(ds interfaces.ReadOnlyStore, addr string) (uint64, error) {
 	obj, err := ds.Retrive(getNoncePath(addr), new(commutative.Uint64))
 	if err != nil || obj == nil {
 		return 0, err
@@ -34,7 +34,7 @@ func GetNonce(ds interfaces.Datastore, addr string) (uint64, error) {
 	nonce := obj.(*commutative.Uint64).Value().(uint64)
 	return uint64(nonce), nil
 }
-func GetCode(ds interfaces.Datastore, addr string) ([]byte, error) {
+func GetCode(ds interfaces.ReadOnlyStore, addr string) ([]byte, error) {
 	obj, err := ds.Retrive(getCodePath(addr), new(noncommutative.Bytes))
 	if err != nil || obj == nil {
 		return []byte{}, err
@@ -43,7 +43,7 @@ func GetCode(ds interfaces.Datastore, addr string) ([]byte, error) {
 	return []byte(bys), nil
 }
 
-func GetStorage(ds interfaces.Datastore, addr, key string) ([]byte, error) {
+func GetStorage(ds interfaces.ReadOnlyStore, addr, key string) ([]byte, error) {
 	path := getStorageKeyPath(addr, key)
 	obj, err := ds.Retrive(path, new(noncommutative.Bytes))
 	if err != nil || obj == nil {

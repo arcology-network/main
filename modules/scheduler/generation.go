@@ -2,6 +2,7 @@ package scheduler
 
 import (
 	"github.com/arcology-network/common-lib/common"
+	"github.com/arcology-network/common-lib/exp/slice"
 	types "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	mtypes "github.com/arcology-network/main/types"
@@ -15,11 +16,11 @@ type generation struct {
 
 func newGeneration(context *processContext, sequences []*mtypes.ExecutingSequence) *generation {
 	for _, seq := range sequences {
-		for i := range seq.Txids {
-			seq.Txids[i] = context.txId
+		for i := range seq.Msgs {
+			seq.Msgs[i].ID = uint64(context.txId)
 			context.txId++
 
-			context.txHash2IdBiMap.Add(seq.Msgs[i].TxHash, seq.Txids[i])
+			context.txHash2IdBiMap.Add(seq.Msgs[i].TxHash, seq.Msgs[i].ID)
 		}
 	}
 	return &generation{
@@ -30,6 +31,8 @@ func newGeneration(context *processContext, sequences []*mtypes.ExecutingSequenc
 
 func (g *generation) process() *types.InclusiveList {
 	executed := g.setMsgProperty()
+	flags := make([]bool, len(executed))
+
 	// Process txs on executors.
 	responses, newContracts := g.context.executor.Run(
 		g.sequences,
@@ -46,8 +49,8 @@ func (g *generation) process() *types.InclusiveList {
 	arbitrateParam := g.makeArbitrateParam(responses)
 	if len(arbitrateParam) <= 1 {
 		return &types.InclusiveList{
-			HashList:   []evmCommon.Hash{},
-			Successful: []bool{},
+			HashList:   executed,
+			Successful: slice.Fill(flags, true),
 		}
 	}
 	conflictedHashes, cpLeft, cpRight := g.context.arbitrator.Do(
@@ -57,7 +60,7 @@ func (g *generation) process() *types.InclusiveList {
 	)
 
 	for i := range cpLeft {
-		ltxhash := g.context.txHash2IdBiMap.GetInverse(cpLeft[i])
+		ltxhash := g.context.txHash2IdBiMap.GetInverse(uint64(cpLeft[i]))
 		leftAddr, ok := g.context.txHash2Callee[ltxhash]
 		if !ok {
 			continue
@@ -67,7 +70,7 @@ func (g *generation) process() *types.InclusiveList {
 			continue
 		}
 
-		rtxhash := g.context.txHash2IdBiMap.GetInverse(cpRight[i])
+		rtxhash := g.context.txHash2IdBiMap.GetInverse(uint64(cpRight[i]))
 		rightAddr, ok := g.context.txHash2Callee[rtxhash]
 		if !ok {
 			continue
@@ -89,7 +92,6 @@ func (g *generation) process() *types.InclusiveList {
 		deletedDict[ch] = struct{}{}
 	}
 
-	flags := make([]bool, len(executed))
 	for i, hash := range executed {
 		if _, ok := deletedDict[hash]; !ok {
 			flags[i] = true

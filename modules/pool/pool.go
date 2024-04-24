@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
-	"github.com/arcology-network/storage-committer/storage/statestore"
+	statestore "github.com/arcology-network/storage-committer"
 	cache "github.com/arcology-network/storage-committer/storage/writecache"
 )
 

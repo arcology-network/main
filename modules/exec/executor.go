@@ -13,7 +13,6 @@ import (
 	"go.uber.org/zap"
 
 	eupk "github.com/arcology-network/eu"
-	"github.com/arcology-network/storage-committer/importer"
 	cache "github.com/arcology-network/storage-committer/storage/writecache"
 	univaluepk "github.com/arcology-network/storage-committer/univalue"
 
@@ -26,7 +25,7 @@ import (
 	mtypes "github.com/arcology-network/main/types"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 
-	"github.com/arcology-network/storage-committer/storage/statestore"
+	statestore "github.com/arcology-network/storage-committer"
 
 	"github.com/arcology-network/common-lib/types"
 )
@@ -221,7 +220,7 @@ func (exec *Executor) startExec() {
 						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
 					}
-					exec.sendResults(results, task.Sequence.Txids, task.Debug)
+					exec.sendResults(results, task.Debug)
 				} else {
 					job := eupk.JobSequence{
 						ID:      uint32(0),
@@ -231,13 +230,13 @@ func (exec *Executor) startExec() {
 						return exec.store.WriteCache
 					}, func(cache *cache.WriteCache) { cache.Clear() }))
 					job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
-					exec.sendResults(job.Results, task.Sequence.Txids, task.Debug)
+					exec.sendResults(job.Results, task.Debug)
 				}
 			}
 		}(index)
 	}
 }
-func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, debug bool) {
+func (exec *Executor) sendResults(results []*execution.Result, debug bool) {
 	counter := len(results)
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))
 	sendingEuResults := make([]*eushared.EuResult, counter)
@@ -256,8 +255,8 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 	faileds := make([]int, len(results))
 	contractAddresses := make([]evmCommon.Address, len(results))
 	slice.ParallelForeach(results, threadNum, func(i int, result **execution.Result) {
-		accesses := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(importer.IPAccess{})
-		transitions := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(importer.IPTransition{})
+		accesses := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(univaluepk.IPAccess{})
+		transitions := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(univaluepk.IPTransition{})
 
 		// fmt.Printf("-----------------------------------main/modules/exec/executor.go--------size:%v-----\n", len(transitions))
 		// transitions.Print()
@@ -276,14 +275,14 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 		euresult.H = string((*result).TxHash[:])
 		euresult.GasUsed = (*result).Receipt.GasUsed
 		euresult.Status = (*result).Receipt.Status
-		euresult.ID = txids[i]
+		euresult.ID = uint32((*result).StdMsg.ID)
 		euresult.Trans = transitions
 		sendingEuResults[i] = &euresult
 
 		nonceEuresult := eushared.EuResult{}
 		nonceEuresult.H = string((*result).TxHash[:])
 		nonceEuresult.Status = (*result).Receipt.Status
-		nonceEuresult.ID = txids[i]
+		nonceEuresult.ID = uint32((*result).StdMsg.ID)
 
 		nonceTransactions := slice.CloneIf(transitions, func(v *univaluepk.Univalue) bool {
 			path := *v.GetPath()
@@ -298,7 +297,7 @@ func (exec *Executor) sendResults(results []*execution.Result, txids []uint32, d
 
 		accessRecord := eushared.TxAccessRecords{}
 		accessRecord.Hash = euresult.H
-		accessRecord.ID = txids[i]
+		accessRecord.ID = uint32((*result).StdMsg.ID)
 
 		accessRecord.Accesses = accesses
 		sendingAccessRecords[i] = &accessRecord

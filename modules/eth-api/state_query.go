@@ -7,10 +7,9 @@ import (
 
 	apifunc "github.com/arcology-network/main/modules/eth-api/backend"
 	mtypes "github.com/arcology-network/main/types"
+	statestore "github.com/arcology-network/storage-committer"
 	opadapter "github.com/arcology-network/storage-committer/op"
 	ethdb "github.com/arcology-network/storage-committer/storage/ethstorage"
-	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
-	"github.com/arcology-network/storage-committer/storage/statestore"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 	"go.uber.org/zap"
@@ -59,7 +58,7 @@ func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
 		case actor.MsgApcHandle:
-			ddb := v.Data.(*statestore.StateStore).Store().(*stgproxy.StorageProxy)
+			ddb := v.Data.(*statestore.StateStore).Store()
 			cache := ethdb.NewMerkleProofCache(2, ddb.EthStore().EthDB())
 			sq.ProofCache = cache
 		}

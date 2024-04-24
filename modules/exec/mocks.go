@@ -6,7 +6,7 @@ import (
 	eushared "github.com/arcology-network/eu/shared"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	mtypes "github.com/arcology-network/main/types"
-	ccurl "github.com/arcology-network/storage-committer"
+	stgcommitter "github.com/arcology-network/storage-committer/committer"
 	"github.com/arcology-network/storage-committer/interfaces"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
@@ -64,17 +64,17 @@ func (m *mockWorker) OnMessageArrived(msgs []*actor.Message) error {
 }
 
 type mockSnapshotDict struct {
-	base *interfaces.Datastore
+	base *interfaces.ReadOnlyStore
 }
 
-func (m *mockSnapshotDict) Reset(snapshot *interfaces.Datastore) {
+func (m *mockSnapshotDict) Reset(snapshot *interfaces.ReadOnlyStore) {
 	m.base = snapshot
 }
 
-func (m *mockSnapshotDict) AddItem(precedingHash evmCommon.Hash, size int, snapshot *interfaces.Datastore) {
+func (m *mockSnapshotDict) AddItem(precedingHash evmCommon.Hash, size int, snapshot *interfaces.ReadOnlyStore) {
 }
 
-func (m *mockSnapshotDict) Query(precedings []*evmCommon.Hash) (*interfaces.Datastore, []*evmCommon.Hash) {
+func (m *mockSnapshotDict) Query(precedings []*evmCommon.Hash) (*interfaces.ReadOnlyStore, []*evmCommon.Hash) {
 	if len(precedings) == 0 {
 		return m.base, nil
 	} else {
@@ -85,9 +85,9 @@ func (m *mockSnapshotDict) Query(precedings []*evmCommon.Hash) (*interfaces.Data
 type mockExecutionImpl struct {
 }
 
-func (m *mockExecutionImpl) Init(eu *eupk.EU, url *ccurl.StateCommitter) {}
+func (m *mockExecutionImpl) Init(eu *eupk.EU, url *stgcommitter.StateCommitter) {}
 
-func (m *mockExecutionImpl) SetDB(db *interfaces.Datastore) {}
+func (m *mockExecutionImpl) SetDB(db *interfaces.ReadOnlyStore) {}
 
 func (m *mockExecutionImpl) Exec(
 	sequence *mtypes.ExecutingSequence,

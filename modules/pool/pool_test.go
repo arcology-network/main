@@ -12,12 +12,11 @@ import (
 	cmntyp "github.com/arcology-network/common-lib/types"
 	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
 	adaptorcommon "github.com/arcology-network/evm-adaptor/eth"
-	ccurl "github.com/arcology-network/storage-committer"
+	statestore "github.com/arcology-network/storage-committer"
 	ccurlcommon "github.com/arcology-network/storage-committer/common"
 	"github.com/arcology-network/storage-committer/commutative"
 	"github.com/arcology-network/storage-committer/interfaces"
 	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
-	"github.com/arcology-network/storage-committer/storage/statestore"
 	cache "github.com/arcology-network/storage-committer/storage/writecache"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -241,7 +240,7 @@ func TestPoolCleanObsolete(t *testing.T) {
 	}
 }
 
-func initdb(path string) (interfaces.Datastore, *badgerpk.ParaBadgerDB) {
+func initdb(path string) (interfaces.ReadOnlyStore, *badgerpk.ParaBadgerDB) {
 	badger := badgerpk.NewParaBadgerDB(path, common.Remainder)
 
 	db := stgproxy.NewStoreProxy().EnableCache()
@@ -250,13 +249,12 @@ func initdb(path string) (interfaces.Datastore, *badgerpk.ParaBadgerDB) {
 	return db, badger
 }
 
-func initAccounts(db interfaces.Datastore, from, to int) {
+func initAccounts(db interfaces.ReadOnlyStore, from, to int) {
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
 	}, func(cache *cache.WriteCache) { cache.Clear() }))
-
+	sstore := statestore.NewStateStore(db.(*stgproxy.StorageProxy))
 	stateDB := adaptorcommon.NewImplStateDB(api)
-	stateCommitter := ccurl.NewStorageCommitter(db)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := from; i < to; i++ {
 		address := evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)})
@@ -265,27 +263,26 @@ func initAccounts(db interfaces.Datastore, from, to int) {
 		stateDB.SetNonce(address, 0)
 	}
 	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()
-	stateCommitter.Import(transitions)
-	stateCommitter.Precommit([]uint32{0})
-	stateCommitter.Commit(0)
+	sstore.Import(transitions)
+	sstore.Precommit([]uint32{0})
+	sstore.Commit(0)
 }
 
-func increaseNonce(db interfaces.Datastore, txs []*cmntyp.StandardTransaction) {
+func increaseNonce(db interfaces.ReadOnlyStore, txs []*cmntyp.StandardTransaction) {
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
 	}, func(cache *cache.WriteCache) { cache.Clear() }))
-
+	sstore := statestore.NewStateStore(db.(*stgproxy.StorageProxy))
 	stateDB := adaptorcommon.NewImplStateDB(api)
-	stateCommitter := ccurl.NewStorageCommitter(db)
 	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := range txs {
 		address := evmCommon.BytesToAddress(txs[i].NativeMessage.From.Bytes())
 		stateDB.SetNonce(address, 0)
 	}
 	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()
-	stateCommitter.Import(transitions)
-	stateCommitter.Precommit([]uint32{0})
-	stateCommitter.Commit(0)
+	sstore.Import(transitions)
+	sstore.Precommit([]uint32{0})
+	sstore.Commit(0)
 }
 
 func genUncheckedTxs(from, to int) []*cmntyp.StandardTransaction {

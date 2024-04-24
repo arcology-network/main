@@ -11,7 +11,7 @@ import (
 )
 
 type ExecMessagers struct {
-	Snapshot *interfaces.Datastore
+	Snapshot *interfaces.ReadOnlyStore
 	Config   *evmAdaptorCommon.Config
 	Sequence *mtypes.ExecutingSequence
 	Debug    bool

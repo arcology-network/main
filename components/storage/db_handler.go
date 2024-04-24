@@ -8,8 +8,8 @@ import (
 	"github.com/arcology-network/streamer/log"
 
 	eushared "github.com/arcology-network/eu/shared"
+	statestore "github.com/arcology-network/storage-committer"
 	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
-	"github.com/arcology-network/storage-committer/storage/statestore"
 	univaluepk "github.com/arcology-network/storage-committer/univalue"
 )
 
@@ -71,28 +71,30 @@ const (
 type DBHandler struct {
 	actor.WorkerThread
 
-	StateStore  *statestore.StateStore
-	state       int
-	importMsg   string
-	commitMsg   string
-	finalizeMsg string
-	op          DBOperation
+	StateStore             *statestore.StateStore
+	state                  int
+	importMsg              string
+	commitMsg              string
+	generationCompletedMsg string
+	finalizeMsg            string
+	op                     DBOperation
 }
 
-func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, finalizeMsg string, op DBOperation) *DBHandler {
+func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, generationCompletedMsg, finalizeMsg string, op DBOperation) *DBHandler {
 	handler := &DBHandler{
-		state:       dbStateUninit,
-		importMsg:   importMsg,
-		commitMsg:   commitMsg,
-		finalizeMsg: finalizeMsg,
-		op:          op,
+		state:                  dbStateUninit,
+		importMsg:              importMsg,
+		commitMsg:              commitMsg,
+		generationCompletedMsg: generationCompletedMsg,
+		finalizeMsg:            finalizeMsg,
+		op:                     op,
 	}
 	handler.Set(concurrency, groupId)
 	return handler
 }
 
 func (handler *DBHandler) Inputs() ([]string, bool) {
-	msgs := []string{handler.importMsg, handler.commitMsg, handler.finalizeMsg}
+	msgs := []string{handler.importMsg, handler.commitMsg, handler.generationCompletedMsg, handler.finalizeMsg}
 	if handler.state == dbStateUninit {
 		msgs = append(msgs, actor.MsgInitDB)
 	}
@@ -109,7 +111,7 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 	} else {
 		if !v.(bool) {
 
-			handler.StateStore = statestore.NewStateStore(stgproxy.NewStoreProxy().EnableCache())
+			handler.StateStore = statestore.NewStateStore(stgproxy.NewStoreProxy())
 
 			handler.op.Init(handler.StateStore, handler.MsgBroker)
 			handler.state = dbStateDone
@@ -131,6 +133,7 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 
 			handler.op.Init(handler.StateStore, handler.MsgBroker)
 			handler.state = dbStateDone
+			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateDone>>>>>>>>")
 		}
 	case dbStateInit:
 		if msg.Name == handler.importMsg {
@@ -153,7 +156,10 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 			handler.AddLog(log.LogLevel_Info, "Before PreCommit.")
 			handler.op.PreCommit(data, msg.Height)
 			handler.AddLog(log.LogLevel_Info, "After PreCommit.")
+
+		} else if msg.Name == handler.generationCompletedMsg {
 			handler.state = dbStateDone
+			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateDone >>>>>>>>")
 		}
 	case dbStateDone:
 		if msg.Name == handler.finalizeMsg {
@@ -161,6 +167,7 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 			handler.op.Commit(msg.Height)
 			handler.AddLog(log.LogLevel_Info, "After Commit.")
 			handler.state = dbStateInit
+			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateInit >>>>>>>>")
 		}
 	}
 	return nil
@@ -169,7 +176,7 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 func (handler *DBHandler) GetStateDefinitions() map[int][]string {
 	return map[int][]string{
 		dbStateUninit: {actor.MsgInitDB},
-		dbStateInit:   {actor.MsgEuResults, handler.commitMsg},
+		dbStateInit:   {actor.MsgEuResults, handler.commitMsg, handler.generationCompletedMsg},
 		dbStateDone:   {actor.MsgEuResults, handler.finalizeMsg},
 	}
 }

@@ -22,7 +22,7 @@ import (
 )
 
 var (
-	db          interfaces.Datastore
+	db          interfaces.ReadOnlyStore
 	coinbase    = evmCommon.BytesToAddress([]byte("coinbase"))
 	coreAddress evmCommon.Address
 )

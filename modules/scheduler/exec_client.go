@@ -71,7 +71,6 @@ func (client *ExecClient) Run(
 					Sequences: []*mtypes.ExecutingSequence{
 						{
 							Msgs:     sequence.Msgs[i:end],
-							Txids:    sequence.Txids[i:end],
 							Parallel: true,
 						},
 					},

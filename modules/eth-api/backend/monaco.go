@@ -349,11 +349,12 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 						{
 							TxHash: hash,
 							Native: &message,
+							ID:     0,
 						},
 					},
 					Parallel:   true,
 					SequenceId: hash,
-					Txids:      []uint32{0},
+					// Txids:      []uint32{0},
 				},
 			},
 			Height:        0,

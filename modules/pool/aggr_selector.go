@@ -11,7 +11,7 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
-	"github.com/arcology-network/storage-committer/storage/statestore"
+	statestore "github.com/arcology-network/storage-committer"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"

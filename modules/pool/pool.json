@@ -2,7 +2,7 @@
     "settings": {
         "prometheus_listen_addr": ":19012",
         "envs": {
-            "generate_apc_handle": true,
+            "generate_apc_handle": "block",
             "generate_url_update": false,
             "generate_acct_root": false,
             "init_db": false,

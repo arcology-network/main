@@ -28,8 +28,8 @@ import (
 	mtypes "github.com/arcology-network/main/types"
 	univaluepk "github.com/arcology-network/storage-committer/univalue"
 
+	statestore "github.com/arcology-network/storage-committer"
 	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
-	"github.com/arcology-network/storage-committer/storage/statestore"
 )
 
 type Initializer struct {
@@ -115,7 +115,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 
 		// db = ccdb.NewLevelDBDataStore(i.storage_db_path)
 
-		db := stgproxy.NewStoreProxy().EnableCache()
+		db := stgproxy.NewStoreProxy() //.EnableCache()
 		db.Inject(RootPrefix, commutative.NewPath())
 		store = statestore.NewStateStore(db)
 
@@ -206,9 +206,8 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 }
 
 func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis, height uint64) (*statestore.StateStore, evmCommon.Hash) {
-	db := stgproxy.NewStoreProxy().EnableCache()
+	db := stgproxy.NewStoreProxy()
 	stateStore := statestore.NewStateStore(db)
-
 	db.Inject(RootPrefix, commutative.NewPath())
 
 	transitions := i.createTransitions(db, genesis.Alloc)
@@ -222,7 +221,7 @@ func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis, height uint6
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-func (i *Initializer) createTransitions(db interfaces.Datastore, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
+func (i *Initializer) createTransitions(db interfaces.ReadOnlyStore, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
 	batch := 10
 	addresses := make([]evmCommon.Address, 0, batch)
 	index := 0
@@ -241,7 +240,7 @@ func (i *Initializer) createTransitions(db interfaces.Datastore, genesisAlloc ev
 	return transitions
 }
 
-func getTransition(db interfaces.Datastore, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
+func getTransition(db interfaces.ReadOnlyStore, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
 	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 		return cache.NewWriteCache(db, 32, 1)
 	}, func(cache *cache.WriteCache) { cache.Clear() }))

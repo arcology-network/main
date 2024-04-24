@@ -22,7 +22,7 @@ type processContext struct {
 	txHash2Callee map[evmCommon.Hash]evmCommon.Address
 	txHash2Sign   map[evmCommon.Hash][4]byte
 
-	txHash2IdBiMap *cmncmn.BiMap[evmCommon.Hash, uint32]
+	txHash2IdBiMap *cmncmn.BiMap[evmCommon.Hash, uint64]
 	txHash2Gas     map[evmCommon.Hash]uint64
 
 	executed    []evmCommon.Hash
@@ -47,7 +47,7 @@ func createProcessContext() *processContext {
 	return &processContext{
 		txHash2Callee:  make(map[evmCommon.Hash]evmCommon.Address),
 		txHash2Sign:    make(map[evmCommon.Hash][4]byte),
-		txHash2IdBiMap: cmncmn.NewBiMap[evmCommon.Hash, uint32](),
+		txHash2IdBiMap: cmncmn.NewBiMap[evmCommon.Hash, uint64](),
 		txHash2Gas:     make(map[evmCommon.Hash]uint64),
 
 		deletedDict: make(map[evmCommon.Hash]struct{}),
@@ -70,7 +70,7 @@ func (c *processContext) init(execBatchSize int) {
 func (c *processContext) onNewBlock(height uint64) {
 	c.txHash2Callee = make(map[evmCommon.Hash]evmCommon.Address)
 	c.txHash2Sign = make(map[evmCommon.Hash][4]byte)
-	c.txHash2IdBiMap = cmncmn.NewBiMap[evmCommon.Hash, uint32]()
+	c.txHash2IdBiMap = cmncmn.NewBiMap[evmCommon.Hash, uint64]()
 	c.txHash2Gas = make(map[evmCommon.Hash]uint64)
 	c.executed = c.executed[:0]
 	c.deletedDict = make(map[evmCommon.Hash]struct{})

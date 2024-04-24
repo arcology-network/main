@@ -139,7 +139,7 @@ func runExecClientTestCase(
 	for i := range msgs {
 		msgs[i] = &eucommon.StandardMessage{}
 	}
-	ids := make([]uint32, len(msgs))
+	// ids := make([]uint32, len(msgs))
 	client := NewExecClient(executors, 100)
 	client.Run(
 		// map[evmCommon.Hash]*schtyp.Message{
@@ -151,7 +151,7 @@ func runExecClientTestCase(
 			{
 				Msgs:     msgs,
 				Parallel: true,
-				Txids:    ids,
+				// Txids:    ids,
 			},
 		},
 		new(big.Int),
