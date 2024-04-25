@@ -58,7 +58,7 @@ func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
 		case actor.MsgApcHandle:
-			ddb := v.Data.(*statestore.StateStore).Store()
+			ddb := v.Data.(*statestore.StateStore).Backend()
 			cache := ethdb.NewMerkleProofCache(2, ddb.EthStore().EthDB())
 			sq.ProofCache = cache
 		}

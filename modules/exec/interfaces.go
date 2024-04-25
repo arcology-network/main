@@ -6,8 +6,8 @@ import (
 	eucommon "github.com/arcology-network/eu/common"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	mtypes "github.com/arcology-network/main/types"
-	stgcommitter "github.com/arcology-network/storage-committer/committer"
 	"github.com/arcology-network/storage-committer/interfaces"
+	stgcommitter "github.com/arcology-network/storage-committer/storage/committer"
 	"github.com/arcology-network/streamer/actor"
 )
 
