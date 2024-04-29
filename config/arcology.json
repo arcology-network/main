@@ -62,7 +62,7 @@
         "tx_unsigner": {
             "chain_id": "__global__"
         },
-        "-nonce_url-stateful_euresult_aggr_selector4pool": {
+        "-nonce_url-stateless_euresult_aggr_selector4pool": {
             "nonce_url": {
                 "generate_apc_handle": "block",
                 "generate_url_update": false,
@@ -71,7 +71,7 @@
                 "cached": false,
                 "transactional": false
             },
-            "stateful_euresult_aggr_selector4pool": {
+            "stateless_euresult_aggr_selector4pool": {
                 "output": "commitNonceUrl"
             }
         },
