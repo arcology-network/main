@@ -12,12 +12,12 @@ func init() {
 	actor.Factory.Register("nonce_url", func(concurrency int, groupId string) actor.IWorkerEx {
 		return storage.NewDBHandler(concurrency, groupId, actor.MsgNonceEuResults, actor.MsgCommitNonceUrl, actor.MsgGenerationReapingCompleted, actor.MsgBlockEnd, storage.NewGeneralUrl(actor.MsgNonceReady))
 	})
-	actor.Factory.Register("stateful_euresult_aggr_selector4pool", func(concurrency int, groupId string) actor.IWorkerEx {
-		return aggr.NewStatefulAggrSelector(
+	actor.Factory.Register("stateless_euresult_aggr_selector4pool", func(concurrency int, groupId string) actor.IWorkerEx {
+		return aggr.NewAggrSelector(
 			concurrency,
 			groupId,
 			actor.MsgNonceEuResults,
-			actor.MsgInclusive,
+			actor.MsgGenerationReapingList,
 			actor.MsgBlockEnd,
 			&aggr.EuResultOperation{},
 		)

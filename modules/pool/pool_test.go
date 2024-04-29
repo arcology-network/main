@@ -23,7 +23,7 @@ import (
 )
 
 func intDb() *statestore.StateStore {
-	db := stgproxy.NewStoreProxy().EnableCache()
+	db := stgproxy.NewStoreProxy("test").EnableCache()
 	return statestore.NewStateStore(db)
 }
 
@@ -243,7 +243,7 @@ func TestPoolCleanObsolete(t *testing.T) {
 func initdb(path string) (interfaces.ReadOnlyStore, *badgerpk.ParaBadgerDB) {
 	badger := badgerpk.NewParaBadgerDB(path, common.Remainder)
 
-	db := stgproxy.NewStoreProxy().EnableCache()
+	db := stgproxy.NewStoreProxy("test").EnableCache()
 
 	db.Inject(ccurlcommon.ETH10_ACCOUNT_PREFIX, commutative.NewPath())
 	return db, badger

@@ -99,17 +99,12 @@ func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) 
 	if url.transactional {
 		url.MsgBroker.Send(actor.MsgTransactionalAddCompleted, "ok")
 	}
-
 	if url.generateApcHandle == "generation" {
 		url.MsgBroker.Send(url.apcHandleName, url.StateStore)
 	}
 }
 
 func (url *GeneralUrl) Commit(height uint64) {
-	if url.generateAcctRoot {
-		url.MsgBroker.Send(actor.MsgAcctHash, url.BasicDBOperation.stateRoot)
-	}
-
 	if !url.inited {
 		url.inited = true
 		if url.generateApcHandle == "generation" {
@@ -118,11 +113,27 @@ func (url *GeneralUrl) Commit(height uint64) {
 	} else {
 		url.BasicDBOperation.Commit(height)
 	}
-
 	if url.generateApcHandle == "block" {
 		url.MsgBroker.Send(url.apcHandleName, url.StateStore)
 	}
 
+	if url.generateAcctRoot {
+		// nilroot := [32]byte{}
+		// getCounter := 0
+		// for {
+		// 	root := url.StateStore.Backend().EthStore().GetRootHash(height)
+		// 	getCounter++
+		// 	fmt.Printf("=====================components/storage/general_url.go==root:%x,height:%v,getCounter:%v\n", root, height, getCounter)
+		// 	if nilroot == root {
+		// 		time.Sleep(time.Millisecond * 1000)
+		// 	} else {
+		// 		url.MsgBroker.Send(actor.MsgAcctHash, root)
+		// 		break
+		// 	}
+		// }
+		url.MsgBroker.Send(actor.MsgAcctHash, [32]byte{})
+
+	}
 }
 
 func (url *GeneralUrl) Outputs() map[string]int {

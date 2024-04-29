@@ -23,12 +23,8 @@ type DBOperation interface {
 }
 
 type BasicDBOperation struct {
-	// DB interfaces.Datastore
-	// StateCommitter *ccurl.StateCommitter
 	StateStore *statestore.StateStore
 	MsgBroker  *actor.MessageWrapper
-
-	stateRoot [32]byte
 
 	Keys   []string
 	Values []interface{}
@@ -43,11 +39,12 @@ func (op *BasicDBOperation) Init(stateStore *statestore.StateStore, broker *acto
 }
 
 func (op *BasicDBOperation) Import(transitions []*univaluepk.Univalue) {
+	fmt.Printf("==================components/storage/db_handler.go  Import transitions size:%v\n", len(transitions))
 	op.StateStore.Import(transitions)
 }
 
 func (op *BasicDBOperation) PreCommit(euResults []*eushared.EuResult, height uint64) {
-	op.stateRoot = op.StateStore.Precommit(GetTransitionIds(euResults))
+	op.StateStore.Precommit(GetTransitionIds(euResults))
 	op.Keys = []string{}
 	op.Values = []interface{}{}
 }
@@ -106,12 +103,18 @@ func (handler *DBHandler) Outputs() map[string]int {
 }
 
 func (handler *DBHandler) Config(params map[string]interface{}) {
+	dbpath := ""
+	if v, ok := params["dbpath"]; !ok {
+		panic("parameter not found: dbpath")
+	} else {
+		dbpath = v.(string)
+	}
 	if v, ok := params["init_db"]; !ok {
 		panic("parameter not found: init_db")
 	} else {
 		if !v.(bool) {
 
-			handler.StateStore = statestore.NewStateStore(stgproxy.NewStoreProxy())
+			handler.StateStore = statestore.NewStateStore(stgproxy.NewStoreProxy(dbpath))
 
 			handler.op.Init(handler.StateStore, handler.MsgBroker)
 			handler.state = dbStateDone
