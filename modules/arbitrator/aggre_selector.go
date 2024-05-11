@@ -34,7 +34,6 @@ func (a *EuResultsAggreSelector) Inputs() ([]string, bool) {
 	return []string{
 		actor.MsgBlockCompleted,
 		actor.MsgArbitrateReapinglist,
-		actor.MsgInclusive,
 		actor.MsgPreProcessedEuResults,
 	}, false
 }
@@ -57,14 +56,9 @@ func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
 		reapinglist := msgs[0].Data.(*ctypes.ReapingList)
 		result, _ := a.ag.OnListReceived(reapinglist)
 		a.SendMsg(result)
-	case actor.MsgInclusive:
-		inclusive := msgs[0].Data.(*ctypes.InclusiveList)
-		inclusive.Mode = ctypes.InclusiveMode_Results
-		a.ag.OnClearListReceived(inclusive)
+
 	case actor.MsgPreProcessedEuResults:
 		data := msgs[0].Data.([]*types.AccessRecord)
-		// tim, nums := a.arbitrator.Insert(data)
-		// a.AddLog(log.LogLevel_Debug, "insert accessRecord***********", zap.Int("counts", nums), zap.Durations("time", tim))
 
 		if len(data) > 0 {
 			for _, v := range data {

@@ -17,6 +17,7 @@ type DBOperation interface {
 	Init(stateStore *statestore.StateStore, broker *actor.MessageWrapper)
 	Import(transitions []*univaluepk.Univalue)
 	PreCommit(euResults []*eushared.EuResult, height uint64)
+	PreCommitCompleted(height uint64)
 	Commit(height uint64)
 	Outputs() map[string]int
 	Config(params map[string]interface{})
@@ -26,8 +27,9 @@ type BasicDBOperation struct {
 	StateStore *statestore.StateStore
 	MsgBroker  *actor.MessageWrapper
 
-	Keys   []string
-	Values []interface{}
+	Keys     []string
+	Values   []interface{}
+	AcctRoot [32]byte
 }
 
 func (op *BasicDBOperation) Init(stateStore *statestore.StateStore, broker *actor.MessageWrapper) {
@@ -36,6 +38,7 @@ func (op *BasicDBOperation) Init(stateStore *statestore.StateStore, broker *acto
 	op.MsgBroker = broker
 	op.Keys = []string{}
 	op.Values = []interface{}{}
+	op.AcctRoot = [32]byte{}
 }
 
 func (op *BasicDBOperation) Import(transitions []*univaluepk.Univalue) {
@@ -47,6 +50,9 @@ func (op *BasicDBOperation) PreCommit(euResults []*eushared.EuResult, height uin
 	op.StateStore.Precommit(GetTransitionIds(euResults))
 	op.Keys = []string{}
 	op.Values = []interface{}{}
+}
+func (op *BasicDBOperation) PreCommitCompleted(height uint64) {
+	op.AcctRoot = op.StateStore.Backend().EthStore().LatestWorldTrieRoot()
 }
 
 func (op *BasicDBOperation) Commit(height uint64) {
@@ -161,6 +167,7 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 			handler.AddLog(log.LogLevel_Info, "After PreCommit.")
 
 		} else if msg.Name == handler.generationCompletedMsg {
+			handler.op.PreCommitCompleted(msg.Height)
 			handler.state = dbStateDone
 			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateDone >>>>>>>>")
 		}
