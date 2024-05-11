@@ -14,6 +14,7 @@ import (
 
 	eupk "github.com/arcology-network/eu"
 	cache "github.com/arcology-network/storage-committer/storage/writecache"
+	"github.com/arcology-network/storage-committer/univalue"
 	univaluepk "github.com/arcology-network/storage-committer/univalue"
 
 	"github.com/arcology-network/common-lib/exp/mempool"
@@ -40,7 +41,8 @@ const (
 	execStateWaitBlockStart = iota
 	execStateWaitGenerationReady
 	execStateReady
-	execStateProcessing
+	execStateInit
+	execStateNextHeight
 )
 
 type Executor struct {
@@ -60,15 +62,17 @@ type Executor struct {
 
 	chainId *big.Int
 
-	store *statestore.StateStore
+	store     *statestore.StateStore
+	stateInit bool
 }
 
 func NewExecutor(concurrency int, groupId string) actor.IWorkerEx {
 	exec := &Executor{
-		state:    execStateWaitGenerationReady,
-		height:   math.MaxUint64,
-		taskCh:   make(chan *exetyp.ExecMessagers, concurrency),
-		resultCh: make(chan *ExecutorResponse, concurrency),
+		state:     execStateInit,
+		height:    math.MaxUint64,
+		taskCh:    make(chan *exetyp.ExecMessagers, concurrency),
+		resultCh:  make(chan *ExecutorResponse, concurrency),
+		stateInit: false,
 	}
 	exec.Set(concurrency, groupId)
 	return exec
@@ -80,6 +84,8 @@ func (exec *Executor) Inputs() ([]string, bool) {
 		actor.CombinedName(actor.MsgBlockStart, actor.MsgParentInfo), // Got block context.
 		actor.MsgTxsToExecute,          // Txs to run.
 		actor.MsgGenerationReapingList, //update generationIdx
+		actor.MsgApcHandleInit,
+		actor.MsgBlockEnd,
 	}, false
 }
 
@@ -114,12 +120,20 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 			Coinbase:   &coinbase,
 			Height:     combined.Get(actor.MsgBlockStart).Height,
 		}
-		exec.state = execStateWaitGenerationReady
+		if !exec.stateInit {
+			exec.stateInit = true
+			exec.state = execStateReady
+		} else {
+			exec.state = execStateWaitGenerationReady
+		}
 		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into execStateWaitGenerationReady")
 	case execStateWaitGenerationReady:
 		exec.store = msg.Data.(*statestore.StateStore)
 		exec.state = execStateReady
 		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into execStateReady")
+	case execStateInit:
+		exec.store = msg.Data.(*statestore.StateStore)
+		exec.state = execStateNextHeight
 	case execStateReady:
 		switch msg.Name {
 		case actor.MsgTxsToExecute:
@@ -140,12 +154,14 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 				exec.state = execStateWaitGenerationReady
 				exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into execStateWaitGenerationReady")
 			} else {
-				exec.state = execStateWaitBlockStart
-				exec.height = msg.Height + 1
-				exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into execStateWaitBlockStart")
+				exec.state = execStateNextHeight
+				exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into execStateNextHeight", zap.Uint64("exec.height", exec.height), zap.Uint64("msg.Height", msg.Height))
 			}
-
 		}
+	case execStateNextHeight:
+		exec.height = msg.Height + 1
+		exec.state = execStateWaitBlockStart
+		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into execStateWaitBlockStart", zap.Uint64("exec.height", exec.height), zap.Uint64("msg.Height", msg.Height))
 	}
 	return nil
 }
@@ -161,6 +177,12 @@ func (exec *Executor) GetStateDefinitions() map[int][]string {
 		execStateReady: {
 			actor.MsgTxsToExecute,
 			actor.MsgGenerationReapingList,
+		},
+		execStateInit: {
+			actor.MsgApcHandleInit,
+		},
+		execStateNextHeight: {
+			actor.MsgBlockEnd,
 		},
 	}
 }
@@ -209,6 +231,7 @@ func (exec *Executor) startExec() {
 				exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>start execute", zap.Bool("Sequence.Parallel", task.Sequence.Parallel), zap.Int("txs counter", len(task.Sequence.Msgs)))
 				if task.Sequence.Parallel {
 					results := make([]*execution.Result, 0, len(task.Sequence.Msgs))
+					mtransitions := make(map[uint32][]*univalue.Univalue, len(task.Sequence.Msgs))
 					for j := range task.Sequence.Msgs {
 						job := eupk.JobSequence{
 							ID:      uint32(j),
@@ -219,8 +242,9 @@ func (exec *Executor) startExec() {
 						}, func(cache *cache.WriteCache) { cache.Clear() }))
 						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
+						mtransitions[uint32(task.Sequence.Msgs[j].ID)] = job.Results[0].Transitions()
 					}
-					exec.sendResults(results, task.Debug)
+					exec.sendResults(results, mtransitions, task.Debug)
 				} else {
 					job := eupk.JobSequence{
 						ID:      uint32(0),
@@ -230,13 +254,25 @@ func (exec *Executor) startExec() {
 						return exec.store.WriteCache
 					}, func(cache *cache.WriteCache) { cache.Clear() }))
 					job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
-					exec.sendResults(job.Results, task.Debug)
+					transitions := job.GetClearedTransition()
+					mtransitions := exec.parseResults(transitions)
+					exec.sendResults(job.Results, mtransitions, task.Debug)
 				}
 			}
 		}(index)
 	}
 }
-func (exec *Executor) sendResults(results []*execution.Result, debug bool) {
+func (exec *Executor) parseResults(alltransitions []*univalue.Univalue) map[uint32][]*univalue.Univalue {
+	mTransitions := make(map[uint32][]*univalue.Univalue, len(alltransitions))
+	for i := range alltransitions {
+		id := alltransitions[i].GetTx()
+		mTransitions[id] = append(mTransitions[id], alltransitions[i])
+	}
+
+	return mTransitions
+}
+
+func (exec *Executor) sendResults(results []*execution.Result, mTransitions map[uint32][]*univalue.Univalue, debug bool) {
 	counter := len(results)
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))
 	sendingEuResults := make([]*eushared.EuResult, counter)
@@ -255,11 +291,13 @@ func (exec *Executor) sendResults(results []*execution.Result, debug bool) {
 	faileds := make([]int, len(results))
 	contractAddresses := make([]evmCommon.Address, len(results))
 	slice.ParallelForeach(results, threadNum, func(i int, result **execution.Result) {
-		accesses := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(univaluepk.IPAccess{})
-		transitions := univaluepk.Univalues(slice.Clone((*result).Transitions())).To(univaluepk.IPTransition{})
+
+		rawtransitions := mTransitions[uint32((*result).StdMsg.ID)]
+		accesses := univaluepk.Univalues(slice.Clone(rawtransitions)).To(univaluepk.IPAccess{})
+		transitions := univaluepk.Univalues(rawtransitions).To(univaluepk.IPTransition{})
 
 		// fmt.Printf("-----------------------------------main/modules/exec/executor.go--------size:%v-----\n", len(transitions))
-		// transitions.Print()
+		// univaluepk.Univalues(transitions).Print()
 		// transitions.Print(func(v *univalue.Univalue) bool {
 		// 	//return v.Writes() > 0 || v.DeltaWrites() > 0
 		// 	return true
