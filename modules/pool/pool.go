@@ -7,7 +7,7 @@ import (
 	ccmap "github.com/arcology-network/common-lib/container/map"
 	"github.com/arcology-network/common-lib/exp/mempool"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	adaptorcommon "github.com/arcology-network/evm-adaptor/eth"
+	adaptorcommon "github.com/arcology-network/evm-adaptor/pathbuilder"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 

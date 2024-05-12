@@ -10,7 +10,7 @@ import (
 
 	"github.com/arcology-network/common-lib/storage/transactional"
 	"github.com/arcology-network/consensus-engine/state"
-	adaptorcommon "github.com/arcology-network/evm-adaptor/eth"
+	adaptorcommon "github.com/arcology-network/evm-adaptor/pathbuilder"
 	"github.com/arcology-network/main/modules/core"
 	"github.com/arcology-network/storage-committer/commutative"
 	"github.com/arcology-network/storage-committer/interfaces"

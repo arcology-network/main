@@ -11,7 +11,7 @@ import (
 	badgerpk "github.com/arcology-network/common-lib/storage/badger"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
-	adaptorcommon "github.com/arcology-network/evm-adaptor/eth"
+	adaptorcommon "github.com/arcology-network/evm-adaptor/pathbuilder"
 	statestore "github.com/arcology-network/storage-committer"
 	ccurlcommon "github.com/arcology-network/storage-committer/common"
 	"github.com/arcology-network/storage-committer/commutative"
