@@ -240,7 +240,7 @@ func (exec *Executor) startExec() {
 						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 							return exec.store.WriteCache
 						}, func(cache *cache.WriteCache) { cache.Clear() }))
-						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
+						job.Run(task.Config, api.Cascade(), GetThreadD(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
 						mtransitions[uint32(task.Sequence.Msgs[j].ID)] = job.Results[0].Transitions()
 					}
@@ -253,7 +253,7 @@ func (exec *Executor) startExec() {
 					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 						return exec.store.WriteCache
 					}, func(cache *cache.WriteCache) { cache.Clear() }))
-					job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
+					job.Run(task.Config, api.Cascade(), GetThreadD(job.StdMsgs[0].TxHash))
 					transitions := job.GetClearedTransition()
 					mtransitions := exec.parseResults(transitions)
 					exec.sendResults(job.Results, mtransitions, task.Debug)
@@ -356,10 +356,10 @@ func (exec *Executor) sendResults(results []*execution.Result, mTransitions map[
 		}
 	})
 
-	contractAddress = slice.CopyIf(contractAddresses, func(hash evmCommon.Address) bool {
+	contractAddress = slice.CopyIf(contractAddresses, func(_ int, hash evmCommon.Address) bool {
 		return hash != nilAddress
 	})
-	failedss := slice.CopyIf(faileds, func(flag int) bool {
+	failedss := slice.CopyIf(faileds, func(_ int, flag int) bool {
 		return flag == 1
 	})
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>execute Results", zap.Int("failed", len(failedss)))

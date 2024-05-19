@@ -115,7 +115,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 
 		// db = ccdb.NewLevelDBDataStore(i.storage_db_path)
 
-		db := stgproxy.NewStoreProxy(i.storage_db_path) //.EnableCache()
+		db := stgproxy.NewLevelDBStoreProxy(i.storage_db_path) //.EnableCache()
 		db.Inject(RootPrefix, commutative.NewPath())
 		store = statestore.NewStateStore(db)
 
@@ -206,7 +206,7 @@ func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
 }
 
 func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis, height uint64) (*statestore.StateStore, evmCommon.Hash) {
-	db := stgproxy.NewStoreProxy(i.storage_db_path)
+	db := stgproxy.NewLevelDBStoreProxy(i.storage_db_path)
 	stateStore := statestore.NewStateStore(db)
 	db.Inject(RootPrefix, commutative.NewPath())
 

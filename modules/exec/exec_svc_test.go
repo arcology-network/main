@@ -132,7 +132,7 @@ func setup(tb testing.TB) (*brokerpk.StatefulStreamer, *mockWorker) {
 	// 	ccdb.Rlp{}.Decode,
 	// )
 
-	db := stgproxy.NewStoreProxy("test").EnableCache() //committerStorage.NewHybirdStore()
+	db := stgproxy.NewLevelDBStoreProxy("test").EnableCache() //committerStorage.NewHybirdStore()
 
 	mock.MsgBroker.Send(
 		actor.CombinedName(actor.MsgApcHandle, actor.MsgCached),

@@ -120,7 +120,7 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 	} else {
 		if !v.(bool) {
 
-			handler.StateStore = statestore.NewStateStore(stgproxy.NewStoreProxy(dbpath))
+			handler.StateStore = statestore.NewStateStore(stgproxy.NewLevelDBStoreProxy(dbpath))
 
 			handler.op.Init(handler.StateStore, handler.MsgBroker)
 			handler.state = dbStateDone
