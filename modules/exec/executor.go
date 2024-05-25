@@ -81,7 +81,7 @@ func NewExecutor(concurrency int, groupId string) actor.IWorkerEx {
 func (exec *Executor) Inputs() ([]string, bool) {
 	return []string{
 		actor.MsgApcHandle, // Init DB on every generation.
-		actor.CombinedName(actor.MsgBlockStart, actor.MsgParentInfo), // Got block context.
+		actor.CombinedName(actor.MsgBlockStart, actor.MsgParentInfo, actor.MsgObjectCached), // Got block context.
 		actor.MsgTxsToExecute,          // Txs to run.
 		actor.MsgGenerationReapingList, //update generationIdx
 		actor.MsgApcHandleInit,
@@ -169,7 +169,7 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 func (exec *Executor) GetStateDefinitions() map[int][]string {
 	return map[int][]string{
 		execStateWaitBlockStart: {
-			actor.CombinedName(actor.MsgBlockStart, actor.MsgParentInfo),
+			actor.CombinedName(actor.MsgBlockStart, actor.MsgParentInfo, actor.MsgObjectCached),
 		},
 		execStateWaitGenerationReady: {
 			actor.MsgApcHandle,
@@ -240,7 +240,7 @@ func (exec *Executor) startExec() {
 						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 							return exec.store.WriteCache
 						}, func(cache *cache.WriteCache) { cache.Clear() }))
-						job.Run(task.Config, api.Cascade(), GetThreadD(job.StdMsgs[0].TxHash))
+						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
 						mtransitions[uint32(task.Sequence.Msgs[j].ID)] = job.Results[0].Transitions()
 					}
@@ -253,7 +253,7 @@ func (exec *Executor) startExec() {
 					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 						return exec.store.WriteCache
 					}, func(cache *cache.WriteCache) { cache.Clear() }))
-					job.Run(task.Config, api.Cascade(), GetThreadD(job.StdMsgs[0].TxHash))
+					job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 					transitions := job.GetClearedTransition()
 					mtransitions := exec.parseResults(transitions)
 					exec.sendResults(job.Results, mtransitions, task.Debug)

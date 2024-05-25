@@ -19,11 +19,17 @@ type GeneralUrl struct {
 
 	generateApcHandle string
 	generateUrlUpdate bool
-	generateAcctRoot  bool
-	inited            bool
-	cached            bool
-	transactional     bool
-	apcHandleName     string
+	// generateAcctRoot  bool
+	inited        bool
+	cached        bool
+	transactional bool
+	objectCached  bool
+	apcHandleName string
+
+	outDBMsg                  string
+	outGenerationCompletedMsg string
+	outPrecommitMsg           string
+	outCommitMsg              string
 }
 
 type UrlUpdate struct {
@@ -31,14 +37,19 @@ type UrlUpdate struct {
 	EncodedValues [][]byte
 }
 
-func NewGeneralUrl(apcHandleName string) *GeneralUrl {
+func NewGeneralUrl(apcHandleName, outDBMsg, outGenerationCompletedMsg, outPrecommitMsg, outCommitMsg string) *GeneralUrl {
 	return &GeneralUrl{
-		apcHandleName: apcHandleName,
+		apcHandleName:             apcHandleName,
+		outDBMsg:                  outDBMsg,
+		outGenerationCompletedMsg: outGenerationCompletedMsg,
+		outPrecommitMsg:           outPrecommitMsg,
+		outCommitMsg:              outCommitMsg,
 	}
 }
 
 func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) {
 	url.BasicDBOperation.PreCommit(euResults, height)
+	url.MsgBroker.Send(url.outPrecommitMsg, "")
 
 	if url.generateUrlUpdate {
 		keys, values := url.BasicDBOperation.Keys, url.BasicDBOperation.Values
@@ -104,11 +115,13 @@ func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) 
 	}
 }
 
-func (url *GeneralUrl) PreCommitCompleted(height uint64) {
-	url.BasicDBOperation.PreCommitCompleted(height)
-	if url.generateAcctRoot {
-		url.MsgBroker.Send(actor.MsgAcctHash, url.AcctRoot)
-	}
+func (url *GeneralUrl) PreCommitCompleted() {
+	url.BasicDBOperation.PreCommitCompleted()
+	url.MsgBroker.Send(url.outGenerationCompletedMsg, "")
+}
+
+func (url *GeneralUrl) InitAsync() {
+	url.MsgBroker.Send(url.outDBMsg, url.BasicDBOperation.StateStore)
 }
 
 func (url *GeneralUrl) Commit(height uint64) {
@@ -117,9 +130,17 @@ func (url *GeneralUrl) Commit(height uint64) {
 		if url.generateApcHandle == "generation" {
 			url.MsgBroker.Send(actor.MsgApcHandleInit, url.StateStore)
 		}
+		if url.objectCached {
+			url.MsgBroker.Send(actor.MsgObjectCached, "")
+		}
 	} else {
 		url.BasicDBOperation.Commit(height)
+		url.MsgBroker.Send(url.outCommitMsg, "")
+		if url.objectCached {
+			url.MsgBroker.Send(actor.MsgObjectCached, "")
+		}
 	}
+
 	if url.generateApcHandle == "block" {
 		url.MsgBroker.Send(url.apcHandleName, url.StateStore)
 	}
@@ -135,16 +156,23 @@ func (url *GeneralUrl) Outputs() map[string]int {
 	if url.generateUrlUpdate {
 		outputs[actor.MsgUrlUpdate] = 1
 	}
-	if url.generateAcctRoot {
-		outputs[actor.MsgAcctHash] = 1
-	}
+	// if url.generateAcctRoot {
+	// 	outputs[actor.MsgAcctHash] = 1
+	// }
 	if url.cached {
 		outputs[actor.MsgCached] = 1
+	}
+	if url.objectCached {
+		outputs[actor.MsgObjectCached] = 1
 	}
 	if url.transactional {
 		outputs[actor.MsgTransactionalAddCompleted] = 1
 	}
 
+	outputs[url.outDBMsg] = 1
+	outputs[url.outGenerationCompletedMsg] = 1
+	outputs[url.outPrecommitMsg] = 1
+	outputs[url.outCommitMsg] = 1
 	return outputs
 }
 
@@ -161,16 +189,21 @@ func (url *GeneralUrl) Config(params map[string]interface{}) {
 		url.generateUrlUpdate = v.(bool)
 	}
 
-	if v, ok := params["generate_acct_root"]; !ok {
-		panic("parameter not found: generate_acct_root")
-	} else {
-		url.generateAcctRoot = v.(bool)
-	}
+	// if v, ok := params["generate_acct_root"]; !ok {
+	// 	panic("parameter not found: generate_acct_root")
+	// } else {
+	// 	url.generateAcctRoot = v.(bool)
+	// }
 
 	if v, ok := params["cached"]; !ok {
 		panic("parameter not found: cached")
 	} else {
 		url.cached = v.(bool)
+	}
+	if v, ok := params["object_cached"]; !ok {
+		panic("parameter not found: object_cached")
+	} else {
+		url.objectCached = v.(bool)
 	}
 
 	if v, ok := params["transactional"]; !ok {

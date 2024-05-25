@@ -15,10 +15,12 @@ import (
 
 type DBOperation interface {
 	Init(stateStore *statestore.StateStore, broker *actor.MessageWrapper)
+	InitAsync()
 	Import(transitions []*univaluepk.Univalue)
 	PreCommit(euResults []*eushared.EuResult, height uint64)
-	PreCommitCompleted(height uint64)
+	PreCommitCompleted()
 	Commit(height uint64)
+	// ObjectCommit(height uint64)
 	Outputs() map[string]int
 	Config(params map[string]interface{})
 }
@@ -33,7 +35,6 @@ type BasicDBOperation struct {
 }
 
 func (op *BasicDBOperation) Init(stateStore *statestore.StateStore, broker *actor.MessageWrapper) {
-	// op.DB = db
 	op.StateStore = stateStore
 	op.MsgBroker = broker
 	op.Keys = []string{}
@@ -47,16 +48,21 @@ func (op *BasicDBOperation) Import(transitions []*univaluepk.Univalue) {
 }
 
 func (op *BasicDBOperation) PreCommit(euResults []*eushared.EuResult, height uint64) {
-	op.StateStore.Precommit(GetTransitionIds(euResults))
+	op.StateStore.Finalize(GetTransitionIds(euResults))
+	op.StateStore.SyncPrecommit()
 	op.Keys = []string{}
 	op.Values = []interface{}{}
 }
-func (op *BasicDBOperation) PreCommitCompleted(height uint64) {
-	op.AcctRoot = op.StateStore.Backend().EthStore().LatestWorldTrieRoot()
+
+func (op *BasicDBOperation) PreCommitCompleted() {
+
+}
+func (op *BasicDBOperation) InitAsync() {
+
 }
 
 func (op *BasicDBOperation) Commit(height uint64) {
-	op.StateStore.Commit(height)
+	op.StateStore.SyncCommit(height)
 }
 
 func (op *BasicDBOperation) Outputs() map[string]int {
@@ -67,6 +73,7 @@ func (op *BasicDBOperation) Config(params map[string]interface{}) {}
 
 const (
 	dbStateUninit = iota
+	dbStateAsyncinit
 	dbStateInit
 	dbStateDone
 )
@@ -80,16 +87,18 @@ type DBHandler struct {
 	commitMsg              string
 	generationCompletedMsg string
 	finalizeMsg            string
+	initDBAsyncMsg         string
 	op                     DBOperation
 }
 
-func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, generationCompletedMsg, finalizeMsg string, op DBOperation) *DBHandler {
+func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, generationCompletedMsg, finalizeMsg, initDBAsyncMsg string, op DBOperation) *DBHandler {
 	handler := &DBHandler{
 		state:                  dbStateUninit,
 		importMsg:              importMsg,
 		commitMsg:              commitMsg,
 		generationCompletedMsg: generationCompletedMsg,
 		finalizeMsg:            finalizeMsg,
+		initDBAsyncMsg:         initDBAsyncMsg,
 		op:                     op,
 	}
 	handler.Set(concurrency, groupId)
@@ -97,7 +106,7 @@ func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, generat
 }
 
 func (handler *DBHandler) Inputs() ([]string, bool) {
-	msgs := []string{handler.importMsg, handler.commitMsg, handler.generationCompletedMsg, handler.finalizeMsg}
+	msgs := []string{handler.importMsg, handler.commitMsg, handler.generationCompletedMsg, handler.finalizeMsg, handler.initDBAsyncMsg}
 	if handler.state == dbStateUninit {
 		msgs = append(msgs, actor.MsgInitDB)
 	}
@@ -105,7 +114,9 @@ func (handler *DBHandler) Inputs() ([]string, bool) {
 }
 
 func (handler *DBHandler) Outputs() map[string]int {
-	return handler.op.Outputs()
+	outputs := handler.op.Outputs()
+	outputs[handler.initDBAsyncMsg] = 1
+	return outputs
 }
 
 func (handler *DBHandler) Config(params map[string]interface{}) {
@@ -123,7 +134,7 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 			handler.StateStore = statestore.NewStateStore(stgproxy.NewLevelDBStoreProxy(dbpath))
 
 			handler.op.Init(handler.StateStore, handler.MsgBroker)
-			handler.state = dbStateDone
+			handler.state = dbStateAsyncinit
 		}
 	}
 	handler.op.Config(params)
@@ -131,8 +142,17 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 
 func (handler *DBHandler) OnStart() {
 	handler.op.Init(handler.StateStore, handler.MsgBroker)
+	// handler.MsgBroker.Send(handler.initDBAsyncMsg, "")
 }
 
+func (handler *DBHandler) InitMsgs() []*actor.Message {
+	return []*actor.Message{
+		{
+			Name:   handler.initDBAsyncMsg,
+			Height: 0,
+		},
+	}
+}
 func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	switch handler.state {
@@ -141,8 +161,13 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 			handler.StateStore = msg.Data.(*statestore.StateStore) //statestore.NewStateStore(handler.db)
 
 			handler.op.Init(handler.StateStore, handler.MsgBroker)
-			handler.state = dbStateDone
+			handler.state = dbStateAsyncinit
 			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateDone>>>>>>>>")
+		}
+	case dbStateAsyncinit:
+		if msg.Name == handler.initDBAsyncMsg {
+			handler.op.InitAsync()
+			handler.state = dbStateDone
 		}
 	case dbStateInit:
 		if msg.Name == handler.importMsg {
@@ -167,7 +192,7 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 			handler.AddLog(log.LogLevel_Info, "After PreCommit.")
 
 		} else if msg.Name == handler.generationCompletedMsg {
-			handler.op.PreCommitCompleted(msg.Height)
+			handler.op.PreCommitCompleted()
 			handler.state = dbStateDone
 			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateDone >>>>>>>>")
 		}
@@ -185,9 +210,10 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 
 func (handler *DBHandler) GetStateDefinitions() map[int][]string {
 	return map[int][]string{
-		dbStateUninit: {actor.MsgInitDB},
-		dbStateInit:   {actor.MsgEuResults, handler.commitMsg, handler.generationCompletedMsg},
-		dbStateDone:   {actor.MsgEuResults, handler.finalizeMsg},
+		dbStateUninit:    {actor.MsgInitDB},
+		dbStateAsyncinit: {handler.initDBAsyncMsg},
+		dbStateInit:      {actor.MsgEuResults, handler.commitMsg, handler.generationCompletedMsg},
+		dbStateDone:      {actor.MsgEuResults, handler.finalizeMsg},
 	}
 }
 
