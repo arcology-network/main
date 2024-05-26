@@ -6,28 +6,32 @@
             "generate_url_update": true,
             "generate_acct_root": true,
             "init_db": true,
-            "cached":true,
-            "transactional": true,
-            "no_op":true
+	        "dbpath": "../arcology/urlfiles",
+            "cached": true,
+            "transactional": true
         }
     },
     "actors": {
-        "-general_url-stateful_euresult_aggr_selector": {
+        "-general_url-stateless_euresult_aggr_selector": {
             "general_url": {
                 "generate_apc_handle": "generation",
                 "generate_url_update": "__env__",
-                "generate_acct_root": "__env__",
                 "init_db": "__env__",
+		        "dbpath": "__env__",
                 "cached":"__env__",
+		        "object_cached": true,
                 "transactional":"__env__"
             },
-            "stateful_euresult_aggr_selector": {
+            "stateless_euresult_aggr_selector": {
                 "output": "executed"
             }
         },
+        "general_url_async": {
+            "generate_acct_root": "__env__"
+        },
         "storage.initializer": {
-            "genesis_file": "/home/weizp/work/configs/genesis.json",
-            "storage_db_path": "/home/weizp/monacos/urlfiles"
+            "genesis_file": "../configs/genesis.json",
+	        "dbpath": "__env__"
         },
         "stateful_receipt_aggr_selector": {},
         "storage": {
@@ -43,14 +47,9 @@
             "prometheus_fetch_step":"3",
             "coefficient":130
         },
-        "storage.statesyncstore": {
-            "slice_db_root": "/home/weizp/monacos/slices/",
-            "sync_point_root": "/home/weizp/monacos/sync_point/",
-            "sync_point_interval": 65536
-        },
+        
         "storage.metrics": {},
         "exec_rpc": {},
-        "snapshot_maker": {},
         "executor": {
             "chain_id": "__global__"
         },
@@ -66,21 +65,24 @@
             "nonce_url": {
                 "generate_apc_handle": "block",
                 "generate_url_update": false,
-                "generate_acct_root": false,
                 "init_db": false,
+		        "dbpath": "../arcology/dbnonce",
                 "cached": false,
+		        "object_cached": false,
                 "transactional": false
             },
             "stateless_euresult_aggr_selector4pool": {
                 "output": "commitNonceUrl"
             }
         },
+        "nonce_url_async": {
+            "generate_acct_root": false
+       	},
         "pool_aggr_selector": {
-            "max_reap_size": 10,
+            "max_reap_size": 20000,
             "obsolete_time": 100,
             "close_check": true,
-            "chain_id": "__global__",
-            "no_op":"__env__"
+            "chain_id": "__global__"
         },
         "local_tx_receiver": {},
         "tx_dup_checker": {
@@ -90,25 +92,25 @@
         "receipt-hashing.calculator": {},
         "eth_api": {
             "filter_timeout_mins": 5,
-            "key_file": "/home/weizp/work/genesis_accounts_100.txt",
-            "json_rpc_port": 7545,
+            "key_file": "../configs/keys.txt",
+            "json_rpc_port": 8545,
             "auth_rpc_port": 8551,
-            "jwt_file": "/home/weizp/work/configs/jwt.txt",
+            "jwt_file": "../configs/jwt.txt",
             "debug": false,
             "retry_time": 60,
             "protocol_version": 10002,
             "hash_rate": 998,
             "chain_id": "__global__"
         },
-        "state_query":{},
         "coinbase":{},
+        "state_query":{},
         "make_block": {},
         "core.initializer": {},
-        "apc_switcher": {},
+	"apc_switcher": {},
         "scheduler": {
             "batch_size": 500,
-            "parallelism": 4,
-            "conflict_file": "/home/weizp/work/conflictlist"
+            "parallelism": 16,
+            "conflict_file": "../configs/conflictlist"
         },
         "consensus": {
             "max_tx_num": 1000,
@@ -142,7 +144,7 @@
             "cluster_name": "__global__"
         },
         "storage.schdstore": {
-            "root": "/home/weizp/monacos/schdstore/"
+            "root": "../arcology/schdstore/"
         },
         "storage.cacheblockstore": {}
     },
@@ -178,6 +180,10 @@
             "service": "gateway_rpc"
         },
         {
+            "name": "pool",
+            "service": "pool"
+        },
+        {
             "name": "scheduler",
             "service": "scheduler"
         },
@@ -190,7 +196,7 @@
             "service": "storage.tmblockstore",
             "params":{
                 "storage_tmblock_name": "tmblockstore",
-                "storage_tmblock_dir": "/home/weizp/monacos"
+                "storage_tmblock_dir": "../arcology"
             }
         },
         {
@@ -201,8 +207,8 @@
             "name": "receiptstore",
             "service": "storage.receiptstore",
             "params":{
-                "storage_receipt_path": "/home/weizp/monacos/receiptfiles",
-                "cache_receipt_size": 100,
+                "storage_receipt_path": "../arcology/receiptfiles",
+                "cache_receipt_size": 1000,
                 "cache_exec_concurrency": 8
             }
         },
@@ -210,15 +216,15 @@
             "name": "blockstore",
             "service": "storage.blockstore",
             "params":{
-                "storage_block_path": "/home/weizp/monacos/blockfiles",
-                "cache_block_size": 100
+                "storage_block_path": "../arcology/blockfiles",
+                "cache_block_size": 1000
             }
         },
         {
             "name": "statestore",
             "service": "storage.statestore",
             "params":{
-                "storage_state_path": "/home/weizp/monacos/statefile"
+                "storage_state_path": "../arcology/statefile"
             }
         },
         {
@@ -234,8 +240,8 @@
             "name": "indexerstore",
             "service": "storage.indexerstore",
             "params":{
-                "storage_index_path": "/home/weizp/monacos/indexfiles",
-                "cache_index_size": 100,
+                "storage_index_path": "../arcology/indexfiles",
+                "cache_index_size": 1000,
                 "storage_index_shards": 128,
                 "storage_index_depts": 2
             }
@@ -252,14 +258,14 @@
             "name": "tmstatestore",
             "service": "storage.tmstatestore",
             "params": {
-                "tm_state_store_dir": "/home/weizp/monacos/"
+                "tm_state_store_dir": "../arcology/"
             }
         },
         {
             "name": "transactionalstore",
             "service": "storage.transactionalstore",
             "params": {
-                "root": "/home/weizp/monacos/transactional/",
+                "root": "../arcology/transactional/",
                 "optimization": true
             }
         },

@@ -35,8 +35,6 @@ type AggrSelector struct {
 	opAdaptor *OpAdaptor
 	chainID   *big.Int
 	resultch  chan *mtypes.BlockResult
-
-	noOp bool //no opnode
 }
 
 const (
@@ -100,7 +98,6 @@ func (a *AggrSelector) Config(params map[string]interface{}) {
 	}
 	a.chainID = params["chain_id"].(*big.Int)
 	a.opAdaptor = NewOpAdaptor(a.maxReap, a.chainID)
-	a.noOp = params["no_op"].(bool)
 }
 
 func (a *AggrSelector) OnStart() {
@@ -114,7 +111,7 @@ func (a *AggrSelector) reap(height uint64) {
 }
 
 func (a *AggrSelector) returnResult(result *mtypes.BlockResult) {
-	if !a.noOp {
+	if !mtypes.RunAsL1 {
 		a.resultch <- result
 	}
 
@@ -151,7 +148,7 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 			msgs := msg.Data.(*types.StdTransactionPack)
 			a.pool.Add(msgs.Txs, msgs.Src, msg.Height)
 		case actor.MsgReapCommand:
-			if a.noOp {
+			if mtypes.RunAsL1 {
 				a.MsgBroker.Send(actor.MsgOpCommand, &mtypes.OpRequest{
 					Withdrawals:  evmTypes.Withdrawals{},
 					Transactions: []*types.StandardTransaction{},

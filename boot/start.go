@@ -9,6 +9,7 @@ import (
 
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/main/config"
+	"github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"
 	"github.com/arcology-network/streamer/log"
@@ -27,7 +28,7 @@ func init() {
 	flags.String("global", "./config/global.json", "config file for global")
 	flags.String("app", "./config/pool.json", "config file for application")
 	flags.String("kafka", "./config/kafka.json", "config file for kafka")
-
+	flags.Bool("runAsL1", false, "run as l1 node")
 }
 
 func startCmd(cmd *cobra.Command, args []string) error {
@@ -36,6 +37,8 @@ func startCmd(cmd *cobra.Command, args []string) error {
 	globalConfigFile := viper.GetString("global") //os.Args[1]
 	kafkaConfigFile := viper.GetString("kafka")   //os.Args[2]
 	appConfigFile := viper.GetString("app")       // os.Args[3]
+
+	types.RunAsL1 = viper.GetBool("runAsL1")
 
 	globalConfig := config.LoadGlobalConfig(globalConfigFile)
 	kafkaConfig := config.LoadKafkaConfig(kafkaConfigFile)
