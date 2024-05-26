@@ -1,14 +1,10 @@
 module github.com/arcology-network/main
 
-go 1.21.3
-
-toolchain go1.21.4
+go 1.22
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.29.0
 
 replace github.com/deliveroo/jsonrpc-go => github.com/cody-yang/jsonrpc-go v1.0.1-0.20211228012857-b14ec8026f6b
-
-// replace github.com/ethereum/go-ethereum v1.13.1 => github.com/ethereum-optimism/op-geth v1.101304.0-rc.2.0.20231030225546-cd491fa3b588
 
 // replace github.com/deliveroo/jsonrpc-go => ../../cody-yang/jsonrpc-go/
 
@@ -18,7 +14,7 @@ replace github.com/arcology-network/common-lib => ../common-lib/
 
 replace github.com/arcology-network/concurrenturl => ../concurrenturl/
 
-replace github.com/arcology-network/vm-adaptor => ../vm-adaptor/
+replace github.com/arcology-network/evm-adaptor => ../evm-adaptor/
 
 replace github.com/arcology-network/consensus-engine => ../consensus-engine/
 
@@ -26,17 +22,17 @@ replace github.com/ethereum/go-ethereum v1.13.1 => ../concurrent-evm/
 
 replace github.com/arcology-network/eu => ../eu
 
-require (
-	github.com/arcology-network/common-lib v1.9.0
-	github.com/arcology-network/concurrenturl v1.9.0
-	github.com/arcology-network/consensus-engine v1.9.0
-	github.com/arcology-network/eu v0.0.0-20231224215632-ab78ac9f31af
-	github.com/arcology-network/streamer v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/vm-adaptor v0.0.0-00010101000000-000000000000
-)
+replace github.com/arcology-network/storage-committer => ../storage-committer/
+
+require github.com/arcology-network/streamer v0.0.0-00010101000000-000000000000
 
 require (
 	github.com/BurntSushi/toml v1.3.2
+	github.com/arcology-network/common-lib v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/consensus-engine v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/eu v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/evm-adaptor v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/storage-committer v0.0.0-00010101000000-000000000000
 	github.com/ethereum/go-ethereum v1.13.1
 	github.com/go-kit/kit v0.10.0
 	github.com/go-zookeeper/zk v1.0.2
@@ -47,7 +43,7 @@ require (
 	github.com/spf13/viper v1.14.0
 	github.com/tendermint/tm-db v0.6.4
 	go.uber.org/zap v1.21.0
-	golang.org/x/crypto v0.17.0
+	golang.org/x/crypto v0.20.0
 )
 
 require (
@@ -78,12 +74,12 @@ require (
 	github.com/cheekybits/genny v1.0.0 // indirect
 	github.com/cockroachdb/errors v1.11.1 // indirect
 	github.com/cockroachdb/logtags v0.0.0-20230118201751-21c54148d20b // indirect
-	github.com/cockroachdb/pebble v0.0.0-20231208175357-58bdc725addc // indirect
+	github.com/cockroachdb/pebble v1.1.0 // indirect
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/coreos/etcd v3.3.13+incompatible // indirect
 	github.com/coreos/go-semver v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/deckarep/golang-set/v2 v2.1.0 // indirect
+	github.com/deckarep/golang-set/v2 v2.6.0 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
 	github.com/dgraph-io/badger v1.6.2 // indirect
 	github.com/dgraph-io/badger/v2 v2.2007.2 // indirect
@@ -95,7 +91,6 @@ require (
 	github.com/eapache/go-xerial-snappy v0.0.0-20180814174437-776d5712da21 // indirect
 	github.com/eapache/queue v1.1.0 // indirect
 	github.com/edwingeng/doublejump v0.0.0-20200219153503-7cfc0ed6e836 // indirect
-	github.com/elliotchance/orderedmap v1.5.1 // indirect
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
@@ -107,7 +102,6 @@ require (
 	github.com/go-lintpack/lintpack v0.5.2 // indirect
 	github.com/go-logfmt/logfmt v0.5.1 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
-	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/go-toolsmith/astcast v1.0.0 // indirect
 	github.com/go-toolsmith/astcopy v1.0.0 // indirect
 	github.com/go-toolsmith/astequal v1.0.0 // indirect
@@ -136,8 +130,8 @@ require (
 	github.com/golangci/revgrep v0.0.0-20180526074752-d9c87f5ffaf0 // indirect
 	github.com/golangci/unconvert v0.0.0-20180507085042-28b1c447d1f4 // indirect
 	github.com/google/btree v1.1.2 // indirect
-	github.com/google/uuid v1.3.0 // indirect
-	github.com/gorilla/websocket v1.4.2 // indirect
+	github.com/google/uuid v1.6.0 // indirect
+	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/gostaticanalysis/analysisutil v0.0.0-20190318220348-4088753ea4d3 // indirect
 	github.com/grandcat/zeroconf v1.0.0 // indirect
 	github.com/gtank/merlin v0.1.1 // indirect
@@ -254,7 +248,7 @@ require (
 	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
+	golang.org/x/sys v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.16.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -288,7 +282,7 @@ require (
 	github.com/tendermint/tendermint v0.34.8
 	github.com/tyler-smith/go-bip32 v1.0.0
 	github.com/tyler-smith/go-bip39 v1.1.0
-	golang.org/x/net v0.19.0 // indirect
+	golang.org/x/net v0.21.0 // indirect
 	gopkg.in/jcmturner/gokrb5.v7 v7.5.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0
 )
@@ -302,9 +296,10 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
 	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
 	github.com/deepmap/oapi-codegen v1.6.0 // indirect
-	github.com/ethereum-optimism/superchain-registry/superchain v0.0.0-20231030223232-e16eae11e492 // indirect
+	github.com/ethereum-optimism/superchain-registry/superchain v0.0.0-20240227051544-1ec5013384e8 // indirect
 	github.com/ethereum/c-kzg-4844 v0.4.0 // indirect
 	github.com/fjl/memsize v0.0.0-20190710130421-bcb5799ab5e5 // indirect
+	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
 	github.com/graph-gophers/graphql-go v1.3.0 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
