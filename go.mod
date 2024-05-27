@@ -28,10 +28,10 @@ require github.com/arcology-network/streamer v0.0.0-00010101000000-000000000000
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/arcology-network/common-lib v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/common-lib v1.9.1-0.20240526090033-4c2ee0f20f15
 	github.com/arcology-network/consensus-engine v0.0.0-00010101000000-000000000000
 	github.com/arcology-network/eu v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/evm-adaptor v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/evm-adaptor v1.9.1-0.20240526092000-4f22a0702216
 	github.com/arcology-network/storage-committer v0.0.0-00010101000000-000000000000
 	github.com/ethereum/go-ethereum v1.13.1
 	github.com/go-kit/kit v0.10.0
