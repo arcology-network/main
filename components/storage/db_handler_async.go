@@ -41,6 +41,8 @@ type DBHandlerAsync struct {
 	commitMsg              string
 
 	generateAcctRoot bool
+
+	taskCh chan *actor.Message
 }
 
 func NewDBHandlerAsync(concurrency int, groupId string, dbhandle, precommitMsg, commitMsg, generationCompletedMsg string) *DBHandlerAsync {
@@ -50,6 +52,7 @@ func NewDBHandlerAsync(concurrency int, groupId string, dbhandle, precommitMsg, 
 		precommitMsg:           precommitMsg,
 		commitMsg:              commitMsg,
 		generationCompletedMsg: generationCompletedMsg,
+		taskCh:                 make(chan *actor.Message, 20),
 	}
 	handler.Set(concurrency, groupId)
 	return handler
@@ -78,37 +81,45 @@ func (handler *DBHandlerAsync) Config(params map[string]interface{}) {
 }
 
 func (handler *DBHandlerAsync) OnStart() {
+	go func() {
+		for {
+			msg := <-handler.taskCh
 
+			if msg.Name == handler.precommitMsg {
+				handler.AddLog(log.LogLevel_Info, "Before Precommit Async.")
+				handler.StateStore.AsyncPrecommit()
+				handler.AddLog(log.LogLevel_Info, "After Precommit Async.")
+			} else if msg.Name == handler.generationCompletedMsg {
+				if handler.generateAcctRoot {
+					handler.MsgBroker.Send(actor.MsgAcctHash, handler.StateStore.Backend().EthStore().LatestWorldTrieRoot(), msg.Height)
+				}
+				handler.state = dbStateCommit
+				handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateCommit >>>>>>>>")
+			} else if msg.Name == handler.commitMsg {
+				handler.AddLog(log.LogLevel_Info, "Before Commit Async.")
+				handler.StateStore.AsyncCommit(msg.Height)
+				handler.AddLog(log.LogLevel_Info, "After Commit Async.")
+				handler.state = dbStatePrecommit
+				handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStatePrecommit >>>>>>>>")
+			}
+
+		}
+	}()
 }
 
 func (handler *DBHandlerAsync) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
-	switch handler.state {
-	case dbStateWaitInit:
+	if handler.state == dbStateWaitInit {
 		if msg.Name == handler.dbhandle {
 			handler.StateStore = msg.Data.(*statestore.StateStore)
 			handler.state = dbStatePrecommit
 			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStatePrecommit>>>>>>>>")
 		}
-	case dbStatePrecommit:
-		if msg.Name == handler.precommitMsg {
-			handler.AddLog(log.LogLevel_Info, "Before Precommit Async.")
-			handler.StateStore.AsyncPrecommit()
-			handler.AddLog(log.LogLevel_Info, "After Precommit Async.")
-		} else if msg.Name == handler.generationCompletedMsg {
-			if handler.generateAcctRoot {
-				handler.MsgBroker.Send(actor.MsgAcctHash, handler.StateStore.Backend().EthStore().LatestWorldTrieRoot())
-			}
-			handler.state = dbStateCommit
-			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateCommit >>>>>>>>")
-		}
-	case dbStateCommit:
-		if msg.Name == handler.commitMsg {
-			handler.AddLog(log.LogLevel_Info, "Before Commit Async.")
-			handler.StateStore.AsyncCommit(msg.Height)
-			handler.AddLog(log.LogLevel_Info, "After Commit Async.")
-			handler.state = dbStatePrecommit
-			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStatePrecommit >>>>>>>>")
+	} else {
+		if msg.Name == handler.precommitMsg ||
+			msg.Name == handler.generationCompletedMsg ||
+			msg.Name == handler.commitMsg {
+			handler.taskCh <- msg
 		}
 	}
 	return nil
