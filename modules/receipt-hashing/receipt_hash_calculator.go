@@ -18,16 +18,15 @@
 package receipthashing
 
 import (
+	"time"
+
 	"github.com/arcology-network/common-lib/types"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
 	"go.uber.org/zap"
-)
-
-const (
-	actCostgas uint64 = 21000
 )
 
 type CalculateRoothash struct {
@@ -47,9 +46,10 @@ func (cr *CalculateRoothash) Inputs() ([]string, bool) {
 
 func (cr *CalculateRoothash) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgRcptHash: 1,
-		actor.MsgGasUsed:  1,
-		actor.MsgBloom:    1,
+		actor.MsgRcptHash:     1,
+		actor.MsgGasUsed:      1,
+		actor.MsgBloom:        1,
+		actor.MsgTpsGasBurned: 1,
 	}
 }
 
@@ -79,20 +79,28 @@ func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 		}
 	}
 	cr.CheckPoint("start calculate rcpthash")
-	hash, bloom, gas := cr.gatherReceipts(inclusiveList, selectedReceipts)
+	hash, bloom, gas, successfulTxs := cr.gatherReceipts(inclusiveList, selectedReceipts)
 	cr.MsgBroker.Send(actor.MsgRcptHash, &hash)
 	cr.MsgBroker.Send(actor.MsgGasUsed, gas)
 	cr.MsgBroker.Send(actor.MsgBloom, bloom)
+
+	cr.MsgBroker.Send(actor.MsgTpsGasBurned, &mtypes.TPSGasBurned{
+		TotalTxs:      uint64(len(inclusiveList.HashList)),
+		SuccessfulTxs: uint64(successfulTxs),
+		GasUsed:       gas,
+		Timestamp:     time.Now().UnixMilli(),
+	})
+
 	cr.CheckPoint("rcpthash calculate completed", zap.Uint64("gas", gas))
 	return nil
 }
 
-func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, receipts []*evmTypes.Receipt) (evmCommon.Hash, evmTypes.Bloom, uint64) {
+func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, receipts []*evmTypes.Receipt) (evmCommon.Hash, evmTypes.Bloom, uint64, int) {
 	var gasused uint64 = 0
 	nilroot := evmTypes.EmptyReceiptsHash
 	bloom := evmTypes.Bloom{}
 	if inclusiveList == nil || receipts == nil {
-		return nilroot, bloom, 0
+		return nilroot, bloom, 0, 0
 	}
 
 	receiptslist := map[evmCommon.Hash]*evmTypes.Receipt{}
@@ -100,9 +108,11 @@ func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, 
 		receiptslist[recp.TxHash] = recp
 	}
 
+	successfulTxs := 0
 	selectedReceipts := make([]*evmTypes.Receipt, 0, len(receipts))
 	for i, hash := range inclusiveList.HashList {
 		if inclusiveList.Successful[i] {
+			successfulTxs = successfulTxs + 1
 			if rcpt, ok := receiptslist[hash]; ok {
 				if rcpt != nil {
 					selectedReceipts = append(selectedReceipts, rcpt)
@@ -117,5 +127,5 @@ func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, 
 		receiptHash = evmTypes.DeriveSha(evmTypes.Receipts(selectedReceipts), trie.NewStackTrie(nil))
 		bloom = evmTypes.CreateBloom(receipts)
 	}
-	return receiptHash, bloom, gasused
+	return receiptHash, bloom, gasused, successfulTxs
 }

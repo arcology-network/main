@@ -15,13 +15,12 @@
  *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
-package receipthashing
+package types
 
-import (
-	"github.com/arcology-network/streamer/actor"
-)
-
-func init() {
-	actor.Factory.Register("receipt-hashing.calculator", NewCalculateRoothash)
-	actor.Factory.Register("receipt-hashing.metrics", NewMetrics)
+type TPSGasBurned struct {
+	TotalTxs      uint64
+	SuccessfulTxs uint64
+	GasUsed       uint64
+	Timestamp     int64
+	Height        uint64
 }

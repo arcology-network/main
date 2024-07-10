@@ -4,6 +4,10 @@
     },
     "actors": {
         "stateful_receipt_aggr_selector": {},
-        "receipt-hashing.calculator": {}
+        "receipt-hashing.calculator": {},
+        "receipt-hashing.metrics": {
+            "maxRecords": 20000,
+            "logfile": "./tps.log"
+        }
     }
 }
