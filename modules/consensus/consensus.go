@@ -89,7 +89,7 @@ func NewConsensus(concurrency int, groupid string) actor.IWorkerEx {
 }
 
 func (c *Consensus) Inputs() ([]string, bool) {
-	return []string{actor.MsgExtAppHash, actor.MsgMetaBlock, actor.MsgTxLocals}, false
+	return []string{actor.MsgExtAppHash, actor.MsgMetaBlock, actor.MsgTxLocals, actor.MsgStorageUp}, false
 }
 
 func (c *Consensus) Outputs() map[string]int {
@@ -132,10 +132,7 @@ func (c *Consensus) OnStart() {
 }
 
 func (c *Consensus) InitMsgs() []*actor.Message {
-	err := c.startConsensus(c, c.engineCfg)
-	if err != nil {
-		panic(err)
-	}
+
 	return nil
 }
 
@@ -148,6 +145,11 @@ func (c *Consensus) OnMessageArrived(msgs []*actor.Message) error {
 			c.pendingMsgs[actor.MsgAppHash] <- v
 		case actor.MsgTxLocals:
 			c.chanTxs <- v.Data.([][]byte)
+		case actor.MsgStorageUp:
+			err := c.startConsensus(c, c.engineCfg)
+			if err != nil {
+				panic(err)
+			}
 		}
 	}
 	return nil
