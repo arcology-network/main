@@ -26,7 +26,6 @@ import (
 
 const (
 	dbStateWaitInit = iota
-	dbStatePrecommit
 	dbStateCommit
 )
 
@@ -93,13 +92,11 @@ func (handler *DBHandlerAsync) OnStart() {
 				if handler.generateAcctRoot {
 					handler.MsgBroker.Send(actor.MsgAcctHash, handler.StateStore.Backend().EthStore().LatestWorldTrieRoot(), msg.Height)
 				}
-				handler.state = dbStateCommit
 				handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateCommit >>>>>>>>")
 			} else if msg.Name == handler.commitMsg {
 				handler.AddLog(log.LogLevel_Info, "Before Commit Async.")
 				handler.StateStore.AsyncCommit(msg.Height)
 				handler.AddLog(log.LogLevel_Info, "After Commit Async.")
-				handler.state = dbStatePrecommit
 				handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStatePrecommit >>>>>>>>")
 			}
 
@@ -112,7 +109,7 @@ func (handler *DBHandlerAsync) OnMessageArrived(msgs []*actor.Message) error {
 	if handler.state == dbStateWaitInit {
 		if msg.Name == handler.dbhandle {
 			handler.StateStore = msg.Data.(*statestore.StateStore)
-			handler.state = dbStatePrecommit
+			handler.state = dbStateCommit
 			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStatePrecommit>>>>>>>>")
 		}
 	} else {
@@ -127,9 +124,8 @@ func (handler *DBHandlerAsync) OnMessageArrived(msgs []*actor.Message) error {
 
 func (handler *DBHandlerAsync) GetStateDefinitions() map[int][]string {
 	return map[int][]string{
-		dbStateWaitInit:  {handler.dbhandle},
-		dbStatePrecommit: {handler.precommitMsg, handler.generationCompletedMsg},
-		dbStateCommit:    {handler.commitMsg},
+		dbStateWaitInit: {handler.dbhandle},
+		dbStateCommit:   {handler.precommitMsg, handler.generationCompletedMsg, handler.commitMsg},
 	}
 }
 
