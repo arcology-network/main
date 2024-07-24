@@ -1,10 +1,10 @@
 {
     "settings": {},
     "actors": {
-        "p2p.gateway": {
+        "p2p_gateway": {
             "zookeeper": "__global__",
-            "p2p.gateway": "__global__",
-            "p2p.peers": "__global__",
+            "p2p_gateway": "__global__",
+            "p2p_peers": "__global__",
             "cluster_name": "__global__"
         }
     }

@@ -36,9 +36,9 @@ type GlobalConfig struct {
 	// Coinbase        string                   `json:"coinbase"`
 	PersistentPeers string                   `json:"persistent_peers"`
 	RemoteCaches    string                   `json:"remote_caches"`
-	P2pPeers        []map[string]interface{} `json:"p2p.peers"`
-	P2pGateway      map[string]interface{}   `json:"p2p.gateway"`
-	P2pConn         map[string]interface{}   `json:"p2p.conn"`
+	P2pPeers        []map[string]interface{} `json:"p2p_peers"`
+	P2pGateway      map[string]interface{}   `json:"p2p_gateway"`
+	P2pConn         map[string]interface{}   `json:"p2p_conn"`
 }
 
 func LoadGlobalConfig(file string) GlobalConfig {

@@ -86,7 +86,7 @@ func (watcher *PeerConfigWatcher) Serve() {
 		}
 
 		if e.Type != zk.EventNodeChildrenChanged {
-			fmt.Printf("[p2p.conn] Unknown event type got: %v\n", e.Type)
+			fmt.Printf("[p2p_conn] Unknown event type got: %v\n", e.Type)
 			time.Sleep(1 * time.Second)
 		} else {
 			fmt.Printf("new event: %v\n", e)

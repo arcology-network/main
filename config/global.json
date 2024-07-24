@@ -37,18 +37,18 @@
     "log_config_file": "./log.toml",
     "coinbase": "0x1a4c154c778e8f234d6dff415b6359c423f2f428",
     "persistent_peers": "",
-    "p2p.peers": [
+    "p2p_peers": [
         {
             "id": "node2",
             "host": "127.0.0.1",
             "port": 9192
         }
     ],
-    "p2p.gateway": {
+    "p2p_gateway": {
         "host": "127.0.0.1",
         "port": 9191
     },
-    "p2p.conn": {
+    "p2p_conn": {
         "host": "127.0.0.1",
         "port": 9292
     }

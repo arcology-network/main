@@ -75,7 +75,7 @@ func (conn *P2pConn) Config(params map[string]interface{}) {
 	conn.cfg.ZooKeeper.PeerConfigRoot = "/p2p/peer/config"
 	conn.cfg.ZooKeeper.ConnStatusRoot = "/p2p/conn/status"
 
-	jsonStr, _ := json.Marshal(params["p2p.conn"])
+	jsonStr, _ := json.Marshal(params["p2p_conn"])
 	json.Unmarshal(jsonStr, &conn.cfg.Server)
 	conn.cfg.Server.NID = params["cluster_name"].(string)
 	conn.cfg.Server.SID = "srv1"

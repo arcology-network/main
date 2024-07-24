@@ -268,11 +268,11 @@ func (config *AppConfig) replaceEnv(params map[string]interface{}, globalConfig 
 				params[k] = globalConfig.RemoteCaches
 			case "cluster_name":
 				params[k] = globalConfig.ClusterName
-			case "p2p.peers":
+			case "p2p_peers":
 				params[k] = globalConfig.P2pPeers
-			case "p2p.gateway":
+			case "p2p_gateway":
 				params[k] = globalConfig.P2pGateway
-			case "p2p.conn":
+			case "p2p_conn":
 				params[k] = globalConfig.P2pConn
 			default:
 				panic("unsupport global variable")

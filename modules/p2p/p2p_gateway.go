@@ -55,11 +55,11 @@ func (gateway *P2pGateway) Config(params map[string]interface{}) {
 	gateway.cfg.ZooKeeper.PeerConfigRoot = "/p2p/peer/config"
 	gateway.cfg.ZooKeeper.ConnStatusRoot = "/p2p/conn/status"
 
-	jsonStr, _ := json.Marshal(params["p2p.gateway"])
+	jsonStr, _ := json.Marshal(params["p2p_gateway"])
 	json.Unmarshal(jsonStr, &gateway.cfg.Server)
 	gateway.cfg.Server.ID = params["cluster_name"].(string)
 
-	jsonStr, _ = json.Marshal(params["p2p.peers"])
+	jsonStr, _ = json.Marshal(params["p2p_peers"])
 	json.Unmarshal(jsonStr, &gateway.cfg.Peers)
 }
 

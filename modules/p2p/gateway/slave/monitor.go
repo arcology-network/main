@@ -81,7 +81,7 @@ func (m *Monitor) Serve() {
 			m.reloadSrvStatus()
 			m.onStatusUpdate(m.services)
 		} else {
-			fmt.Printf("[p2p.gateway] Unknown event type got %v\n", e.Type)
+			fmt.Printf("[p2p_gateway] Unknown event type got %v\n", e.Type)
 			time.Sleep(1 * time.Second)
 		}
 	}

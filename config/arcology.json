@@ -136,15 +136,15 @@
         "p2p.client": {
             "cluster_name": "__global__"
         },
-        "p2p.conn": {
+        "p2p_conn": {
             "zookeeper": "__global__",
-            "p2p.conn": "__global__",
+            "p2p_conn": "__global__",
             "cluster_name": "__global__"
         },
-        "p2p.gateway": {
+        "p2p_gateway": {
             "zookeeper": "__global__",
-            "p2p.gateway": "__global__",
-            "p2p.peers": "__global__",
+            "p2p_gateway": "__global__",
+            "p2p_peers": "__global__",
             "cluster_name": "__global__"
         },
         "storage.schdstore": {
@@ -252,7 +252,7 @@
         },
         {
             "name": "p2p",
-            "service": "p2p.conn"
+            "service": "p2p_conn"
         },
         {
             "name": "statesyncstore",
