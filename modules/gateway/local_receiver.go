@@ -72,7 +72,7 @@ func (lr *LocalReceiver) ReceivedTransactions(ctx context.Context, args *mtypes.
 	txsPack := gatewayTypes.TxsPack{
 		Txs: &types.IncomingTxs{
 			Txs: checkingtxs,
-			Src: types.NewTxSource(types.TxSourceLocal, "frontend"),
+			Src: types.NewTxSource(types.TxSourceLocal, "ethapibatch"),
 		},
 	}
 	lr.MsgBroker.Send(actor.MsgTxLocalsUnChecked, &txsPack)

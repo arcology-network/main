@@ -61,6 +61,7 @@ type Consensus struct {
 	isproposer      bool
 	syncing         bool
 	engineCfg       *config.Config
+	isInited        bool
 }
 
 var (
@@ -89,7 +90,7 @@ func NewConsensus(concurrency int, groupid string) actor.IWorkerEx {
 }
 
 func (c *Consensus) Inputs() ([]string, bool) {
-	return []string{actor.MsgExtAppHash, actor.MsgMetaBlock, actor.MsgTxLocals, actor.MsgStorageUp}, false
+	return []string{actor.MsgExtAppHash, actor.MsgMetaBlock, actor.MsgTxLocals, actor.MsgInitialization}, false
 }
 
 func (c *Consensus) Outputs() map[string]int {
@@ -145,7 +146,7 @@ func (c *Consensus) OnMessageArrived(msgs []*actor.Message) error {
 			c.pendingMsgs[actor.MsgAppHash] <- v
 		case actor.MsgTxLocals:
 			c.chanTxs <- v.Data.([][]byte)
-		case actor.MsgStorageUp:
+		case actor.MsgInitialization:
 			err := c.startConsensus(c, c.engineCfg)
 			if err != nil {
 				panic(err)
@@ -250,9 +251,12 @@ func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.T
 
 	c.AddLog(log.LogLevel_Info, "ApplyTxsSync")
 
-	if height > 1 {
+	if !c.isInited {
+		c.isInited = true
+	} else {
 		c.MsgBroker.Send(actor.MsgExtBlockCompleted, actor.MsgBlockCompleted_Success, uint64(height-1))
 	}
+
 	latestMsg.Height = uint64(height)
 	c.ChangeEnvironment(&latestMsg)
 

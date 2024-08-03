@@ -26,6 +26,8 @@ import (
 
 	eushared "github.com/arcology-network/eu/shared"
 	statestore "github.com/arcology-network/storage-committer"
+
+	mtypes "github.com/arcology-network/main/types"
 	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
 	univaluepk "github.com/arcology-network/storage-committer/univalue"
 )
@@ -37,7 +39,6 @@ type DBOperation interface {
 	PreCommit(euResults []*eushared.EuResult, height uint64)
 	PreCommitCompleted()
 	Commit(height uint64)
-	// ObjectCommit(height uint64)
 	Outputs() map[string]int
 	Config(params map[string]interface{})
 }
@@ -90,7 +91,6 @@ func (op *BasicDBOperation) Config(params map[string]interface{}) {}
 
 const (
 	dbStateUninit = iota
-	dbStateAsyncinit
 	dbStateInit
 	dbStateDone
 )
@@ -104,35 +104,35 @@ type DBHandler struct {
 	commitMsg              string
 	generationCompletedMsg string
 	finalizeMsg            string
-	initDBAsyncMsg         string
 	op                     DBOperation
+
+	initDb bool
 }
 
-func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, generationCompletedMsg, finalizeMsg, initDBAsyncMsg string, op DBOperation) *DBHandler {
+func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, generationCompletedMsg, finalizeMsg string, op DBOperation) *DBHandler {
 	handler := &DBHandler{
 		state:                  dbStateUninit,
 		importMsg:              importMsg,
 		commitMsg:              commitMsg,
 		generationCompletedMsg: generationCompletedMsg,
 		finalizeMsg:            finalizeMsg,
-		initDBAsyncMsg:         initDBAsyncMsg,
 		op:                     op,
+		initDb:                 false,
 	}
 	handler.Set(concurrency, groupId)
 	return handler
 }
 
 func (handler *DBHandler) Inputs() ([]string, bool) {
-	msgs := []string{handler.importMsg, handler.commitMsg, handler.generationCompletedMsg, handler.finalizeMsg, handler.initDBAsyncMsg}
+	msgs := []string{handler.importMsg, handler.commitMsg, handler.generationCompletedMsg, handler.finalizeMsg}
 	if handler.state == dbStateUninit {
-		msgs = append(msgs, actor.MsgInitDB)
+		msgs = append(msgs, actor.MsgInitialization)
 	}
 	return msgs, false
 }
 
 func (handler *DBHandler) Outputs() map[string]int {
 	outputs := handler.op.Outputs()
-	outputs[handler.initDBAsyncMsg] = 1
 	return outputs
 }
 
@@ -151,7 +151,7 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 			handler.StateStore = statestore.NewStateStore(stgproxy.NewLevelDBStoreProxy(dbpath))
 
 			handler.op.Init(handler.StateStore, handler.MsgBroker)
-			handler.state = dbStateAsyncinit
+			handler.initDb = true
 		}
 	}
 	handler.op.Config(params)
@@ -159,33 +159,27 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 
 func (handler *DBHandler) OnStart() {
 	handler.op.Init(handler.StateStore, handler.MsgBroker)
-	// handler.MsgBroker.Send(handler.initDBAsyncMsg, "")
 }
 
-func (handler *DBHandler) InitMsgs() []*actor.Message {
-	return []*actor.Message{
-		{
-			Name:   handler.initDBAsyncMsg,
-			Height: 0,
-		},
-	}
-}
 func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	switch handler.state {
 	case dbStateUninit:
-		if msg.Name == actor.MsgInitDB {
-			handler.StateStore = msg.Data.(*statestore.StateStore) //statestore.NewStateStore(handler.db)
+		if !handler.initDb {
+			if msg.Name == actor.MsgInitialization {
+				handler.StateStore = msg.Data.(*mtypes.Initialization).Store //statestore.NewStateStore(handler.db)
 
-			handler.op.Init(handler.StateStore, handler.MsgBroker)
-			handler.state = dbStateAsyncinit
-			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateDone>>>>>>>>")
-		}
-	case dbStateAsyncinit:
-		if msg.Name == handler.initDBAsyncMsg {
+				handler.op.Init(handler.StateStore, handler.MsgBroker)
+				handler.state = dbStateInit
+				handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateInit,ready ************************")
+				handler.op.InitAsync()
+			}
+		} else {
+			handler.state = dbStateInit
+			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateInit,ready ************************")
 			handler.op.InitAsync()
-			handler.state = dbStateDone
 		}
+
 	case dbStateInit:
 		if msg.Name == handler.importMsg {
 			data := msg.Data.(*eushared.Euresults)
@@ -227,10 +221,9 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 
 func (handler *DBHandler) GetStateDefinitions() map[int][]string {
 	return map[int][]string{
-		dbStateUninit:    {actor.MsgInitDB},
-		dbStateAsyncinit: {handler.initDBAsyncMsg},
-		dbStateInit:      {actor.MsgEuResults, handler.commitMsg, handler.generationCompletedMsg},
-		dbStateDone:      {actor.MsgEuResults, handler.finalizeMsg},
+		dbStateUninit: {actor.MsgInitialization},
+		dbStateInit:   {actor.MsgEuResults, handler.commitMsg, handler.generationCompletedMsg},
+		dbStateDone:   {actor.MsgEuResults, handler.finalizeMsg},
 	}
 }
 

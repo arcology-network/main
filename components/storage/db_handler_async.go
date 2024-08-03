@@ -110,7 +110,7 @@ func (handler *DBHandlerAsync) OnMessageArrived(msgs []*actor.Message) error {
 		if msg.Name == handler.dbhandle {
 			handler.StateStore = msg.Data.(*statestore.StateStore)
 			handler.state = dbStateCommit
-			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStatePrecommit>>>>>>>>")
+			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStatePrecommit,ready ************************")
 		}
 	} else {
 		if msg.Name == handler.precommitMsg ||

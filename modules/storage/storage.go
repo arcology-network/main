@@ -74,8 +74,7 @@ func (s *Storage) Inputs() ([]string, bool) {
 		actor.MsgParentInfo,
 		actor.MsgSelectedReceipts,
 		actor.MsgPendingBlock,
-		actor.MsgExecTime,
-		// actor.MsgSpawnedRelations,
+
 		actor.MsgConflictInclusive,
 	}, true
 }
@@ -114,8 +113,7 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 	height := uint64(0)
 	var receipts []*evmTypes.Receipt
 	var block *mtypes.MonacoBlock
-	var exectime *mtypes.StatisticalInformation
-	// spawnedRelations := []*types.SpawnedRelation{}
+
 	inclusive := &types.InclusiveList{}
 	var na int
 
@@ -141,8 +139,6 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		case actor.MsgPendingBlock:
 			block = v.Data.(*mtypes.MonacoBlock)
 			height = v.Height
-		case actor.MsgExecTime:
-			exectime = v.Data.(*mtypes.StatisticalInformation)
 
 		case actor.MsgConflictInclusive:
 			inclusive = v.Data.(*types.InclusiveList)
@@ -225,13 +221,6 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 			}, &na)
 			s.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>> receipt save", zap.Int("total", len(receipts)), zap.Int("failed", failed), zap.Duration("time", time.Since(t0)))
 			s.caches.Add(height, receipts)
-		}
-
-		if exectime != nil && len(exectime.Key) > 0 {
-			intf.Router.Call("debugstore", "SaveStatisticInfos", &StatisticInfoSaveRequest{
-				Height:          height,
-				StatisticalInfo: exectime,
-			}, &na)
 		}
 
 		s.AddLog(log.LogLevel_Info, "<<<<<<<<<<<<<<<<<<<<< storage gather info completed", zap.Duration("save time", time.Since(savet)), zap.Uint64("blockNo", height))

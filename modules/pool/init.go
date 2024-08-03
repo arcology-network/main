@@ -27,7 +27,7 @@ import (
 func init() {
 	actor.Factory.Register("pool_aggr_selector", NewAggrSelector)
 	actor.Factory.Register("nonce_url", func(concurrency int, groupId string) actor.IWorkerEx {
-		return storage.NewDBHandler(concurrency, groupId, actor.MsgNonceEuResults, actor.MsgCommitNonceUrl, actor.MsgGenerationReapingCompleted, actor.MsgBlockEnd, actor.MsgInitDBNonce,
+		return storage.NewDBHandler(concurrency, groupId, actor.MsgNonceEuResults, actor.MsgCommitNonceUrl, actor.MsgGenerationReapingCompleted, actor.MsgBlockEnd,
 			storage.NewGeneralUrl(actor.MsgNonceReady, actor.MsgNonceDB, actor.MsgNonceCompleted, actor.MsgNoncePrecommit, actor.MsgNonceCommit))
 	})
 

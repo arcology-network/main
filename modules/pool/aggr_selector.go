@@ -34,7 +34,6 @@ import (
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
 	"go.uber.org/zap"
 )
@@ -59,7 +58,6 @@ const (
 	poolStateReap
 	poolStateCherryPick
 	resultCollect
-	poolStateInit
 )
 
 var (
@@ -72,7 +70,7 @@ func NewAggrSelector(concurrency int, groupid string) actor.IWorkerEx {
 
 	initRpcOnce.Do(func() {
 		rpcInstance = &AggrSelector{
-			state:    poolStateInit,
+			state:    poolStateClean,
 			resultch: make(chan *mtypes.BlockResult, 1),
 		}
 		rpcInstance.(*AggrSelector).Set(concurrency, groupid)
@@ -90,7 +88,7 @@ func (a *AggrSelector) Inputs() ([]string, bool) {
 		actor.MsgOpCommand,
 		actor.MsgSelectedReceipts,
 		actor.MsgPendingBlock,
-		actor.MsgChainConfig,
+		actor.MsgInitialization,
 	}, false
 }
 
@@ -98,10 +96,9 @@ func (a *AggrSelector) Outputs() map[string]int {
 	return map[string]int{
 		actor.MsgMessagersReaped: 1,
 		actor.MsgMetaBlock:       1,
-		actor.MsgSelectedTx:      1,
+		actor.MsgSelectedTxInfo:  1,
 		actor.MsgOpCommand:       1,
 		actor.MsgBlockParams:     1,
-		actor.MsgTxHash:          1,
 		actor.MsgWithDrawHash:    1,
 		actor.MsgSignerType:      1,
 	}
@@ -136,28 +133,33 @@ func (a *AggrSelector) returnResult(result *mtypes.BlockResult) {
 	a.AddLog(log.LogLevel_Info, "received all results, switch to poolStateClean")
 }
 
+func (a *AggrSelector) nonceReady(store *statestore.StateStore, heght uint64) {
+	if a.pool == nil {
+		a.pool = NewPool(store, a.obsoleteTime, a.closeCheck)
+	} else {
+		a.pool.Clean(heght)
+		a.AddLog(log.LogLevel_Info, fmt.Sprintf("Clear pool on height %d", heght))
+	}
+	a.opAdaptor.Reset()
+	a.state = poolStateReap
+	a.height = heght + 1
+}
+
 func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	switch a.state {
-	case poolStateInit:
-		switch msg.Name {
-		case actor.MsgChainConfig:
-			a.opAdaptor.SetConfig(msg.Data.(*params.ChainConfig))
-			a.opAdaptor.ChangeSigner(msg.Height)
-			a.state = poolStateClean
-		}
+
 	case poolStateClean:
 		switch msg.Name {
 		case actor.MsgNonceReady:
-			if a.pool == nil {
-				a.pool = NewPool(msg.Data.(*statestore.StateStore), a.obsoleteTime, a.closeCheck)
-			} else {
-				a.pool.Clean(msg.Height)
-				a.AddLog(log.LogLevel_Info, fmt.Sprintf("Clear pool on height %d", msg.Height))
-			}
-			a.opAdaptor.Reset()
-			a.state = poolStateReap
-			a.height = msg.Height + 1
+			a.nonceReady(msg.Data.(*statestore.StateStore), msg.Height)
+		case actor.MsgInitialization:
+			initialization := msg.Data.(*mtypes.Initialization)
+			a.opAdaptor.SetConfig(initialization.ChainConfig)
+			a.opAdaptor.ChangeSigner(msg.Height)
+
+			a.nonceReady(initialization.Store, msg.Height)
+			a.AddLog(log.LogLevel_Debug, ">>>>>change into poolStateReap,ready ************************")
 		}
 	case poolStateReap:
 		switch msg.Name {
@@ -259,8 +261,10 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 		if len(transactions) > 0 {
 			txhash = evmTypes.DeriveSha(evmTypes.Transactions(transactions), trie.NewStackTrie(nil))
 		}
-		a.MsgBroker.Send(actor.MsgSelectedTx, txs, height)
-		a.MsgBroker.Send(actor.MsgTxHash, &txhash, height)
+		a.MsgBroker.Send(actor.MsgSelectedTxInfo, &mtypes.SelectedTxsInfo{
+			Txhash: txhash,
+			Txs:    txs,
+		}, height)
 		a.MsgBroker.Send(actor.MsgSignerType, a.opAdaptor.SignerType, height)
 		a.CheckPoint("send selectedtx", zap.String("txhash", fmt.Sprintf("%x", txhash)))
 	}
@@ -268,11 +272,10 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 
 func (a *AggrSelector) GetStateDefinitions() map[int][]string {
 	return map[int][]string{
-		poolStateInit: {
-			actor.MsgChainConfig,
-		},
+
 		poolStateClean: {
 			actor.MsgNonceReady,
+			actor.MsgInitialization,
 		},
 		poolStateReap: {
 			actor.MsgMessager,

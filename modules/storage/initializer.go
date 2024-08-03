@@ -69,10 +69,8 @@ func (i *Initializer) Inputs() ([]string, bool) {
 
 func (i *Initializer) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgInitDB:      1,
-		actor.MsgStorageUp:   1,
-		actor.MsgCoinbase:    1,
-		actor.MsgChainConfig: 1,
+		actor.MsgLocalParentInfo: 1,
+		actor.MsgInitialization:  1,
 	}
 }
 
@@ -97,6 +95,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		Extra:     genesis.ExtraData,
 	}
 
+	parentinfo := &mtypes.ParentInfo{}
 	var store *statestore.StateStore
 	var rootHash evmCommon.Hash
 	if height == 0 {
@@ -127,7 +126,10 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			ParentHash: hash,
 			ParentRoot: rootHash,
 		}, &na)
-
+		parentinfo = &mtypes.ParentInfo{
+			ParentHash: hash,
+			ParentRoot: rootHash,
+		}
 	} else {
 
 		// db = ccdb.NewLevelDBDataStore(i.storage_db_path)
@@ -189,29 +191,30 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		if err != nil {
 			panic(fmt.Sprintf("[storage.Initializer] Error occurred while recovering transactional store: %v\n", err))
 		}
+
+		iin := 12
+		if err := intf.Router.Call("statestore", "GetParentInfo", &iin, parentinfo); err != nil {
+			panic(err)
+		}
 	}
 
 	intf.Router.Call("urlstore", "Init", store, &na)
 
 	return []*actor.Message{
 		{
-			Name:   actor.MsgInitDB,
+			Name:   actor.MsgLocalParentInfo,
 			Height: uint64(height),
-			Data:   store,
+			Data:   parentinfo,
 		},
 		{
-			Name:   actor.MsgStorageUp,
+			Name:   actor.MsgInitialization,
 			Height: uint64(height),
-		},
-		{
-			Name:   actor.MsgCoinbase,
-			Height: uint64(height),
-			Data:   blockStart,
-		},
-		{
-			Name:   actor.MsgChainConfig,
-			Height: uint64(height),
-			Data:   genesis.Config,
+			Data: &mtypes.Initialization{
+				Store:             store,
+				BlockStart:        blockStart,
+				ChainConfig:       genesis.Config,
+				ParentInformation: parentinfo,
+			},
 		},
 	}
 }

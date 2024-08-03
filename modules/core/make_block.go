@@ -49,14 +49,11 @@ func NewMakeBlock(concurrency int, groupid string) actor.IWorkerEx {
 func (m *MakeBlock) Inputs() ([]string, bool) {
 	return []string{
 		actor.MsgBlockStart,
-		actor.MsgSelectedTx,
-		actor.MsgTxHash,
+		actor.MsgSelectedTxInfo,
 		actor.MsgAcctHash,
-		actor.MsgRcptHash,
-		actor.MsgGasUsed,
+		actor.MsgReceiptInfo,
 		actor.MsgLocalParentInfo,
 		actor.MsgBlockParams,
-		actor.MsgBloom,
 		actor.MsgWithDrawHash,
 		actor.MsgSignerType,
 		actor.MsgTransactionalAddCompleted,
@@ -97,23 +94,16 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 			SignerType = v.Data.(uint8)
 		case actor.MsgBlockStart:
 			blockStart = v.Data.(*actor.BlockStart)
-			// timestamp = bs.Timestamp
-			// coinbase = bs.Coinbase
+
 			height = blockStart.Height
-		case actor.MsgSelectedTx:
-			data := v.Data.([][]byte)
-			isnil, err := m.IsNil(data, "txSelected")
+		case actor.MsgSelectedTxInfo:
+			info := v.Data.(*mtypes.SelectedTxsInfo)
+			isnil, err := m.IsNil(info, "txSelected")
 			if isnil {
 				return err
 			}
-			txSelected = data // v.Data.([][]byte)
-		case actor.MsgTxHash:
-			hash := v.Data.(*evmCommon.Hash)
-			isnil, err := m.IsNil(hash, "txhash")
-			if isnil {
-				return err
-			}
-			txhash = *hash
+			txhash = info.Txhash
+			txSelected = info.Txs
 		case actor.MsgAcctHash:
 			// hash := v.Data.(*evmCommon.Hash)
 			hash := v.Data.([32]byte)
@@ -123,20 +113,15 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 			}
 			accthash = evmCommon.BytesToHash([]byte(hash[:]))
 			m.AddLog(log.LogLevel_Info, "received accthash", zap.String("accthash", fmt.Sprintf("%x", accthash)))
-		case actor.MsgRcptHash:
-			hash := v.Data.(*evmCommon.Hash)
-			isnil, err := m.IsNil(hash, "rcpthash")
+		case actor.MsgReceiptInfo:
+			info := v.Data.(*mtypes.ReceiptInfo)
+			isnil, err := m.IsNil(info, "receipt information")
 			if isnil {
 				return err
 			}
-			rcpthash = *hash
-		case actor.MsgGasUsed:
-			gas := v.Data.(uint64)
-			isnil, err := m.IsNil(gas, "gasused")
-			if isnil {
-				return err
-			}
-			gasused = gas
+			rcpthash = info.RcptHash
+			gasused = info.Gasused
+			bloom = info.BloomInfo
 		case actor.MsgLocalParentInfo:
 			parentinfo = v.Data.(*mtypes.ParentInfo)
 			isnil, err := m.IsNil(parentinfo, "parentinfo")
@@ -146,12 +131,6 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 		case actor.MsgBlockParams:
 			blockParams = v.Data.(*mtypes.BlockParams)
 			isnil, err := m.IsNil(blockParams, "blockParams")
-			if isnil {
-				return err
-			}
-		case actor.MsgBloom:
-			bloom = v.Data.(evmTypes.Bloom)
-			isnil, err := m.IsNil(bloom, "bloom")
 			if isnil {
 				return err
 			}

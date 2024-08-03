@@ -19,9 +19,7 @@ package scheduler
 
 import (
 	"context"
-	"fmt"
 	"sync"
-	"time"
 
 	"github.com/arcology-network/common-lib/common"
 	types "github.com/arcology-network/common-lib/types"
@@ -135,11 +133,6 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 	var stdMsgs []*eucommon.StandardMessage
 	for _, msg := range msgs {
 		switch msg.Name {
-		case actor.MsgApcHandle:
-			// if msg.Height == 0 {
-			// 	return nil
-			// }
-			// schd.generationApcHandlerCh <- 1
 		case actor.CombinedName(actor.MsgMessagersReaped, actor.MsgBlockStart):
 			combined := msg.Data.(*actor.CombinerElements)
 			schd.context.timestamp = combined.Get(actor.MsgBlockStart).Data.(*actor.BlockStart).Timestamp
@@ -161,7 +154,6 @@ func (schd *Scheduler) ProcessMsgs(msg *actor.Message, stdMsgs []*eucommon.Stand
 	schd.CheckPoint("start new schedule", zap.Int("messages", len(stdMsgs)))
 	schd.splitMessagesByType(stdMsgs)
 
-	timeStart := time.Now()
 	schd.context.onNewBlock(height)
 	schd.context.msgTemplate = msg
 	schd.context.logger = schd.GetLogger(schd.AddLog(log.LogLevel_Info, "Before first generation"))
@@ -217,15 +209,6 @@ func (schd *Scheduler) ProcessMsgs(msg *actor.Message, stdMsgs []*eucommon.Stand
 		GenerationIdx: 0,
 	})
 	schd.CheckPoint("send inclusive")
-	// Spawned transactions.
-	// schd.MsgBroker.Send(actor.MsgSpawnedRelations, schd.context.spawnedRelations)
-	// Exec time.
-	execTime := time.Since(timeStart)
-	schd.MsgBroker.Send(actor.MsgExecTime, &mtypes.StatisticalInformation{
-		Key:      actor.MsgExecTime,
-		TimeUsed: execTime,
-		Value:    fmt.Sprintf("%v", execTime),
-	})
 
 	// Update states of scheduler.
 	common.MergeMaps(schd.contractDict, common.SliceToDict(schd.context.newContracts))

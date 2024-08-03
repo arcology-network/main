@@ -20,6 +20,7 @@ package ethapi
 import (
 	"fmt"
 
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 )
 
@@ -36,7 +37,7 @@ func NewCoinbase(concurrency int, groupid string) actor.IWorkerEx {
 
 func (sq *Coinbase) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgCoinbase,
+		actor.MsgInitialization,
 	}, false
 }
 
@@ -57,8 +58,8 @@ func (*Coinbase) Stop() {}
 func (sq *Coinbase) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
-		case actor.MsgCoinbase:
-			coinbase := v.Data.(*actor.BlockStart)
+		case actor.MsgInitialization:
+			coinbase := v.Data.(*mtypes.Initialization).BlockStart
 			options.Coinbase = fmt.Sprintf("0x%x", coinbase.Coinbase.Bytes())
 		}
 	}

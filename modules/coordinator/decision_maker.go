@@ -22,6 +22,7 @@ import (
 
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
+	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -30,7 +31,6 @@ const (
 	dmStateFastSync
 	dmStateBlockSyncWaiting
 	dmStateBlockSync
-	dmStateGenesis
 )
 
 type DecisionMaker struct {
@@ -50,7 +50,7 @@ type DecisionMaker struct {
 
 func NewDecisionMaker(concurrency int, groupId string) actor.IWorkerEx {
 	dm := &DecisionMaker{
-		state: dmStateGenesis,
+		state: dmStateUninit,
 		fastSyncMessageTypes: map[string]struct{}{
 			actor.MsgConsensusMaxPeerHeight: {},
 			actor.MsgConsensusUp:            {},
@@ -68,7 +68,7 @@ func NewDecisionMaker(concurrency int, groupId string) actor.IWorkerEx {
 
 func (dm *DecisionMaker) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgStorageUp,
+		actor.MsgInitialization,
 		actor.MsgConsensusMaxPeerHeight,
 		actor.MsgConsensusUp,
 		actor.MsgExtBlockStart,
@@ -79,7 +79,6 @@ func (dm *DecisionMaker) Inputs() ([]string, bool) {
 		actor.MsgExtReapingList,
 		actor.MsgAppHash,
 		actor.MsgStateSyncDone,
-		actor.MsgCoinbase,
 	}, false
 }
 
@@ -102,38 +101,40 @@ func (dm *DecisionMaker) OnStart() {}
 func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
 	msg := msgs[0]
 	switch dm.state {
-	case dmStateGenesis:
-		switch msg.Name {
-		case actor.MsgCoinbase:
-			dm.genesisData = msg.Data.(*actor.BlockStart)
-			dm.state = dmStateUninit
-		}
 	case dmStateUninit:
 		switch msg.Name {
-		case actor.MsgStorageUp:
+		case actor.MsgInitialization:
 			dm.storageUp = true
 			dm.initHeight = msg.Height
+			initialization := msg.Data.(*mtypes.Initialization)
+			dm.genesisData = initialization.BlockStart
 		case actor.MsgConsensusMaxPeerHeight:
 			dm.maxPeerHeights = append(dm.maxPeerHeights, msg.Data.(uint64))
 		case actor.MsgConsensusUp:
 			dm.consensusUp = true
 		}
-		if dm.readyToSync() {
-			if ok, until := dm.startWithFastSync(); ok {
-				fmt.Printf("[DecisionMaker.OnMessageArrived] switch to dmStateFastSync, fast sync until %d\n", until)
-				dm.fastSyncUntil = until
-				dm.MsgBroker.Send(actor.MsgReapCommand, nil)
-				dm.MsgBroker.Send(actor.MsgStateSyncStart, until)
-				dm.state = dmStateFastSync
-			} else {
-				fmt.Printf("[DecisionMaker.OnMessageArrived] switch to dmStateBlockSync\n")
-				if dm.initHeight == 0 {
-					dm.MsgBroker.Send(actor.MsgBlockEnd, "")
-					dm.MsgBroker.Send(actor.MsgBlockCompleted, actor.MsgBlockCompleted_Success)
-				}
-				dm.MsgBroker.Send(actor.MsgReapCommand, nil)
-				dm.state = dmStateBlockSync
-			}
+		// if dm.readyToSync() {
+		// 	if ok, until := dm.startWithFastSync(); ok {
+		// 		fmt.Printf("[DecisionMaker.OnMessageArrived] switch to dmStateFastSync, fast sync until %d\n", until)
+		// 		dm.fastSyncUntil = until
+		// 		dm.MsgBroker.Send(actor.MsgReapCommand, nil)
+		// 		dm.MsgBroker.Send(actor.MsgStateSyncStart, until)
+		// 		dm.state = dmStateFastSync
+		// 	} else {
+		// 		fmt.Printf("[DecisionMaker.OnMessageArrived] switch to dmStateBlockSync\n")
+		// 		if dm.initHeight == 0 {
+		// 			dm.MsgBroker.Send(actor.MsgBlockEnd, "")
+		// 			dm.MsgBroker.Send(actor.MsgBlockCompleted, actor.MsgBlockCompleted_Success)
+		// 		}
+		// 		dm.MsgBroker.Send(actor.MsgReapCommand, nil)
+		// 		dm.state = dmStateBlockSync
+		// 	}
+		// }
+
+		if dm.storageUp && dm.consensusUp {
+			dm.MsgBroker.Send(actor.MsgReapCommand, nil)
+			dm.state = dmStateBlockSync
+			dm.AddLog(log.LogLevel_Debug, ">>>>>change into dmStateBlockSync,ready ************************")
 		}
 	case dmStateFastSync:
 		switch msg.Name {
@@ -205,11 +206,8 @@ func (dm *DecisionMaker) GetStateDefinitions() map[int][]string {
 		fastSyncMsgs = append(fastSyncMsgs, typ)
 	}
 	return map[int][]string{
-		dmStateGenesis: {
-			actor.MsgCoinbase,
-		},
 		dmStateUninit: {
-			actor.MsgStorageUp,
+			actor.MsgInitialization,
 			actor.MsgConsensusMaxPeerHeight,
 			actor.MsgConsensusUp,
 		},

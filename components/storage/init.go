@@ -24,7 +24,7 @@ import (
 func init() {
 	actor.Factory.Register("gc", NewGc)
 	actor.Factory.Register("general_url", func(concurrency int, groupId string) actor.IWorkerEx {
-		return NewDBHandler(concurrency, groupId, actor.MsgEuResults, actor.MsgExecuted, actor.MsgGenerationReapingCompleted, actor.MsgBlockEnd, actor.MsgInitDBGeneral,
+		return NewDBHandler(concurrency, groupId, actor.MsgEuResults, actor.MsgExecuted, actor.MsgGenerationReapingCompleted, actor.MsgBlockEnd,
 			NewGeneralUrl(actor.MsgApcHandle, actor.MsgGeneralDB, actor.MsgGeneralCompleted, actor.MsgGeneralPrecommit, actor.MsgGeneralCommit))
 	})
 	actor.Factory.Register("general_url_async", func(concurrency int, groupId string) actor.IWorkerEx {

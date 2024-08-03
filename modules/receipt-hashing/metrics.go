@@ -46,7 +46,7 @@ func NewMetrics(concurrency int, groupid string) actor.IWorkerEx {
 }
 
 func (cr *Metrics) Inputs() ([]string, bool) {
-	return []string{actor.MsgTpsGasBurned}, true
+	return []string{actor.MsgReceiptInfo}, true
 }
 
 func (cr *Metrics) Outputs() map[string]int {
@@ -63,10 +63,10 @@ func (cr *Metrics) Stop() {
 func (cr *Metrics) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
-		case actor.MsgTpsGasBurned:
+		case actor.MsgReceiptInfo:
 			if cr.isOutput {
 				go func() {
-					show := cr.Calculate(v.Data.(*mtypes.TPSGasBurned), v.Height)
+					show := cr.Calculate(v.Data.(*mtypes.ReceiptInfo).TpsGas, v.Height)
 					cr.WriteFile(show)
 				}()
 			}

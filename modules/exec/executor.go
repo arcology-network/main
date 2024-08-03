@@ -101,8 +101,8 @@ func (exec *Executor) Inputs() ([]string, bool) {
 		actor.CombinedName(actor.MsgBlockStart, actor.MsgParentInfo, actor.MsgObjectCached), // Got block context.
 		actor.MsgTxsToExecute,          // Txs to run.
 		actor.MsgGenerationReapingList, //update generationIdx
-		actor.MsgApcHandleInit,
 		actor.MsgBlockEnd,
+		actor.MsgInitialization,
 	}, false
 }
 
@@ -135,22 +135,30 @@ func (exec *Executor) OnMessageArrived(msgs []*actor.Message) error {
 		exec.execParams = &exetyp.ExecutorParameter{
 			ParentInfo: combined.Get(actor.MsgParentInfo).Data.(*mtypes.ParentInfo),
 			Coinbase:   &coinbase,
-			Height:     combined.Get(actor.MsgBlockStart).Height,
+			Height:     exec.height, //combined.Get(actor.MsgBlockStart).Height,
 		}
-		if !exec.stateInit {
-			exec.stateInit = true
-			exec.state = execStateReady
-		} else {
-			exec.state = execStateWaitGenerationReady
-		}
+
+		exec.state = execStateWaitGenerationReady
+
 		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into execStateWaitGenerationReady")
 	case execStateWaitGenerationReady:
 		exec.store = msg.Data.(*statestore.StateStore)
 		exec.state = execStateReady
 		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into execStateReady")
 	case execStateInit:
-		exec.store = msg.Data.(*statestore.StateStore)
-		exec.state = execStateNextHeight
+		initialization := msg.Data.(*mtypes.Initialization)
+		exec.store = initialization.Store
+		exec.height = msg.Height + 1
+
+		addr := evmCommon.BytesToAddress(initialization.BlockStart.Coinbase.Bytes())
+		exec.execParams = &exetyp.ExecutorParameter{
+			ParentInfo: initialization.ParentInformation,
+			Coinbase:   &addr,
+			Height:     exec.height,
+		}
+
+		exec.state = execStateReady
+		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into execStateReady")
 	case execStateReady:
 		switch msg.Name {
 		case actor.MsgTxsToExecute:
@@ -196,7 +204,7 @@ func (exec *Executor) GetStateDefinitions() map[int][]string {
 			actor.MsgGenerationReapingList,
 		},
 		execStateInit: {
-			actor.MsgApcHandleInit,
+			actor.MsgInitialization,
 		},
 		execStateNextHeight: {
 			actor.MsgBlockEnd,

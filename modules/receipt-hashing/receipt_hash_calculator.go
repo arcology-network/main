@@ -46,10 +46,7 @@ func (cr *CalculateRoothash) Inputs() ([]string, bool) {
 
 func (cr *CalculateRoothash) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgRcptHash:     1,
-		actor.MsgGasUsed:      1,
-		actor.MsgBloom:        1,
-		actor.MsgTpsGasBurned: 1,
+		actor.MsgReceiptInfo: 1,
 	}
 }
 
@@ -80,17 +77,17 @@ func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 	}
 	cr.CheckPoint("start calculate rcpthash")
 	hash, bloom, gas, successfulTxs := cr.gatherReceipts(inclusiveList, selectedReceipts)
-	cr.MsgBroker.Send(actor.MsgRcptHash, &hash)
-	cr.MsgBroker.Send(actor.MsgGasUsed, gas)
-	cr.MsgBroker.Send(actor.MsgBloom, bloom)
-
-	cr.MsgBroker.Send(actor.MsgTpsGasBurned, &mtypes.TPSGasBurned{
-		TotalTxs:      uint64(len(inclusiveList.HashList)),
-		SuccessfulTxs: uint64(successfulTxs),
-		GasUsed:       gas,
-		Timestamp:     time.Now().UnixMilli(),
+	cr.MsgBroker.Send(actor.MsgReceiptInfo, &mtypes.ReceiptInfo{
+		RcptHash:  hash,
+		BloomInfo: bloom,
+		Gasused:   gas,
+		TpsGas: &mtypes.TPSGasBurned{
+			TotalTxs:      uint64(len(inclusiveList.HashList)),
+			SuccessfulTxs: uint64(successfulTxs),
+			GasUsed:       gas,
+			Timestamp:     time.Now().UnixMilli(),
+		},
 	})
-
 	cr.CheckPoint("rcpthash calculate completed", zap.Uint64("gas", gas))
 	return nil
 }

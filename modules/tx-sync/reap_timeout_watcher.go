@@ -50,7 +50,7 @@ func NewReapTimeoutWatcher(concurrency int, groupId string) actor.IWorkerEx {
 func (rtw *ReapTimeoutWatcher) Inputs() ([]string, bool) {
 	return []string{
 		actor.MsgReapinglist,
-		actor.MsgSelectedTx,
+		actor.MsgSelectedTxInfo,
 		actor.MsgP2pResponse,
 	}, false
 }
@@ -90,7 +90,7 @@ func (rtw *ReapTimeoutWatcher) OnMessageArrived(msgs []*actor.Message) error {
 	case actor.MsgReapinglist:
 		rtw.AddLog(log.LogLevel_Info, fmt.Sprintf("[ReapTimeoutWatcher.OnMessageArrived] reaping started for height %d\n", msg.Height))
 		rtw.reapStartCh <- msg.Height
-	case actor.MsgSelectedTx:
+	case actor.MsgSelectedTxInfo:
 		rtw.AddLog(log.LogLevel_Info, fmt.Sprintf("[ReapTimeoutWatcher.OnMessageArrived] reaping end for height %d\n", msg.Height))
 		rtw.reapEndCh <- msg.Height
 	case actor.MsgP2pResponse:

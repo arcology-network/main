@@ -60,7 +60,7 @@ func TestReapTimeoutWatcher(t *testing.T) {
 	time.Sleep(8 * time.Second)
 	rtw.OnMessageArrived([]*actor.Message{
 		{
-			Name:   actor.MsgSelectedTx,
+			Name:   actor.MsgSelectedTxInfo,
 			Height: 1,
 		},
 	})

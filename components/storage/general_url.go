@@ -142,20 +142,10 @@ func (url *GeneralUrl) InitAsync() {
 }
 
 func (url *GeneralUrl) Commit(height uint64) {
-	if !url.inited {
-		url.inited = true
-		if url.generateApcHandle == "generation" {
-			url.MsgBroker.Send(actor.MsgApcHandleInit, url.StateStore)
-		}
-		if url.objectCached {
-			url.MsgBroker.Send(actor.MsgObjectCached, "")
-		}
-	} else {
-		url.BasicDBOperation.Commit(height)
-		url.MsgBroker.Send(url.outCommitMsg, "")
-		if url.objectCached {
-			url.MsgBroker.Send(actor.MsgObjectCached, "")
-		}
+	url.BasicDBOperation.Commit(height)
+	url.MsgBroker.Send(url.outCommitMsg, "")
+	if url.objectCached {
+		url.MsgBroker.Send(actor.MsgObjectCached, "")
 	}
 
 	if url.generateApcHandle == "block" {
