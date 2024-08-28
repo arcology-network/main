@@ -20,7 +20,7 @@ package storage
 import (
 	"github.com/arcology-network/common-lib/common"
 	eushared "github.com/arcology-network/eu/shared"
-	univaluepk "github.com/arcology-network/storage-committer/univalue"
+	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 )
 
 func GetTransitionIds(euresults []*eushared.EuResult) []uint32 {

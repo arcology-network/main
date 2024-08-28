@@ -27,23 +27,24 @@ import (
 
 	"github.com/arcology-network/common-lib/storage/transactional"
 	"github.com/arcology-network/consensus-engine/state"
-	adaptorcommon "github.com/arcology-network/evm-adaptor/pathbuilder"
+	adaptorcommon "github.com/arcology-network/eu/eth"
 	"github.com/arcology-network/main/modules/core"
-	"github.com/arcology-network/storage-committer/commutative"
-	"github.com/arcology-network/storage-committer/interfaces"
+	interfaces "github.com/arcology-network/storage-committer/common"
+	"github.com/arcology-network/storage-committer/type/commutative"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/holiman/uint256"
 
-	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
-	cache "github.com/arcology-network/storage-committer/storage/writecache"
+	apihandler "github.com/arcology-network/eu/apihandler"
+	cache "github.com/arcology-network/storage-committer/storage/tempcache"
 	evmcore "github.com/ethereum/go-ethereum/core"
 
 	"github.com/arcology-network/common-lib/exp/mempool"
 	"github.com/arcology-network/common-lib/exp/slice"
 	mtypes "github.com/arcology-network/main/types"
-	univaluepk "github.com/arcology-network/storage-committer/univalue"
+	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 
 	statestore "github.com/arcology-network/storage-committer"
 	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
@@ -270,7 +271,11 @@ func getTransition(db interfaces.ReadOnlyStore, addresses []evmCommon.Address, g
 	for _, addr := range addresses {
 		acct := genesisAlloc[addr]
 		stateDB.CreateAccount(addr)
-		stateDB.SetBalance(addr, acct.Balance)
+		bl, ok := uint256.FromBig(acct.Balance)
+		if ok {
+			bl = uint256.NewInt(0)
+		}
+		stateDB.SetBalance(addr, bl)
 		stateDB.SetNonce(addr, uint64(1))
 		code := acct.Code
 		if len(code) > 0 {

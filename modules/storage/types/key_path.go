@@ -20,7 +20,7 @@ package types
 import (
 	"strings"
 
-	adaptorcommon "github.com/arcology-network/evm-adaptor/pathbuilder"
+	adaptorcommon "github.com/arcology-network/eu/eth"
 	evmcommon "github.com/ethereum/go-ethereum/common"
 )
 

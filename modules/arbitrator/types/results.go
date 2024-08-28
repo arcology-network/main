@@ -19,7 +19,7 @@ package types
 
 import (
 	eushared "github.com/arcology-network/eu/shared"
-	univaluepk "github.com/arcology-network/storage-committer/univalue"
+	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 )
 
 // func Decode(ars *eushared.TxAccessRecords, recordPool *mempool.Mempool[AccessRecord], uniPool *mempool.Mempool[univaluepk.Univalue]) *AccessRecord {

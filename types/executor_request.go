@@ -24,7 +24,7 @@ import (
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
-	eucommon "github.com/arcology-network/eu/common"
+	eucommon "github.com/arcology-network/common-lib/types"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 )
 

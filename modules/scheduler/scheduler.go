@@ -34,9 +34,9 @@ import (
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 
-	eucommon "github.com/arcology-network/eu/common"
-	scheduler "github.com/arcology-network/eu/new-scheduler"
+	eucommon "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
+	scheduler "github.com/arcology-network/scheduler"
 )
 
 type Scheduler struct {

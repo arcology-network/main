@@ -30,22 +30,21 @@ import (
 	"go.uber.org/zap"
 
 	eupk "github.com/arcology-network/eu"
-	cache "github.com/arcology-network/storage-committer/storage/writecache"
-	"github.com/arcology-network/storage-committer/univalue"
-	univaluepk "github.com/arcology-network/storage-committer/univalue"
+	cache "github.com/arcology-network/storage-committer/storage/tempcache"
+	"github.com/arcology-network/storage-committer/type/univalue"
+	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 
 	"github.com/arcology-network/common-lib/exp/mempool"
 	"github.com/arcology-network/common-lib/exp/slice"
+
+	"github.com/arcology-network/common-lib/types"
+	apihandler "github.com/arcology-network/eu/apihandler"
 	eucommon "github.com/arcology-network/eu/common"
-	"github.com/arcology-network/eu/execution"
 	eushared "github.com/arcology-network/eu/shared"
-	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
 	mtypes "github.com/arcology-network/main/types"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 
 	statestore "github.com/arcology-network/storage-committer"
-
-	"github.com/arcology-network/common-lib/types"
 )
 
 type ExecutorResponse struct {
@@ -255,12 +254,12 @@ func (exec *Executor) startExec() {
 				task := <-exec.taskCh
 				exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>start execute", zap.Bool("Sequence.Parallel", task.Sequence.Parallel), zap.Int("txs counter", len(task.Sequence.Msgs)))
 				if task.Sequence.Parallel {
-					results := make([]*execution.Result, 0, len(task.Sequence.Msgs))
+					results := make([]*eucommon.Result, 0, len(task.Sequence.Msgs))
 					mtransitions := make(map[uint32][]*univalue.Univalue, len(task.Sequence.Msgs))
 					for j := range task.Sequence.Msgs {
 						job := eupk.JobSequence{
 							ID:      uint32(j),
-							StdMsgs: []*eucommon.StandardMessage{task.Sequence.Msgs[j]},
+							StdMsgs: []*types.StandardMessage{task.Sequence.Msgs[j]},
 						}
 						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 							return exec.store.WriteCache
@@ -297,7 +296,7 @@ func (exec *Executor) parseResults(alltransitions []*univalue.Univalue) map[uint
 	return mTransitions
 }
 
-func (exec *Executor) sendResults(results []*execution.Result, mTransitions map[uint32][]*univalue.Univalue, debug bool) {
+func (exec *Executor) sendResults(results []*eucommon.Result, mTransitions map[uint32][]*univalue.Univalue, debug bool) {
 	counter := len(results)
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))
 	sendingEuResults := make([]*eushared.EuResult, counter)
@@ -315,7 +314,7 @@ func (exec *Executor) sendResults(results []*execution.Result, mTransitions map[
 	}
 	faileds := make([]int, len(results))
 	contractAddresses := make([]evmCommon.Address, len(results))
-	slice.ParallelForeach(results, threadNum, func(i int, result **execution.Result) {
+	slice.ParallelForeach(results, threadNum, func(i int, result **eucommon.Result) {
 
 		rawtransitions := mTransitions[uint32((*result).StdMsg.ID)]
 		accesses := univaluepk.Univalues(slice.Clone(rawtransitions)).To(univaluepk.IPAccess{})

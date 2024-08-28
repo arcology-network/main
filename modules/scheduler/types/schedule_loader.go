@@ -21,7 +21,7 @@ import (
 	"encoding/hex"
 	"fmt"
 
-	scheduler "github.com/arcology-network/eu/new-scheduler"
+	scheduler "github.com/arcology-network/scheduler"
 )
 
 type ScheduleLoader struct {

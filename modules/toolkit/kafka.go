@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	eushared "github.com/arcology-network/eu/shared"
-	commutative "github.com/arcology-network/storage-committer/commutative"
+	commutative "github.com/arcology-network/storage-committer/type/commutative"
 	"github.com/arcology-network/streamer/actor"
 )
 

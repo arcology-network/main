@@ -22,9 +22,9 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/arcology-network/storage-committer/commutative"
-	"github.com/arcology-network/storage-committer/interfaces"
-	"github.com/arcology-network/storage-committer/noncommutative"
+	interfaces "github.com/arcology-network/storage-committer/common"
+	"github.com/arcology-network/storage-committer/type/commutative"
+	"github.com/arcology-network/storage-committer/type/noncommutative"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	evmtypes "github.com/ethereum/go-ethereum/core/types"
@@ -32,7 +32,7 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 
 	eucommon "github.com/arcology-network/eu/common"
-	univaluepk "github.com/arcology-network/storage-committer/univalue"
+	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 	"github.com/holiman/uint256"
 )
 

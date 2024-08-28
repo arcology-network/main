@@ -18,10 +18,10 @@
 package types
 
 import (
-	"github.com/arcology-network/storage-committer/interfaces"
+	interfaces "github.com/arcology-network/storage-committer/common"
 
+	evmAdaptorCommon "github.com/arcology-network/eu/common"
 	eushared "github.com/arcology-network/eu/shared"
-	evmAdaptorCommon "github.com/arcology-network/evm-adaptor/common"
 	mtypes "github.com/arcology-network/main/types"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"

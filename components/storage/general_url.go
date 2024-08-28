@@ -24,9 +24,9 @@ import (
 
 	"github.com/arcology-network/common-lib/exp/slice"
 	eushared "github.com/arcology-network/eu/shared"
-	"github.com/arcology-network/storage-committer/commutative"
-	"github.com/arcology-network/storage-committer/interfaces"
-	univaluepk "github.com/arcology-network/storage-committer/univalue"
+	interfaces "github.com/arcology-network/storage-committer/common"
+	"github.com/arcology-network/storage-committer/type/commutative"
+	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 )

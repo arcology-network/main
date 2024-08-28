@@ -24,7 +24,7 @@ import (
 	"testing"
 	"time"
 
-	eucommon "github.com/arcology-network/eu/common"
+	eucommon "github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	brokerpk "github.com/arcology-network/streamer/broker"

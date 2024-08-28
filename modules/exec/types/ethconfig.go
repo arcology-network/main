@@ -21,7 +21,7 @@ import (
 	"math"
 	"math/big"
 
-	evmcommon "github.com/arcology-network/evm-adaptor/common"
+	evmcommon "github.com/arcology-network/eu/common"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/core/types"

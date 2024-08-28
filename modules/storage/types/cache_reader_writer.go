@@ -21,9 +21,9 @@ import (
 	"math/big"
 
 	"github.com/arcology-network/common-lib/codec"
-	"github.com/arcology-network/storage-committer/commutative"
-	"github.com/arcology-network/storage-committer/interfaces"
-	"github.com/arcology-network/storage-committer/noncommutative"
+	interfaces "github.com/arcology-network/storage-committer/common"
+	"github.com/arcology-network/storage-committer/type/commutative"
+	"github.com/arcology-network/storage-committer/type/noncommutative"
 	"github.com/holiman/uint256"
 )
 

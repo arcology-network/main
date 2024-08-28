@@ -27,16 +27,17 @@ import (
 	"github.com/arcology-network/common-lib/exp/mempool"
 	badgerpk "github.com/arcology-network/common-lib/storage/badger"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	apihandler "github.com/arcology-network/evm-adaptor/apihandler"
-	adaptorcommon "github.com/arcology-network/evm-adaptor/pathbuilder"
+	apihandler "github.com/arcology-network/eu/apihandler"
+	adaptorcommon "github.com/arcology-network/eu/eth"
 	statestore "github.com/arcology-network/storage-committer"
 	ccurlcommon "github.com/arcology-network/storage-committer/common"
-	"github.com/arcology-network/storage-committer/commutative"
-	"github.com/arcology-network/storage-committer/interfaces"
+	interfaces "github.com/arcology-network/storage-committer/common"
 	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
-	cache "github.com/arcology-network/storage-committer/storage/writecache"
+	cache "github.com/arcology-network/storage-committer/storage/tempcache"
+	"github.com/arcology-network/storage-committer/type/commutative"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/holiman/uint256"
 )
 
 func intDb() *statestore.StateStore {
@@ -276,7 +277,7 @@ func initAccounts(db interfaces.ReadOnlyStore, from, to int) {
 	for i := from; i < to; i++ {
 		address := evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)})
 		stateDB.CreateAccount(address)
-		stateDB.SetBalance(address, new(big.Int).SetUint64(100))
+		stateDB.SetBalance(address, uint256.NewInt(100))
 		stateDB.SetNonce(address, 0)
 	}
 	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()

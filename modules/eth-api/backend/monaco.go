@@ -39,7 +39,7 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 	"golang.org/x/crypto/sha3"
 
-	eucommon "github.com/arcology-network/eu/common"
+	eucommon "github.com/arcology-network/common-lib/types"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
 )

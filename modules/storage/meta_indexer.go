@@ -24,7 +24,7 @@ import (
 
 	"github.com/arcology-network/common-lib/common"
 	concurrenturlcommon "github.com/arcology-network/storage-committer/common"
-	"github.com/arcology-network/storage-committer/commutative"
+	"github.com/arcology-network/storage-committer/type/commutative"
 )
 
 var (

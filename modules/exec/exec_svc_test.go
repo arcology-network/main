@@ -24,7 +24,7 @@ import (
 	"time"
 
 	"github.com/arcology-network/common-lib/common"
-	eucommon "github.com/arcology-network/eu/common"
+	eucommon "github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
 	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
 	"github.com/arcology-network/streamer/actor"

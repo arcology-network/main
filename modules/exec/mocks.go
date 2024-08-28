@@ -23,7 +23,7 @@ import (
 	eushared "github.com/arcology-network/eu/shared"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	mtypes "github.com/arcology-network/main/types"
-	"github.com/arcology-network/storage-committer/interfaces"
+	interfaces "github.com/arcology-network/storage-committer/common"
 	stgcommitter "github.com/arcology-network/storage-committer/storage/committer"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"

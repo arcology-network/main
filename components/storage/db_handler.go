@@ -29,7 +29,7 @@ import (
 
 	mtypes "github.com/arcology-network/main/types"
 	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
-	univaluepk "github.com/arcology-network/storage-committer/univalue"
+	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 )
 
 type DBOperation interface {
