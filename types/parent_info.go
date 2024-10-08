@@ -22,6 +22,8 @@ import (
 )
 
 type ParentInfo struct {
-	ParentRoot ethCommon.Hash
-	ParentHash ethCommon.Hash
+	ParentRoot    ethCommon.Hash
+	ParentHash    ethCommon.Hash
+	ExcessBlobGas uint64
+	BlobGasUsed   uint64
 }

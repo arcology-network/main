@@ -30,6 +30,9 @@ var authmethods = map[string]jsonrpc.MethodFunc{
 	"engine_forkchoiceUpdatedV2":               forkchoiceUpdatedV2,
 	"engine_getPayloadV2":                      getPayloadV2,
 	"engine_newPayloadV2":                      newPayloadV2,
+	"engine_forkchoiceUpdatedV3":               forkchoiceUpdatedV3,
+	"engine_getPayloadV3":                      getPayloadV3,
+	"engine_newPayloadV3":                      newPayloadV3,
 	"engine_exchangeTransitionConfigurationV1": exchangeTransitionConfigurationV1,
 }
 

@@ -785,6 +785,37 @@ func forkchoiceUpdatedV2(ctx context.Context, params []interface{}) (interface{}
 	}
 	return backend.ForkchoiceUpdatedV2(*update, payloadAttributes, options.ChainID)
 }
+func forkchoiceUpdatedV3(ctx context.Context, params []interface{}) (interface{}, error) {
+	update, err := ParseJsonParam[engine.ForkchoiceStateV1](params[0], "ForkchoiceStateV1")
+	if err != nil {
+		return nil, err
+	}
+	var payloadAttributes *engine.PayloadAttributes
+	if len(params) > 1 && params[1] != nil {
+		payloadAttributes, err = ParseJsonParam[engine.PayloadAttributes](params[1], "payloadAttributes")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if payloadAttributes != nil {
+		// TODO(matt): according to https://github.com/ethereum/execution-apis/pull/498,
+		// payload attributes that are invalid should return error
+		// engine.InvalidPayloadAttributes. Once hive updates this, we should update
+		// on our end.
+		if payloadAttributes.Withdrawals == nil {
+			return engine.STATUS_INVALID, engine.InvalidParams.With(errors.New("missing withdrawals"))
+		}
+		if payloadAttributes.BeaconRoot == nil {
+			return engine.STATUS_INVALID, engine.InvalidParams.With(errors.New("missing beacon root"))
+		}
+		// if api.eth.BlockChain().Config().LatestFork(payloadAttributes.Timestamp) != forks.Cancun {
+		// 	return engine.STATUS_INVALID, engine.UnsupportedFork.With(errors.New("forkchoiceUpdatedV3 must only be called for cancun payloads"))
+		// }
+	}
+
+	return backend.ForkchoiceUpdatedV2(*update, payloadAttributes, options.ChainID)
+}
 
 func getPayloadV2(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := ParseJsonParam[engine.PayloadID](params[0], "PayloadID")
@@ -793,6 +824,45 @@ func getPayloadV2(ctx context.Context, params []interface{}) (interface{}, error
 	}
 	return backend.GetPayloadV2(*id)
 }
+
+func getPayloadV3(ctx context.Context, params []interface{}) (interface{}, error) {
+	id, err := ParseJsonParam[engine.PayloadID](params[0], "PayloadID")
+	if err != nil {
+		return nil, err
+	}
+	return backend.GetPayloadV2(*id)
+}
+
+func newPayloadV3(ctx context.Context, params []interface{}) (interface{}, error) {
+	payload, err := ParseJsonParam[engine.ExecutableData](params[0], "ExecutableData")
+	if err != nil {
+		return nil, err
+	}
+
+	if payload.Withdrawals == nil {
+		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(errors.New("nil withdrawals post-shanghai"))
+	}
+	if payload.ExcessBlobGas == nil {
+		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(errors.New("nil excessBlobGas post-cancun"))
+	}
+	if payload.BlobGasUsed == nil {
+		return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(errors.New("nil blobGasUsed post-cancun"))
+	}
+
+	// if versionedHashes == nil {
+	// 	return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(errors.New("nil versionedHashes post-cancun"))
+	// }
+	// if beaconRoot == nil {
+	// 	return engine.PayloadStatusV1{Status: engine.INVALID}, engine.InvalidParams.With(errors.New("nil beaconRoot post-cancun"))
+	// }
+
+	// if api.eth.BlockChain().Config().LatestFork(params.Timestamp) != forks.Cancun {
+	// 	return engine.PayloadStatusV1{Status: engine.INVALID}, engine.UnsupportedFork.With(errors.New("newPayloadV3 must only be called for cancun payloads"))
+	// }
+
+	return backend.NewPayloadV2(*payload)
+}
+
 func newPayloadV2(ctx context.Context, params []interface{}) (interface{}, error) {
 	payload, err := ParseJsonParam[engine.ExecutableData](params[0], "ExecutableData")
 	if err != nil {

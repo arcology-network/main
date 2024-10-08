@@ -163,6 +163,29 @@ func (api *Monaco) NewPayloadV2(params engine.ExecutableData) (engine.PayloadSta
 	// }
 	// hash := block.Hash()
 
+	counter := 20
+	var latestHeight uint64
+	for {
+		var response mtypes.QueryResult
+		err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+			QueryType: mtypes.QueryType_LatestHeight,
+		}, &response)
+		if err != nil {
+			time.Sleep(200 * time.Millisecond)
+		}
+
+		latestHeight = response.Data.(uint64)
+		// fmt.Printf("----------main/modules/eth-api/backend/monaco.go----NewPayloadV2---------latestHeight:%v,params.Number:%v\n", latestHeight, params.Number)
+		if latestHeight >= params.Number {
+			break
+		}
+		counter--
+		if counter <= 0 {
+			break
+		}
+		time.Sleep(200 * time.Millisecond)
+	}
+
 	return engine.PayloadStatusV1{Status: engine.VALID, LatestValidHash: &params.BlockHash}, nil
 }
 

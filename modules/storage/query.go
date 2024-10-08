@@ -38,7 +38,7 @@ import (
 func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
 	switch request.QueryType {
 	case mtypes.QueryType_LatestHeight:
-		response.Data = int(rs.lastHeight)
+		response.Data = rs.lastHeight
 	case mtypes.QueryType_Nonce:
 		request := request.Data.(mtypes.RequestBalance)
 		var nonce uint64

@@ -37,6 +37,7 @@ import (
 type MakeBlock struct {
 	actor.WorkerThread
 	ParentTime uint64
+	// ParentHeader *evmTypes.Header
 }
 
 // return a Subscriber struct
@@ -73,8 +74,6 @@ func (m *MakeBlock) OnStart() {
 }
 
 func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
-
-	// coinbase := evmCommon.Address{}
 	txhash := evmCommon.Hash{}
 	accthash := evmCommon.Hash{}
 	rcpthash := evmCommon.Hash{}
@@ -158,9 +157,12 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 
 	// save cache root and header hash
 	currentinfo := &mtypes.ParentInfo{
-		ParentHash: header.Hash(),
-		ParentRoot: accthash,
+		ParentHash:    header.Hash(),
+		ParentRoot:    accthash,
+		ExcessBlobGas: *header.ExcessBlobGas,
+		BlobGasUsed:   *header.BlobGasUsed,
 	}
+	// m.ParentHeader = header
 
 	var na int
 	intf.Router.Call("transactionalstore", "AddData", &transactional.AddDataRequest{
@@ -180,7 +182,13 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 }
 
 func (m *MakeBlock) CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, blockstart *actor.BlockStart, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, blockParams *mtypes.BlockParams, bloom evmTypes.Bloom, withdrawhash *evmCommon.Hash) *evmTypes.Header {
-	excessBlobGas := eip4844.CalcExcessBlobGas(0, 0)
+	// var excessBlobGas uint64
+	// if m.ParentHeader == nil {
+	// 	excessBlobGas = eip4844.CalcExcessBlobGas(0, 0)
+	// } else {
+	excessBlobGas := eip4844.CalcExcessBlobGas(parentinfo.ExcessBlobGas, parentinfo.BlobGasUsed)
+	// }
+
 	headtime := blockstart.Timestamp.Uint64()
 	if blockParams.Times > 0 {
 		headtime = blockParams.Times
@@ -201,16 +209,22 @@ func (m *MakeBlock) CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, b
 		GasUsed:     gasused,
 		TxHash:      txhash,
 		ReceiptHash: rcpthash,
-		Extra:       blockstart.Extra,
+		// Extra:       blockstart.Extra,
 
-		BaseFee:          big.NewInt(1),
-		MixDigest:        blockParams.Random,
+		BaseFee: big.NewInt(1),
+		// MixDigest:        blockParams.Random,
 		BlobGasUsed:      new(uint64),
 		ExcessBlobGas:    &excessBlobGas,
 		ParentBeaconRoot: blockParams.BeaconRoot,
 
 		UncleHash:       evmTypes.EmptyUncleHash,
 		WithdrawalsHash: withdrawhash,
+	}
+	if len(blockstart.Extra) != 0 && mtypes.RunAsL1 {
+		header.Extra = blockstart.Extra
+	}
+	if blockParams.Random != (evmCommon.Hash{}) {
+		header.MixDigest = blockParams.Random
 	}
 	if gasused > 0 {
 		header.Bloom = bloom

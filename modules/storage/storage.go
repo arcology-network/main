@@ -70,7 +70,7 @@ func NewStorage(concurrency int, groupid string) actor.IWorkerEx {
 
 func (s *Storage) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgBlockCompleted,
+		// actor.MsgBlockCompleted,
 		actor.MsgParentInfo,
 		actor.MsgSelectedReceipts,
 		actor.MsgPendingBlock,
@@ -109,7 +109,7 @@ func (*Storage) Stop() {}
 
 func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 	//var statedatas *storage.UrlUpdate
-	result := ""
+	result := "success"
 	height := uint64(0)
 	var receipts []*evmTypes.Receipt
 	var block *mtypes.MonacoBlock
@@ -119,8 +119,8 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 
 	for _, v := range msgs {
 		switch v.Name {
-		case actor.MsgBlockCompleted:
-			result = v.Data.(string)
+		// case actor.MsgBlockCompleted:
+		// 	result = v.Data.(string)
 		case actor.MsgParentInfo:
 			parentinfo := v.Data.(*mtypes.ParentInfo)
 			isnil, err := s.IsNil(parentinfo, "parentinfo")
@@ -128,9 +128,11 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 				return err
 			}
 			intf.Router.Call("statestore", "Save", &State{
-				Height:     v.Height,
-				ParentHash: parentinfo.ParentHash,
-				ParentRoot: parentinfo.ParentRoot,
+				Height:        v.Height,
+				ParentHash:    parentinfo.ParentHash,
+				ParentRoot:    parentinfo.ParentRoot,
+				ExcessBlobGas: parentinfo.ExcessBlobGas,
+				BlobGasUsed:   parentinfo.BlobGasUsed,
 			}, &na)
 		case actor.MsgSelectedReceipts:
 			for _, item := range v.Data.([]interface{}) {

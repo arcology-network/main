@@ -27,9 +27,11 @@ import (
 )
 
 type State struct {
-	Height     uint64
-	ParentHash evmCommon.Hash
-	ParentRoot evmCommon.Hash
+	Height        uint64
+	ParentHash    evmCommon.Hash
+	ParentRoot    evmCommon.Hash
+	ExcessBlobGas uint64
+	BlobGasUsed   uint64
 }
 
 func (s *State) Encode() []byte {
@@ -37,6 +39,8 @@ func (s *State) Encode() []byte {
 		codec.Uint64(s.Height).Encode(),
 		s.ParentHash.Bytes(),
 		s.ParentRoot.Bytes(),
+		codec.Uint64(s.ExcessBlobGas).Encode(),
+		codec.Uint64(s.BlobGasUsed).Encode(),
 	}
 	return codec.Byteset(buffers).Encode()
 }
@@ -46,6 +50,8 @@ func (s *State) Decode(data []byte) *State {
 	s.Height = uint64(codec.Uint64(0).Decode(buffers[0]).(codec.Uint64))
 	s.ParentHash = evmCommon.BytesToHash(buffers[1])
 	s.ParentRoot = evmCommon.BytesToHash(buffers[2])
+	s.ExcessBlobGas = uint64(codec.Uint64(0).Decode(buffers[2]).(codec.Uint64))
+	s.BlobGasUsed = uint64(codec.Uint64(0).Decode(buffers[3]).(codec.Uint64))
 	return s
 }
 
@@ -97,5 +103,7 @@ func (ss *StateStore) GetParentInfo(ctx context.Context, na *int, parentInfo *mt
 	}
 	parentInfo.ParentHash = ss.state.ParentHash
 	parentInfo.ParentRoot = ss.state.ParentRoot
+	parentInfo.ExcessBlobGas = ss.state.ExcessBlobGas
+	parentInfo.BlobGasUsed = ss.state.BlobGasUsed
 	return nil
 }

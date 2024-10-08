@@ -128,8 +128,10 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			ParentRoot: rootHash,
 		}, &na)
 		parentinfo = &mtypes.ParentInfo{
-			ParentHash: hash,
-			ParentRoot: rootHash,
+			ParentHash:    hash,
+			ParentRoot:    rootHash,
+			ExcessBlobGas: *evmblock.Header().ExcessBlobGas,
+			BlobGasUsed:   *evmblock.Header().BlobGasUsed,
 		}
 	} else {
 
@@ -165,9 +167,11 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 
 			var na int
 			intf.Router.Call("statestore", "Save", &State{
-				Height:     uint64(height),
-				ParentHash: pi.ParentHash,
-				ParentRoot: pi.ParentRoot,
+				Height:        uint64(height),
+				ParentHash:    pi.ParentHash,
+				ParentRoot:    pi.ParentRoot,
+				ExcessBlobGas: pi.ExcessBlobGas,
+				BlobGasUsed:   pi.BlobGasUsed,
 			}, &na)
 			fmt.Printf("[storage.Initializer] Recover parentinfo = %v\n", pi)
 			return nil
