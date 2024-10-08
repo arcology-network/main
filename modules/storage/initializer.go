@@ -127,11 +127,19 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			ParentHash: hash,
 			ParentRoot: rootHash,
 		}, &na)
+		excessBlobGas := uint64(0)
+		if evmblock.Header().ExcessBlobGas != nil {
+			excessBlobGas = *evmblock.Header().ExcessBlobGas
+		}
+		blobGasUsed := uint64(0)
+		if evmblock.Header().BlobGasUsed != nil {
+			blobGasUsed = *evmblock.Header().BlobGasUsed
+		}
 		parentinfo = &mtypes.ParentInfo{
 			ParentHash:    hash,
 			ParentRoot:    rootHash,
-			ExcessBlobGas: *evmblock.Header().ExcessBlobGas,
-			BlobGasUsed:   *evmblock.Header().BlobGasUsed,
+			ExcessBlobGas: excessBlobGas,
+			BlobGasUsed:   blobGasUsed,
 		}
 	} else {
 
