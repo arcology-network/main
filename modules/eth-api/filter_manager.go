@@ -81,9 +81,10 @@ func (fm *FilterManager) OnMessageArrived(msgs []*actor.Message) error {
 	for _, v := range msgs {
 		switch v.Name {
 		case actor.MsgSelectedReceipts:
-			for _, item := range v.Data.([]interface{}) {
-				receipts = append(receipts, item.(*ethTypes.Receipt))
-			}
+			// for _, item := range v.Data.([]interface{}) {
+			// 	receipts = append(receipts, item.(*ethTypes.Receipt))
+			// }
+			receipts = v.Data.([]*ethTypes.Receipt)
 		case actor.MsgPendingBlock:
 			block = v.Data.(*mtypes.MonacoBlock)
 		}

@@ -25,6 +25,7 @@ import (
 func init() {
 	actor.Factory.Register("scheduler", NewScheduler)
 	actor.Factory.Register("apc_switcher", NewApcSwitcher)
+	actor.Factory.Register("feedback", NewFeedback)
 
 	intf.Factory.Register("scheduler", func(concurrency int, groupId string) interface{} {
 		return NewScheduler(concurrency, groupId)

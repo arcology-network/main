@@ -135,9 +135,10 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 				BlobGasUsed:   parentinfo.BlobGasUsed,
 			}, &na)
 		case actor.MsgSelectedReceipts:
-			for _, item := range v.Data.([]interface{}) {
-				receipts = append(receipts, item.(*evmTypes.Receipt))
-			}
+			// for _, item := range v.Data.([]interface{}) {
+			// 	receipts = append(receipts, item.(*evmTypes.Receipt))
+			// }
+			receipts = v.Data.([]*evmTypes.Receipt)
 		case actor.MsgPendingBlock:
 			block = v.Data.(*mtypes.MonacoBlock)
 			height = v.Height

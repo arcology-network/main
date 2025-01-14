@@ -57,7 +57,7 @@ func (m *MakeBlock) Inputs() ([]string, bool) {
 		actor.MsgBlockParams,
 		actor.MsgWithDrawHash,
 		actor.MsgSignerType,
-		actor.MsgTransactionalAddCompleted,
+		actor.MsgGenerationReapingCompleted,
 	}, true
 }
 
@@ -135,7 +135,7 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 			}
 		case actor.MsgWithDrawHash:
 			withDrawHash = v.Data.(*evmCommon.Hash)
-		case actor.MsgTransactionalAddCompleted:
+		case actor.MsgGenerationReapingCompleted:
 
 		}
 	}

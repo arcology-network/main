@@ -37,6 +37,7 @@ import (
 	eucommon "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	scheduler "github.com/arcology-network/scheduler"
+	"github.com/arcology-network/storage-committer/type/univalue"
 )
 
 type Scheduler struct {
@@ -85,6 +86,7 @@ func (schd *Scheduler) Inputs() ([]string, bool) {
 	return []string{
 		actor.CombinedName(actor.MsgMessagersReaped, actor.MsgBlockStart),
 		actor.MsgApcHandle,
+		actor.MsgFeedBacks,
 	}, false
 }
 
@@ -139,6 +141,9 @@ func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
 			schd.CheckPoint("received messagersReaped")
 			stdMsgs = combined.Get(actor.MsgMessagersReaped).Data.([]*eucommon.StandardMessage)
 			schd.ProcessMsgs(msgs[0], stdMsgs, msg.Height)
+		case actor.MsgFeedBacks:
+			univalues := msg.Data.([]*univalue.Univalue)
+			schd.schdEngine.Import(univalues)
 		}
 	}
 	return nil
@@ -265,7 +270,7 @@ func (schd *Scheduler) splitMessagesByType(msgs []*eucommon.StandardMessage) {
 }
 
 func (schd *Scheduler) createGenerations() []*generation {
-	gens := ParseResult(schd.schdEngine.New(schd.contractCalls).Optimize(), len(schd.contractCalls))
+	gens := ParseResult(schd.schdEngine.New(schd.contractCalls).Optimize(schd.schdEngine), len(schd.contractCalls))
 	res := make([]*generation, 0, len(gens)+1)
 	if len(schd.transfers) > 0 {
 		res = append(res, newGeneration(

@@ -69,10 +69,10 @@ func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 				return err
 			}
 		case actor.MsgSelectedReceipts:
-			for _, item := range v.Data.([]interface{}) {
-				selectedReceipts = append(selectedReceipts, item.(*evmTypes.Receipt))
-			}
-
+			// for _, item := range v.Data.([]interface{}) {
+			// 	selectedReceipts = append(selectedReceipts, item.(*evmTypes.Receipt))
+			// }
+			selectedReceipts = v.Data.([]*evmTypes.Receipt)
 		}
 	}
 	cr.CheckPoint("start calculate rcpthash")

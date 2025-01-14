@@ -124,9 +124,11 @@ func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) 
 			EncodedValues: encodedValues,
 		})
 	}
-	if url.transactional {
-		url.MsgBroker.Send(actor.MsgTransactionalAddCompleted, "ok")
-	}
+
+	// if url.transactional {
+	// 	fmt.Printf("======components/storage/general_url.go  PreCommit url.transactional:%v\n", url.transactional)
+	// 	url.MsgBroker.Send(actor.MsgTransactionalAddCompleted, "ok")
+	// }
 	if url.generateApcHandle == "generation" {
 		url.MsgBroker.Send(url.apcHandleName, url.StateStore)
 	}

@@ -213,9 +213,10 @@ func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
 		switch msg.Name {
 		case actor.MsgSelectedReceipts:
 			var receipts []*evmTypes.Receipt
-			for _, item := range msg.Data.([]interface{}) {
-				receipts = append(receipts, item.(*evmTypes.Receipt))
-			}
+			// for _, item := range msg.Data.([]interface{}) {
+			// 	receipts = append(receipts, item.(*evmTypes.Receipt))
+			// }
+			receipts = msg.Data.([]*evmTypes.Receipt)
 			if ok, result := a.opAdaptor.AddReceipts(receipts); ok {
 				a.returnResult(result)
 			}
