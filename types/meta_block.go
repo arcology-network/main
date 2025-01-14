@@ -28,19 +28,19 @@ type MetaBlock struct {
 	Hashlist []ethCommon.Hash
 }
 
-func (this MetaBlock) HeaderSize() uint32 {
-	return uint32(3 * codec.UINT32_LEN)
+func (this MetaBlock) HeaderSize() uint64 {
+	return uint64(3 * codec.UINT64_LEN)
 }
 
-func (this MetaBlock) Size() uint32 {
+func (this MetaBlock) Size() uint64 {
 	total := 0
 	for i := 0; i < len(this.Txs); i++ {
 		total += len(this.Txs[i])
 	}
-	return uint32(
+	return uint64(
 		this.HeaderSize() +
-			uint32(codec.UINT32_LEN*(len(this.Txs)+1)) + uint32(total) +
-			uint32(len(this.Hashlist)*codec.HASH32_LEN))
+			uint64(codec.UINT64_LEN*(len(this.Txs)+1)) + uint64(total) +
+			uint64(len(this.Hashlist)*codec.HASH32_LEN))
 }
 
 func (this MetaBlock) Encode() []byte {
@@ -50,22 +50,22 @@ func (this MetaBlock) Encode() []byte {
 }
 
 func (this MetaBlock) FillHeader(buffer []byte) {
-	codec.Uint32(2).EncodeToBuffer(buffer[codec.UINT32_LEN*0:])
-	codec.Uint32(0).EncodeToBuffer(buffer[codec.UINT32_LEN*1:])
-	codec.Uint32(codec.Byteset(this.Txs).Size()).EncodeToBuffer(buffer[codec.UINT32_LEN*2:])
+	codec.Uint64(2).EncodeToBuffer(buffer[codec.UINT64_LEN*0:])
+	codec.Uint64(0).EncodeToBuffer(buffer[codec.UINT64_LEN*1:])
+	codec.Uint64(codec.Byteset(this.Txs).Size()).EncodeToBuffer(buffer[codec.UINT64_LEN*2:])
 }
 
 func (this MetaBlock) EncodeToBuffer(buffer []byte) {
 	this.FillHeader(buffer)
 	headerLen := this.HeaderSize()
 
-	offset := uint32(0)
+	offset := uint64(0)
 	codec.Byteset(this.Txs).EncodeToBuffer(buffer[headerLen+offset:])
 	offset += codec.Byteset(this.Txs).Size()
 
 	for i := 0; i < len(this.Hashlist); i++ {
 		codec.Bytes32(this.Hashlist[i]).EncodeToBuffer(buffer[headerLen+offset:])
-		offset += uint32(ethCommon.HashLength)
+		offset += uint64(ethCommon.HashLength)
 	}
 }
 

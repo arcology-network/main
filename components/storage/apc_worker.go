@@ -23,16 +23,16 @@ import (
 	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 )
 
-func GetTransitionIds(euresults []*eushared.EuResult) []uint32 {
-	txIds := make([]uint32, len(euresults))
+func GetTransitionIds(euresults []*eushared.EuResult) []uint64 {
+	txIds := make([]uint64, len(euresults))
 	for i, euresult := range euresults {
 		txIds[i] = euresult.ID
 	}
 	return txIds
 }
 
-func GetTransitions(euresults []*eushared.EuResult) ([]uint32, []*univaluepk.Univalue) {
-	txIds := make([]uint32, len(euresults))
+func GetTransitions(euresults []*eushared.EuResult) ([]uint64, []*univaluepk.Univalue) {
+	txIds := make([]uint64, len(euresults))
 	transitionsize := 0
 	for i, euresult := range euresults {
 		transitionsize = transitionsize + len(euresult.Trans)

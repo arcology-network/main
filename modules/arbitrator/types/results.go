@@ -42,7 +42,7 @@ func Decode(ars *eushared.TxAccessRecords) *AccessRecord {
 
 type AccessRecord struct {
 	GroupID  uint32
-	TxID     uint32
+	TxID     uint64
 	TxHash   [32]byte
 	Accesses []*univaluepk.Univalue
 }

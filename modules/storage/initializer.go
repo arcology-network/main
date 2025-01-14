@@ -246,7 +246,7 @@ func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis, height uint6
 	transitions := i.createTransitions(db, genesis.Alloc)
 
 	stateStore.Import(slice.Clone(transitions))
-	stateStore.Precommit([]uint32{0})
+	stateStore.Precommit([]uint64{0})
 	stateStore.Commit(height)
 
 	return stateStore, evmCommon.Hash{}

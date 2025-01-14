@@ -167,7 +167,7 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 	case dbStateUninit:
 		if !handler.initDb {
 			if msg.Name == actor.MsgInitialization {
-				handler.StateStore = msg.Data.(*mtypes.Initialization).Store //statestore.NewStateStore(handler.db)
+				handler.StateStore = msg.Data.(*mtypes.Initialization).Store
 
 				handler.op.Init(handler.StateStore, handler.MsgBroker)
 				handler.state = dbStateInit

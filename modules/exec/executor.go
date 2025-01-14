@@ -255,10 +255,10 @@ func (exec *Executor) startExec() {
 				exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>start execute", zap.Bool("Sequence.Parallel", task.Sequence.Parallel), zap.Int("txs counter", len(task.Sequence.Msgs)))
 				if task.Sequence.Parallel {
 					results := make([]*eucommon.Result, 0, len(task.Sequence.Msgs))
-					mtransitions := make(map[uint32][]*univalue.Univalue, len(task.Sequence.Msgs))
+					mtransitions := make(map[uint64][]*univalue.Univalue, len(task.Sequence.Msgs))
 					for j := range task.Sequence.Msgs {
 						job := eupk.JobSequence{
-							ID:      uint32(j),
+							ID:      uint64(j),
 							StdMsgs: []*types.StandardMessage{task.Sequence.Msgs[j]},
 						}
 						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
@@ -266,12 +266,12 @@ func (exec *Executor) startExec() {
 						}, func(cache *cache.WriteCache) { cache.Clear() }))
 						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
-						mtransitions[uint32(task.Sequence.Msgs[j].ID)] = job.Results[0].Transitions()
+						mtransitions[uint64(task.Sequence.Msgs[j].ID)] = job.Results[0].Transitions()
 					}
 					exec.sendResults(results, mtransitions, task.Debug)
 				} else {
 					job := eupk.JobSequence{
-						ID:      uint32(0),
+						ID:      uint64(0),
 						StdMsgs: task.Sequence.Msgs,
 					}
 					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
@@ -286,8 +286,8 @@ func (exec *Executor) startExec() {
 		}(index)
 	}
 }
-func (exec *Executor) parseResults(alltransitions []*univalue.Univalue) map[uint32][]*univalue.Univalue {
-	mTransitions := make(map[uint32][]*univalue.Univalue, len(alltransitions))
+func (exec *Executor) parseResults(alltransitions []*univalue.Univalue) map[uint64][]*univalue.Univalue {
+	mTransitions := make(map[uint64][]*univalue.Univalue, len(alltransitions))
 	for i := range alltransitions {
 		id := alltransitions[i].GetTx()
 		mTransitions[id] = append(mTransitions[id], alltransitions[i])
@@ -296,7 +296,7 @@ func (exec *Executor) parseResults(alltransitions []*univalue.Univalue) map[uint
 	return mTransitions
 }
 
-func (exec *Executor) sendResults(results []*eucommon.Result, mTransitions map[uint32][]*univalue.Univalue, debug bool) {
+func (exec *Executor) sendResults(results []*eucommon.Result, mTransitions map[uint64][]*univalue.Univalue, debug bool) {
 	counter := len(results)
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))
 	sendingEuResults := make([]*eushared.EuResult, counter)
@@ -316,7 +316,7 @@ func (exec *Executor) sendResults(results []*eucommon.Result, mTransitions map[u
 	contractAddresses := make([]evmCommon.Address, len(results))
 	slice.ParallelForeach(results, threadNum, func(i int, result **eucommon.Result) {
 
-		rawtransitions := mTransitions[uint32((*result).StdMsg.ID)]
+		rawtransitions := mTransitions[uint64((*result).StdMsg.ID)]
 		accesses := univaluepk.Univalues(slice.Clone(rawtransitions)).To(univaluepk.IPAccess{})
 		transitions := univaluepk.Univalues(rawtransitions).To(univaluepk.IPTransition{})
 
@@ -337,14 +337,14 @@ func (exec *Executor) sendResults(results []*eucommon.Result, mTransitions map[u
 		euresult.H = string((*result).TxHash[:])
 		euresult.GasUsed = (*result).Receipt.GasUsed
 		euresult.Status = (*result).Receipt.Status
-		euresult.ID = uint32((*result).StdMsg.ID)
+		euresult.ID = uint64((*result).StdMsg.ID)
 		euresult.Trans = transitions
 		sendingEuResults[i] = &euresult
 
 		nonceEuresult := eushared.EuResult{}
 		nonceEuresult.H = string((*result).TxHash[:])
 		nonceEuresult.Status = (*result).Receipt.Status
-		nonceEuresult.ID = uint32((*result).StdMsg.ID)
+		nonceEuresult.ID = uint64((*result).StdMsg.ID)
 
 		nonceTransactions := slice.CloneIf(transitions, func(v *univaluepk.Univalue) bool {
 			path := *v.GetPath()
@@ -359,7 +359,7 @@ func (exec *Executor) sendResults(results []*eucommon.Result, mTransitions map[u
 
 		accessRecord := eushared.TxAccessRecords{}
 		accessRecord.Hash = euresult.H
-		accessRecord.ID = uint32((*result).StdMsg.ID)
+		accessRecord.ID = uint64((*result).StdMsg.ID)
 
 		accessRecord.Accesses = accesses
 		sendingAccessRecords[i] = &accessRecord

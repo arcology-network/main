@@ -28,7 +28,7 @@ import (
 type Arbitrator interface {
 	Start()
 	Stop()
-	Do(els [][]evmCommon.Hash, log *actor.WorkerThreadLogger, generationIdx int) ([]evmCommon.Hash, []uint32, []uint32)
+	Do(els [][]evmCommon.Hash, log *actor.WorkerThreadLogger, generationIdx int) ([]evmCommon.Hash, []uint64, []uint64)
 }
 
 type Executor interface {

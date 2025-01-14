@@ -236,8 +236,8 @@ func TestSchedulerContractWithConfliction(t *testing.T) {
 		[]*mtypes.ArbitratorResponse{
 			{
 				ConflictedList: []evmCommon.Hash{conflictHash},
-				CPairLeft:      []uint32{256},
-				CPairRight:     []uint32{512},
+				CPairLeft:      []uint64{256},
+				CPairRight:     []uint64{512},
 			},
 		},
 		map[string]interface{}{
@@ -347,14 +347,14 @@ func TestSchedulerConflictionInDefer(t *testing.T) {
 		[]*mtypes.ArbitratorResponse{
 			{
 				ConflictedList: []evmCommon.Hash{txHashes[1]},
-				CPairLeft:      []uint32{256},
-				CPairRight:     []uint32{512},
+				CPairLeft:      []uint64{256},
+				CPairRight:     []uint64{512},
 			},
 			{},
 			{
 				ConflictedList: []evmCommon.Hash{txHashes[2], txHashes[3], txHashes[5]},
-				CPairLeft:      []uint32{257},
-				CPairRight:     []uint32{768},
+				CPairLeft:      []uint64{257},
+				CPairRight:     []uint64{768},
 			},
 		},
 		map[string]interface{}{

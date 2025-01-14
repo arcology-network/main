@@ -70,10 +70,10 @@ func TestPoolWithUncheckedTx(t *testing.T) {
 	}
 
 	p.Clean(1)
-	if p.TxByHash.Size() != uint32(n-len(reaped)) {
+	if p.TxByHash.Size() != uint64(n-len(reaped)) {
 		t.Fail()
 	}
-	if p.TxUnchecked.Size() != uint32(n-len(reaped)) {
+	if p.TxUnchecked.Size() != uint64(n-len(reaped)) {
 		t.Fail()
 	}
 }
@@ -104,7 +104,7 @@ func TestPoolWithCheckedTx(t *testing.T) {
 
 	increaseNonce(db.Store(), picked)
 	p.Clean(1)
-	if p.TxByHash.Size() != uint32(n-len(reaped)) {
+	if p.TxByHash.Size() != uint64(n-len(reaped)) {
 		t.Fail()
 	}
 }
@@ -174,7 +174,7 @@ func TestPoolAdd(t *testing.T) {
 
 	increaseNonce(db.Store(), picked)
 	p.Clean(1)
-	if p.TxByHash.Size() != uint32(n-len(reaped)) {
+	if p.TxByHash.Size() != uint64(n-len(reaped)) {
 		t.Fail()
 	}
 }
@@ -205,7 +205,7 @@ func TestPoolReapEmptyTxSender(t *testing.T) {
 
 	increaseNonce(db.Store(), picked)
 	p.Clean(1)
-	if p.TxByHash.Size() != uint32(n-len(reaped)) {
+	if p.TxByHash.Size() != uint64(n-len(reaped)) {
 		t.Fail()
 	}
 
@@ -243,12 +243,12 @@ func TestPoolCleanObsolete(t *testing.T) {
 
 	increaseNonce(db.Store(), picked)
 	p.Clean(1)
-	if p.TxByHash.Size() != uint32(n/2) || p.TxBySender.Size() != uint32(n) {
+	if p.TxByHash.Size() != uint64(n/2) || p.TxBySender.Size() != uint64(n) {
 		t.Fail()
 	}
 
 	p.Clean(101)
-	if p.TxByHash.Size() != uint32(n/2) || p.TxBySender.Size() != uint32(n/2) {
+	if p.TxByHash.Size() != uint64(n/2) || p.TxBySender.Size() != uint64(n/2) {
 		t.Fail()
 	}
 
@@ -282,7 +282,7 @@ func initAccounts(db interfaces.ReadOnlyStore, from, to int) {
 	}
 	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()
 	sstore.Import(transitions)
-	sstore.Precommit([]uint32{0})
+	sstore.Precommit([]uint64{0})
 	sstore.Commit(0)
 }
 
@@ -299,7 +299,7 @@ func increaseNonce(db interfaces.ReadOnlyStore, txs []*cmntyp.StandardTransactio
 	}
 	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()
 	sstore.Import(transitions)
-	sstore.Precommit([]uint32{0})
+	sstore.Precommit([]uint64{0})
 	sstore.Commit(0)
 }
 

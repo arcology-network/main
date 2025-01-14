@@ -60,10 +60,10 @@ func (rca *RpcClientArbitrate) Stop() {
 
 }
 
-func (rca *RpcClientArbitrate) Do(arbitrateList [][]evmCommon.Hash, inlog *actor.WorkerThreadLogger, generationIdx int) ([]evmCommon.Hash, []uint32, []uint32) {
+func (rca *RpcClientArbitrate) Do(arbitrateList [][]evmCommon.Hash, inlog *actor.WorkerThreadLogger, generationIdx int) ([]evmCommon.Hash, []uint64, []uint64) {
 	results := make([]evmCommon.Hash, 0, len(arbitrateList))
-	cpairLeft := make([]uint32, 0, len(arbitrateList))
-	cpairRight := make([]uint32, 0, len(arbitrateList))
+	cpairLeft := make([]uint64, 0, len(arbitrateList))
+	cpairRight := make([]uint64, 0, len(arbitrateList))
 
 	request := actor.Message{
 		Msgid: common.GenerateUUID(),

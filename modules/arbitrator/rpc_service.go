@@ -135,19 +135,19 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	return nil
 }
 
-func parseRequests(txsListGroup [][]evmCommon.Hash, results *[]*types.AccessRecord) ([][]uint32, [][]*univaluepk.Univalue) {
+func parseRequests(txsListGroup [][]evmCommon.Hash, results *[]*types.AccessRecord) ([][]uint64, [][]*univaluepk.Univalue) {
 	mp := map[[32]byte]*types.AccessRecord{}
 	for _, result := range *results {
 		mp[result.TxHash] = result
 	}
-	groupIDs := make([][]uint32, len(txsListGroup))
+	groupIDs := make([][]uint64, len(txsListGroup))
 	records := make([][]*univaluepk.Univalue, len(txsListGroup))
 	for i, row := range txsListGroup {
-		ids := make([]uint32, 0, len(row))
+		ids := make([]uint64, 0, len(row))
 		transactations := []*univaluepk.Univalue{}
 		for _, e := range row {
 			result := mp[[32]byte(e.Bytes())]
-			ids = append(ids, slice.Fill(make([]uint32, len(result.Accesses)), uint32(i))...)
+			ids = append(ids, slice.Fill(make([]uint64, len(result.Accesses)), uint64(i))...)
 			transactations = append(transactations, result.Accesses...)
 		}
 		groupIDs[i] = ids
@@ -156,15 +156,15 @@ func parseRequests(txsListGroup [][]evmCommon.Hash, results *[]*types.AccessReco
 	return groupIDs, records
 }
 
-func parseResult(txsListGroup [][]evmCommon.Hash, conflits arbitratorn.Conflicts) ([]evmCommon.Hash, []uint32, []uint32) {
+func parseResult(txsListGroup [][]evmCommon.Hash, conflits arbitratorn.Conflicts) ([]evmCommon.Hash, []uint64, []uint64) {
 	_, groupmp, pairs := conflits.ToDict()
 	confiltList := []evmCommon.Hash{}
 
 	for _, groupid := range common.MapKeys(groupmp) {
 		confiltList = append(confiltList, txsListGroup[groupid]...)
 	}
-	left := make([]uint32, 0, len(pairs))
-	right := make([]uint32, 0, len(pairs))
+	left := make([]uint64, 0, len(pairs))
+	right := make([]uint64, 0, len(pairs))
 	for _, pair := range pairs {
 		left = append(left, pair[0])
 		right = append(right, pair[1])
