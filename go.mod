@@ -22,15 +22,16 @@ replace github.com/ethereum/go-ethereum v1.14.8 => ../concurrent-evm/
 
 // replace github.com/arcology-network/eu => ../eu
 
-replace github.com/arcology-network/storage-committer => ../storage-committer/
-
-require github.com/arcology-network/streamer v0.0.0-20241008083023-9bc2be29e79a
+// replace github.com/arcology-network/storage-committer => ../storage-committer/
 
 require (
 	github.com/BurntSushi/toml v1.3.2
+	github.com/arcology-network/common-lib v1.9.1-0.20250114032930-d9548e98ccd0
 	github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845
-	github.com/arcology-network/eu v0.0.0-20241008082000-bad0ad26d840
-	github.com/arcology-network/storage-committer v1.9.1-0.20241008080418-618c462bbca5
+	github.com/arcology-network/eu v0.0.0-20250115083824-5c023a761226
+	github.com/arcology-network/scheduler v0.0.0-20250115083411-c5d593998552
+	github.com/arcology-network/storage-committer v1.9.1-0.20250115083055-49b463a27754
+	github.com/arcology-network/streamer v0.0.0-20250115084241-7a7fdaa44c06
 	github.com/go-kit/kit v0.10.0
 	github.com/go-zookeeper/zk v1.0.2
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -43,11 +44,7 @@ require (
 	golang.org/x/crypto v0.22.0
 )
 
-require (
-	github.com/arcology-network/common-lib v1.9.1-0.20240828101906-f4d64ec48d31
-	github.com/arcology-network/scheduler v0.0.0-20241008081702-28eb6f84214d
-	github.com/ethereum/go-ethereum v1.14.8
-)
+require github.com/ethereum/go-ethereum v1.14.8
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
@@ -301,6 +298,7 @@ require (
 	github.com/crate-crypto/go-ipa v0.0.0-20231025140028-3c0104f4b233 // indirect
 	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
 	github.com/deepmap/oapi-codegen v1.6.0 // indirect
+	github.com/emirpasic/gods/v2 v2.0.0-alpha // indirect
 	github.com/ethereum-optimism/superchain-registry/superchain v0.0.0-20240603085035-9c8f6081266e // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.0 // indirect
 	github.com/ferranbt/fastssz v0.1.2 // indirect
