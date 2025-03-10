@@ -85,7 +85,7 @@ func NewScheduler(concurrency int, groupId string) actor.IWorkerEx {
 func (schd *Scheduler) Inputs() ([]string, bool) {
 	return []string{
 		actor.CombinedName(actor.MsgMessagersReaped, actor.MsgBlockStart),
-		actor.MsgApcHandle,
+		// actor.MsgApcHandle,
 		actor.MsgFeedBacks,
 	}, false
 }
@@ -164,6 +164,15 @@ func (schd *Scheduler) ProcessMsgs(msg *actor.Message, stdMsgs []*eucommon.Stand
 	schd.context.logger = schd.GetLogger(schd.AddLog(log.LogLevel_Info, "Before first generation"))
 	schd.context.parallelism = schd.parallelism
 	gens := schd.createGenerations()
+
+	// for i := range gens {
+	// 	for j := range gens[i].sequences {
+	// 		fmt.Printf("------------main/modules/scheduler/scheduler.go-------i:%v,j:%v,size:%v,parallel:%v\n", i, j, len(gens[i].sequences[j].Msgs), gens[i].sequences[j].Parallel)
+	// 		if i == 1 && len(gens[i].sequences[j].Msgs) == 1 {
+	// 			fmt.Printf("------------main/modules/scheduler/scheduler.go-------def hash:%x\n", gens[i].sequences[j].Msgs[0].TxHash)
+	// 		}
+	// 	}
+	// }
 	for i, gen := range gens {
 		schd.context.onNewGeneration()
 		generationList := gen.process()

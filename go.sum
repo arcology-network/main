@@ -118,18 +118,8 @@ github.com/antihax/optional v1.0.0/go.mod h1:uupD/76wgC+ih3iEmQUL+0Ugr19nfwCT1kd
 github.com/apache/thrift v0.12.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
 github.com/apache/thrift v0.13.0 h1:5hryIiq9gtn+MiLVn0wP37kb/uTeRZgN08WoCsAhIhI=
 github.com/apache/thrift v0.13.0/go.mod h1:cp2SuWMxlEZw2r+iP2GNCdIi4C1qmUzdZFSVb+bacwQ=
-github.com/arcology-network/common-lib v1.9.1-0.20250114032930-d9548e98ccd0 h1:sFoVjp6g/bWjULKZ6iVfrEx6NXfcurv05PQBmS7XsNc=
-github.com/arcology-network/common-lib v1.9.1-0.20250114032930-d9548e98ccd0/go.mod h1:3inydlHRr5vNSS367n5+iEERiCO8FvnaSB3yEmCEi4E=
 github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845 h1:xO6JuSR675hwZ2QMw7PeMGMyQelSvBv7f13jCMWKbKg=
 github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845/go.mod h1:knpf25IdP1ITXH/61PY9RyoN8Ndp907eto5lOq1eV3w=
-github.com/arcology-network/eu v0.0.0-20250115083824-5c023a761226 h1:XPmCL7MiBd6JJRRusMfOy7DCNq0/Bum3tdzANlKjdOc=
-github.com/arcology-network/eu v0.0.0-20250115083824-5c023a761226/go.mod h1:U2AGNzU2+ppVjd8TRxvAHXzOLLJvUYtL8xX+Ynwf1XA=
-github.com/arcology-network/scheduler v0.0.0-20250115083411-c5d593998552 h1:SVYtYQYmXVtuoCiUPbrJ7cNPUcH9smqA/qK30wHJs6k=
-github.com/arcology-network/scheduler v0.0.0-20250115083411-c5d593998552/go.mod h1:1Tff8veHgmX9St2SuT1Z3kSKwFLC3QWVBEHA+FnW1b4=
-github.com/arcology-network/storage-committer v1.9.1-0.20250115083055-49b463a27754 h1:hn3ptaPeOYwslYAmHRi8J/Gmt2BFUOUi2Ritppb8OEQ=
-github.com/arcology-network/storage-committer v1.9.1-0.20250115083055-49b463a27754/go.mod h1:/wSSqU39WppL725t9EWkgVkVa60CqSFR6eN9H89XXjg=
-github.com/arcology-network/streamer v0.0.0-20250115084241-7a7fdaa44c06 h1:CYtbdf9QvqDSLzS3fM+sIk0bv+RrAuGAX9D3j5Kg5Oo=
-github.com/arcology-network/streamer v0.0.0-20250115084241-7a7fdaa44c06/go.mod h1:K7QtBVl9j+UdKUBSJN6e60K8uhuy4xEEZy4XkKdWjhI=
 github.com/armon/circbuf v0.0.0-20150827004946-bbbad097214e/go.mod h1:3U/XgcO3hCbHZ8TKRvWD2dDTCfh9M9ya+I9JpbB7O8o=
 github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6/go.mod h1:grANhF5doyWs3UAsr3K4I6qtAmlQcZDesFNEHPZAzj8=
 github.com/armon/go-metrics v0.0.0-20180917152333-f0300d1749da/go.mod h1:Q73ZrmVTwzkszR9V5SSuryQ31EELlFMUz1kKyl939pY=
@@ -223,8 +213,6 @@ github.com/cockroachdb/redact v1.1.5/go.mod h1:BVNblN9mBWFyMyqK1k3AAiSxhvhfK2oOZ
 github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06 h1:zuQyyAKVxetITBuuhv3BI9cMrmStnpT18zmgmTxunpo=
 github.com/cockroachdb/tokenbucket v0.0.0-20230807174530-cc333fc44b06/go.mod h1:7nc4anLGjupUW/PeY5qiNYsdNXj7zopG+eqsS7To5IQ=
 github.com/codahale/hdrhistogram v0.0.0-20161010025455-3a0bb77429bd/go.mod h1:sE/e/2PUdi/liOCUjSTXgM1o87ZssimdTWN964YiIeI=
-github.com/cody-yang/jsonrpc-go v1.0.1-0.20211228012857-b14ec8026f6b h1:NxGsuZ2OyXmKCLWbB2sQMJUL/vJqIOEDpmKc5dCyWo0=
-github.com/cody-yang/jsonrpc-go v1.0.1-0.20211228012857-b14ec8026f6b/go.mod h1:OCBPRViacxXmttAJKySvU/tatHTQAsdoySlU65uNaww=
 github.com/confio/ics23/go v0.0.0-20200817220745-f173e6211efb/go.mod h1:E45NqnlpxGnpfTWL/xauN7MRwEE28T4Dd4uraToOaKg=
 github.com/confio/ics23/go v0.6.3 h1:PuGK2V1NJWZ8sSkNDq91jgT/cahFEW9RGp4Y5jxulf0=
 github.com/confio/ics23/go v0.6.3/go.mod h1:E45NqnlpxGnpfTWL/xauN7MRwEE28T4Dd4uraToOaKg=
