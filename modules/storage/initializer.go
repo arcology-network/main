@@ -211,7 +211,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		}
 	}
 
-	intf.Router.Call("urlstore", "Init", store, &na)
+	intf.Router.Call("urlstore", "Init", store.ReadOnlyStore(), &na)
 
 	return []*actor.Message{
 		{
