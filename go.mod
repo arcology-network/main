@@ -26,7 +26,12 @@ replace github.com/arcology-network/storage-committer => ../storage-committer/
 
 require (
 	github.com/BurntSushi/toml v1.3.2
+	github.com/arcology-network/common-lib v1.9.1-0.20250506135036-0987f5477aab
 	github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845
+	github.com/arcology-network/eu v0.0.0-20250506143430-931cffe230c2
+	github.com/arcology-network/scheduler v0.0.0-20250506143009-b365efa7f00d
+	github.com/arcology-network/storage-committer v1.9.1-0.20250506141106-d93badc23ca3
+	github.com/arcology-network/streamer v0.0.0-20250506143745-f933151da6be
 	github.com/go-kit/kit v0.10.0
 	github.com/go-zookeeper/zk v1.0.2
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -39,14 +44,7 @@ require (
 	golang.org/x/crypto v0.22.0
 )
 
-require (
-	github.com/arcology-network/common-lib v1.9.1-0.20250310070859-c426a24990fb
-	github.com/arcology-network/eu v0.0.0-20250310075123-5fb33114479e
-	github.com/arcology-network/scheduler v0.0.0-20250310074817-6d69185ddcdf
-	github.com/arcology-network/storage-committer v1.9.1-0.20250310074249-58b948eb5f8a
-	github.com/arcology-network/streamer v0.0.0-20250310081509-48cbaa5c58e3
-	github.com/ethereum/go-ethereum v1.14.8
-)
+require github.com/ethereum/go-ethereum v1.14.8
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect

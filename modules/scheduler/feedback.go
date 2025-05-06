@@ -72,9 +72,6 @@ func (fd *Feedback) OnMessageArrived(msgs []*actor.Message) error {
 			}
 			fd.addUnivalues(data)
 		case actor.MsgBlockEnd:
-			//send msg
-			//clear
-			univalue.Univalues(fd.feeds).Print()
 			fd.MsgBroker.Send(actor.MsgFeedBacks, fd.feeds)
 			fd.feeds = make([]*univalue.Univalue, 0, FEEDCOUNTS)
 		}
