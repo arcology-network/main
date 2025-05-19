@@ -243,7 +243,7 @@ func (exec *Executor) collectResults() {
 	}
 	exec.MsgBroker.Send(actor.MsgTxsExecuteResults, responses, exec.height, exec.requestId)
 }
-func GetThreadD(hash evmCommon.Hash) uint64 {
+func GetThreadID(hash evmCommon.Hash) uint64 {
 	return uint64(codec.Uint64(0).Decode(hash.Bytes()[:8]).(codec.Uint64))
 }
 func (exec *Executor) startExec() {
@@ -264,7 +264,7 @@ func (exec *Executor) startExec() {
 						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 							return exec.store.WriteCache
 						}, func(cache *cache.WriteCache) { cache.Clear() }))
-						job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
+						job.Run(task.Config, api, GetThreadID(job.StdMsgs[0].TxHash))
 						results = append(results, job.Results...)
 						mtransitions[uint64(task.Sequence.Msgs[j].ID)] = job.Results[0].Transitions()
 					}
@@ -277,7 +277,7 @@ func (exec *Executor) startExec() {
 					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 						return exec.store.WriteCache
 					}, func(cache *cache.WriteCache) { cache.Clear() }))
-					job.Run(task.Config, api, GetThreadD(job.StdMsgs[0].TxHash))
+					job.Run(task.Config, api, GetThreadID(job.StdMsgs[0].TxHash))
 					transitions := job.GetClearedTransition()
 					mtransitions := exec.parseResults(transitions)
 					exec.sendResults(job.Results, mtransitions, task.Debug)
