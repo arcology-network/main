@@ -19,7 +19,6 @@ package scheduler
 
 import (
 	"github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/common-lib/exp/slice"
 	types "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	mtypes "github.com/arcology-network/main/types"
@@ -46,13 +45,29 @@ func newGeneration(context *processContext, sequences []*mtypes.ExecutingSequenc
 	}
 }
 
+func AddGroupId(sequences []*mtypes.ExecutingSequence) []*mtypes.ExecutingSequence {
+	groupId := uint64(0)
+	for i := range sequences {
+		groupids := make([]uint64, 0, len(sequences[i].Msgs))
+		for j := 0; j < len(sequences[i].Msgs); j++ {
+			groupids = append(groupids, groupId)
+			if sequences[i].Parallel {
+				groupId = groupId + 1
+			}
+		}
+		sequences[i].GroupIds = groupids
+		groupId = groupId + 1
+	}
+	return sequences
+}
+
 func (g *generation) process() *types.InclusiveList {
 	executed := g.setMsgProperty()
 	flags := make([]bool, len(executed))
 
 	// Process txs on executors.
 	responses, newContracts := g.context.executor.Run(
-		g.sequences,
+		AddGroupId(g.sequences),
 		g.context.timestamp,
 		g.context.msgTemplate,
 		g.context.logger,
@@ -65,10 +80,11 @@ func (g *generation) process() *types.InclusiveList {
 
 	arbitrateParam := g.makeArbitrateParam(responses)
 	if len(arbitrateParam) <= 1 {
-		return &types.InclusiveList{
-			HashList:   executed,
-			Successful: slice.Fill(flags, true),
-		}
+		// return &types.InclusiveList{
+		// 	HashList:   executed,
+		// 	Successful: slice.Fill(flags, true),
+		// }
+		arbitrateParam = [][]evmCommon.Hash{}
 	}
 	conflictedHashes, cpLeft, cpRight := g.context.arbitrator.Do(
 		arbitrateParam,

@@ -268,7 +268,7 @@ func (exec *Executor) startExec() {
 						results = append(results, job.Results...)
 						mtransitions[uint64(task.Sequence.Msgs[j].ID)] = job.Results[0].Transitions()
 					}
-					exec.sendResults(results, mtransitions, task.Debug)
+					exec.sendResults(task.Sequence.GroupIds, results, mtransitions, task.Debug)
 				} else {
 					job := eupk.JobSequence{
 						ID:      uint64(0),
@@ -280,7 +280,7 @@ func (exec *Executor) startExec() {
 					job.Run(task.Config, api, GetThreadID(job.StdMsgs[0].TxHash))
 					transitions := job.GetClearedTransition()
 					mtransitions := exec.parseResults(transitions)
-					exec.sendResults(job.Results, mtransitions, task.Debug)
+					exec.sendResults(task.Sequence.GroupIds, job.Results, mtransitions, task.Debug)
 				}
 			}
 		}(index)
@@ -295,8 +295,14 @@ func (exec *Executor) parseResults(alltransitions []*univalue.Univalue) map[uint
 
 	return mTransitions
 }
+func addGroupIds(groupid uint64, accessRecords univalue.Univalues) univalue.Univalues {
+	for i := range accessRecords {
+		accessRecords[i].Setsequence(groupid)
+	}
+	return accessRecords
+}
 
-func (exec *Executor) sendResults(results []*eucommon.Result, mTransitions map[uint64][]*univalue.Univalue, debug bool) {
+func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result, mTransitions map[uint64][]*univalue.Univalue, debug bool) {
 	counter := len(results)
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))
 	sendingEuResults := make([]*eushared.EuResult, counter)
@@ -361,7 +367,7 @@ func (exec *Executor) sendResults(results []*eucommon.Result, mTransitions map[u
 		accessRecord.Hash = euresult.H
 		accessRecord.ID = uint64((*result).StdMsg.ID)
 
-		accessRecord.Accesses = accesses
+		accessRecord.Accesses = addGroupIds(groupIds[i], accesses)
 		sendingAccessRecords[i] = &accessRecord
 
 		sendingReceipts[i] = (*result).Receipt

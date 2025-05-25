@@ -26,10 +26,10 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/exp/slice"
 	ctypes "github.com/arcology-network/common-lib/types"
-	eu "github.com/arcology-network/eu"
 	"github.com/arcology-network/main/modules/arbitrator/types"
 	mtypes "github.com/arcology-network/main/types"
 	arbitratorn "github.com/arcology-network/scheduler/arbitrator"
+	"github.com/arcology-network/storage-committer/type/univalue"
 	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 	"github.com/arcology-network/streamer/actor"
 	kafkalib "github.com/arcology-network/streamer/kafka/lib"
@@ -40,8 +40,9 @@ import (
 
 type RpcService struct {
 	actor.WorkerThread
-	wbs   *kafkalib.Waitobjs
-	msgid int64
+	wbs        *kafkalib.Waitobjs
+	msgid      int64
+	arbitrator *arbitratorn.Arbitrator
 }
 
 var (
@@ -56,17 +57,19 @@ func NewRpcService(lanes int, groupid string) actor.IWorkerEx {
 		rs.Set(lanes, groupid)
 		rs.msgid = 0
 		rpcServiceSingleton = &rs
+		rs.arbitrator = arbitratorn.NewArbitrator()
 	})
 	return rpcServiceSingleton
 }
 
 func (rs *RpcService) Inputs() ([]string, bool) {
-	return []string{actor.MsgEuResultSelected}, false
+	return []string{actor.MsgEuResultSelected, actor.MsgPreProcessedImportEuResults}, false
 }
 
 func (rs *RpcService) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgArbitrateReapinglist: 1,
+		actor.MsgArbitrateReapinglist:  1,
+		actor.MsgPreProcessedEuResults: 1,
 	}
 }
 
@@ -84,6 +87,15 @@ func (rs *RpcService) OnMessageArrived(msgs []*actor.Message) error {
 			rs.wbs.Update(rs.msgid, euResults)
 
 			fmt.Printf("height=%v\n", v.Height)
+		case actor.MsgPreProcessedImportEuResults:
+			ars := v.Data.([]*types.AccessRecord)
+			newTrans := make([]*univalue.Univalue, 0, len(ars)*50)
+			for i := range ars {
+				newTrans = append(newTrans, ars[i].Accesses...)
+			}
+			rs.arbitrator.Insert(newTrans)
+
+			rs.MsgBroker.Send(actor.MsgPreProcessedEuResults, ars)
 		}
 	}
 
@@ -123,15 +135,14 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 	if resultSelected != nil && len(*resultSelected) > 0 {
 		rs.CheckPoint("Before detectConflict", zap.Int("tx nums", len(*resultSelected)))
 
-		gen := eu.NewGeneration(0, 0, nil)
-		conflicts := gen.Detect(parseRequests(params.TxsListGroup, resultSelected))
-		// conflicts.Print()
-
+		conflicts := rs.arbitrator.Detect()
+		fmt.Printf("----------arbitrate result-------conflicts Info------------\n")
+		arbitratorn.Conflicts(conflicts).Print()
 		response.ConflictedList, response.CPairLeft, response.CPairRight = parseResult(params.TxsListGroup, conflicts)
 		rs.CheckPoint("arbitrate return results***********", zap.Int("ConflictedList", len(response.ConflictedList)), zap.Int("left", len(response.CPairLeft)), zap.Int("right", len(response.CPairRight)))
-		return nil
+		// return nil
 	}
-
+	rs.arbitrator.Clear()
 	return nil
 }
 

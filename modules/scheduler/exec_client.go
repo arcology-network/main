@@ -89,6 +89,7 @@ func (client *ExecClient) Run(
 						{
 							Msgs:     sequence.Msgs[i:end],
 							Parallel: true,
+							GroupIds: sequence.GroupIds[i:end],
 						},
 					},
 					Height:        height,

@@ -44,7 +44,7 @@ func (p *EuResultPreProcessor) Inputs() ([]string, bool) {
 
 func (p *EuResultPreProcessor) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgPreProcessedEuResults: 100,
+		actor.MsgPreProcessedImportEuResults: 100,
 	}
 }
 
@@ -53,15 +53,12 @@ func (p *EuResultPreProcessor) OnMessageArrived(msgs []*actor.Message) error {
 
 	processed := make([]*types.AccessRecord, len(results))
 	worker := func(start, end, idx int, args ...interface{}) {
-		// recordPool := types.RecordPool
-		// uniPool := types.UnivaluePool
 		for i := start; i < end; i++ {
-			// processed[i] = types.Decode(results[i], recordPool, uniPool)
 			processed[i] = types.Decode(results[i])
 		}
 	}
 	common.ParallelWorker(len(results), p.Concurrency, worker)
 
-	p.MsgBroker.Send(actor.MsgPreProcessedEuResults, processed)
+	p.MsgBroker.Send(actor.MsgPreProcessedImportEuResults, processed)
 	return nil
 }

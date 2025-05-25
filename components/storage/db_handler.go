@@ -18,9 +18,6 @@
 package storage
 
 import (
-	"fmt"
-	"time"
-
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/log"
 
@@ -61,7 +58,6 @@ func (op *BasicDBOperation) Init(stateStore *statestore.StateStore, broker *acto
 }
 
 func (op *BasicDBOperation) Import(transitions []*univaluepk.Univalue) {
-	fmt.Printf("==================components/storage/db_handler.go  Import transitions size:%v\n", len(transitions))
 	op.StateStore.Import(transitions)
 }
 
@@ -183,10 +179,8 @@ func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
 	case dbStateInit:
 		if msg.Name == handler.importMsg {
 			data := msg.Data.(*eushared.Euresults)
-			t1 := time.Now()
 			_, transitions := GetTransitions(*data)
 			handler.op.Import(transitions)
-			fmt.Printf("DBHandler Euresults import height:%v,tim:%v\n", msg.Height, time.Since(t1))
 		} else if msg.Name == handler.commitMsg {
 			var data []*eushared.EuResult
 			if msg.Data != nil {

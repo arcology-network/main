@@ -40,6 +40,10 @@ import (
 	"github.com/arcology-network/storage-committer/type/univalue"
 )
 
+const (
+	MaxBlockSize = 50000
+)
+
 type Scheduler struct {
 	actor.WorkerThread
 
@@ -71,8 +75,8 @@ func NewScheduler(concurrency int, groupId string) actor.IWorkerEx {
 		schd := &Scheduler{
 			schdEngine:             schdEngine,
 			context:                createProcessContext(),
-			transfers:              make([]*eucommon.StandardMessage, 0, 50000),
-			contractCalls:          make([]*eucommon.StandardMessage, 0, 50000),
+			transfers:              make([]*eucommon.StandardMessage, 0, MaxBlockSize),
+			contractCalls:          make([]*eucommon.StandardMessage, 0, MaxBlockSize),
 			contractDict:           make(map[evmCommon.Address]struct{}),
 			generationApcHandlerCh: make(chan int),
 		}

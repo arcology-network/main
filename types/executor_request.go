@@ -32,6 +32,7 @@ type ExecutingSequence struct {
 	Msgs       []*eucommon.StandardMessage
 	Parallel   bool
 	SequenceId ethCommon.Hash
+	GroupIds   []uint64
 }
 
 func NewExecutingSequence(msgs []*eucommon.StandardMessage, parallel bool) *ExecutingSequence {
@@ -70,6 +71,7 @@ func (this ExecutingSequences) Encode() ([]byte, error) {
 				standardMessagesData,
 				codec.Bools([]bool{executingSequences[i].Parallel}).Encode(),
 				executingSequences[i].SequenceId[:],
+				codec.Uint64s(executingSequences[i].GroupIds).Encode(),
 			}
 			data[i] = codec.Byteset(tmpData).Encode()
 		}
@@ -101,6 +103,7 @@ func (this *ExecutingSequences) Decode(data []byte) ([]*ExecutingSequence, error
 				executingSequence.Parallel = parallels[0]
 			}
 			executingSequence.SequenceId = ethCommon.BytesToHash(datafields[2])
+			executingSequence.GroupIds = []uint64(codec.Uint64s(executingSequence.GroupIds).Decode(fields[3]).(codec.Uint64s))
 			executingSequences[i] = executingSequence
 
 		}
