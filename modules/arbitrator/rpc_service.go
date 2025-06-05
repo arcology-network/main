@@ -132,7 +132,7 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 		return errors.New("select euresults type error")
 	}
 
-	if resultSelected != nil && len(*resultSelected) > 0 {
+	if len(params.TxsListGroup) > 1 && resultSelected != nil && len(*resultSelected) > 0 {
 		rs.CheckPoint("Before detectConflict", zap.Int("tx nums", len(*resultSelected)))
 
 		conflicts := rs.arbitrator.Detect()

@@ -79,13 +79,7 @@ func (g *generation) process() *types.InclusiveList {
 	g.context.newContracts = append(g.context.newContracts, newContracts...)
 
 	arbitrateParam := g.makeArbitrateParam(responses)
-	if len(arbitrateParam) <= 1 {
-		// return &types.InclusiveList{
-		// 	HashList:   executed,
-		// 	Successful: slice.Fill(flags, true),
-		// }
-		arbitrateParam = [][]evmCommon.Hash{}
-	}
+
 	conflictedHashes, cpLeft, cpRight := g.context.arbitrator.Do(
 		arbitrateParam,
 		g.context.logger,
