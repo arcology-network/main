@@ -80,7 +80,7 @@ func (g *generation) process() *types.InclusiveList {
 
 	arbitrateParam := g.makeArbitrateParam(responses)
 
-	conflictedHashes, cpLeft, cpRight := g.context.arbitrator.Do(
+	cpLeft, cpRight := g.context.arbitrator.Do(
 		arbitrateParam,
 		g.context.logger,
 		g.context.generation,
@@ -115,8 +115,8 @@ func (g *generation) process() *types.InclusiveList {
 	}
 
 	deletedDict := make(map[evmCommon.Hash]struct{})
-	for _, ch := range conflictedHashes {
-		deletedDict[ch] = struct{}{}
+	for _, rId := range cpRight {
+		deletedDict[g.context.txHash2IdBiMap.GetInverse(rId)] = struct{}{}
 	}
 
 	for i, hash := range executed {

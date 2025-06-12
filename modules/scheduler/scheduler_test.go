@@ -206,7 +206,7 @@ func TestSchedulerContractWithDefer(t *testing.T) {
 func TestSchedulerContractWithConfliction(t *testing.T) {
 	schd := setup(t)
 
-	conflictHash := evmCommon.BytesToHash([]byte{2})
+	// conflictHash := evmCommon.BytesToHash([]byte{2})
 	runBlock(
 		schd,
 		[]evmCommon.Address{
@@ -235,9 +235,9 @@ func TestSchedulerContractWithConfliction(t *testing.T) {
 		},
 		[]*mtypes.ArbitratorResponse{
 			{
-				ConflictedList: []evmCommon.Hash{conflictHash},
-				CPairLeft:      []uint64{256},
-				CPairRight:     []uint64{512},
+				// ConflictedList: []evmCommon.Hash{conflictHash},
+				CPairLeft:  []uint64{256},
+				CPairRight: []uint64{512},
 			},
 		},
 		map[string]interface{}{
@@ -346,15 +346,15 @@ func TestSchedulerConflictionInDefer(t *testing.T) {
 		},
 		[]*mtypes.ArbitratorResponse{
 			{
-				ConflictedList: []evmCommon.Hash{txHashes[1]},
-				CPairLeft:      []uint64{256},
-				CPairRight:     []uint64{512},
+				// ConflictedList: []evmCommon.Hash{txHashes[1]},
+				CPairLeft:  []uint64{256},
+				CPairRight: []uint64{512},
 			},
 			{},
 			{
-				ConflictedList: []evmCommon.Hash{txHashes[2], txHashes[3], txHashes[5]},
-				CPairLeft:      []uint64{257},
-				CPairRight:     []uint64{768},
+				// ConflictedList: []evmCommon.Hash{txHashes[2], txHashes[3], txHashes[5]},
+				CPairLeft:  []uint64{257},
+				CPairRight: []uint64{768},
 			},
 		},
 		map[string]interface{}{

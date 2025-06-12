@@ -17,10 +17,7 @@
 
 package types
 
-import ethCommon "github.com/ethereum/go-ethereum/common"
-
 type ArbitratorResponse struct {
-	ConflictedList []ethCommon.Hash
-	CPairLeft      []uint64
-	CPairRight     []uint64
+	CPairLeft  []uint64
+	CPairRight []uint64
 }

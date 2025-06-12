@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"sync"
 
-	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/exp/slice"
 	ctypes "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/modules/arbitrator/types"
@@ -138,8 +137,8 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 		conflicts := rs.arbitrator.Detect()
 		fmt.Printf("----------arbitrate result-------conflicts Info------------\n")
 		arbitratorn.Conflicts(conflicts).Print()
-		response.ConflictedList, response.CPairLeft, response.CPairRight = parseResult(params.TxsListGroup, conflicts)
-		rs.CheckPoint("arbitrate return results***********", zap.Int("ConflictedList", len(response.ConflictedList)), zap.Int("left", len(response.CPairLeft)), zap.Int("right", len(response.CPairRight)))
+		response.CPairLeft, response.CPairRight = parseResult(conflicts)
+		rs.CheckPoint("arbitrate return results***********", zap.Int("left", len(response.CPairLeft)), zap.Int("right", len(response.CPairRight)))
 		// return nil
 	}
 	rs.arbitrator.Clear()
@@ -167,18 +166,14 @@ func parseRequests(txsListGroup [][]evmCommon.Hash, results *[]*types.AccessReco
 	return groupIDs, records
 }
 
-func parseResult(txsListGroup [][]evmCommon.Hash, conflits arbitratorn.Conflicts) ([]evmCommon.Hash, []uint64, []uint64) {
-	_, groupmp, pairs := conflits.ToDict()
-	confiltList := []evmCommon.Hash{}
+func parseResult(conflits arbitratorn.Conflicts) ([]uint64, []uint64) {
+	_, _, pairs := conflits.ToDict()
 
-	for _, groupid := range common.MapKeys(groupmp) {
-		confiltList = append(confiltList, txsListGroup[groupid]...)
-	}
 	left := make([]uint64, 0, len(pairs))
 	right := make([]uint64, 0, len(pairs))
 	for _, pair := range pairs {
 		left = append(left, pair[0])
 		right = append(right, pair[1])
 	}
-	return confiltList, left, right
+	return left, right
 }

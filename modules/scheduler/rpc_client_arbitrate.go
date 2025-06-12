@@ -60,8 +60,8 @@ func (rca *RpcClientArbitrate) Stop() {
 
 }
 
-func (rca *RpcClientArbitrate) Do(arbitrateList [][]evmCommon.Hash, inlog *actor.WorkerThreadLogger, generationIdx int) ([]evmCommon.Hash, []uint64, []uint64) {
-	results := make([]evmCommon.Hash, 0, len(arbitrateList))
+func (rca *RpcClientArbitrate) Do(arbitrateList [][]evmCommon.Hash, inlog *actor.WorkerThreadLogger, generationIdx int) ([]uint64, []uint64) {
+	// results := make([]evmCommon.Hash, 0, len(arbitrateList))
 	cpairLeft := make([]uint64, 0, len(arbitrateList))
 	cpairRight := make([]uint64, 0, len(arbitrateList))
 
@@ -81,14 +81,12 @@ func (rca *RpcClientArbitrate) Do(arbitrateList [][]evmCommon.Hash, inlog *actor
 	err := intf.Router.Call("arbitrator", "Arbitrate", &request, &response)
 	if err != nil {
 		inlog.Log(log.LogLevel_Error, "arbitrate err", zap.String("err", fmt.Sprintf("%v", err.Error())))
-		return nil, nil, nil
+		return nil, nil
 	} else {
 		inlog.CheckPoint("return arbitrate <<<<<<<<<<<<<<<<<<<<", zap.Int("generationIdx", generationIdx))
 		ArbTime.Observe(time.Since(arbBegin).Seconds())
 		ArbTimeGauge.Set(time.Since(arbBegin).Seconds())
-		if response.ConflictedList != nil {
-			results = append(results, response.ConflictedList...)
-		}
+
 		if response.CPairLeft != nil {
 			cpairLeft = response.CPairLeft
 		}
@@ -96,5 +94,5 @@ func (rca *RpcClientArbitrate) Do(arbitrateList [][]evmCommon.Hash, inlog *actor
 			cpairRight = response.CPairRight
 		}
 	}
-	return results, cpairLeft, cpairRight
+	return cpairLeft, cpairRight
 }
