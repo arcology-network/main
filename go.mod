@@ -10,28 +10,23 @@ replace google.golang.org/grpc => google.golang.org/grpc v1.29.0
 
 replace github.com/deliveroo/jsonrpc-go => ../../cody-yang/jsonrpc-go/
 
-replace github.com/arcology-network/streamer => ../streamer/
+// replace github.com/arcology-network/streamer => ../streamer/
 
-replace github.com/arcology-network/scheduler => ../scheduler/
+// replace github.com/arcology-network/scheduler => ../scheduler/
 
-replace github.com/arcology-network/common-lib => ../common-lib/
+// replace github.com/arcology-network/common-lib => ../common-lib/
 
 // replace github.com/arcology-network/consensus-engine => ../consensus-engine/
 
 replace github.com/ethereum/go-ethereum v1.14.8 => ../concurrent-evm/
 
-replace github.com/arcology-network/eu => ../eu
+// replace github.com/arcology-network/eu => ../eu
 
-replace github.com/arcology-network/storage-committer => ../storage-committer/
+// replace github.com/arcology-network/storage-committer => ../storage-committer/
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/arcology-network/common-lib v1.9.1-0.20250506135036-0987f5477aab
 	github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845
-	github.com/arcology-network/eu v0.0.0-20250506143430-931cffe230c2
-	github.com/arcology-network/scheduler v0.0.0-20250506143009-b365efa7f00d
-	github.com/arcology-network/storage-committer v1.9.1-0.20250506141106-d93badc23ca3
-	github.com/arcology-network/streamer v0.0.0-20250506143745-f933151da6be
 	github.com/go-kit/kit v0.10.0
 	github.com/go-zookeeper/zk v1.0.2
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -44,7 +39,14 @@ require (
 	golang.org/x/crypto v0.22.0
 )
 
-require github.com/ethereum/go-ethereum v1.14.8
+require (
+	github.com/arcology-network/common-lib v1.9.1-0.20250613001412-0529984b08ff
+	github.com/arcology-network/eu v0.0.0-20250613011027-19d5049c61bc
+	github.com/arcology-network/scheduler v0.0.0-20250613010534-e8a32339f176
+	github.com/arcology-network/storage-committer v1.9.1-0.20250613004728-e65a2bc7058d
+	github.com/arcology-network/streamer v0.0.0-20250613011500-55349a304767
+	github.com/ethereum/go-ethereum v1.14.8
+)
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
@@ -129,7 +131,7 @@ require (
 	github.com/golangci/prealloc v0.0.0-20180630174525-215b22d4de21 // indirect
 	github.com/golangci/revgrep v0.0.0-20180526074752-d9c87f5ffaf0 // indirect
 	github.com/golangci/unconvert v0.0.0-20180507085042-28b1c447d1f4 // indirect
-	github.com/google/btree v1.1.2 // indirect
+	github.com/google/btree v1.1.3 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/websocket v1.5.1 // indirect
 	github.com/gostaticanalysis/analysisutil v0.0.0-20190318220348-4088753ea4d3 // indirect
