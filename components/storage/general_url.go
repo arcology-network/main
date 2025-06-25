@@ -65,6 +65,11 @@ func NewGeneralUrl(apcHandleName, outDBMsg, outGenerationCompletedMsg, outPrecom
 }
 
 func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) {
+	if url.generateApcHandle == "generation" {
+		RequestLock("exec", "GeneralUrl")
+		defer ReleaseLock("exec", "GeneralUrl")
+	}
+
 	url.BasicDBOperation.PreCommit(euResults, height)
 	url.MsgBroker.Send(url.outPrecommitMsg, "")
 

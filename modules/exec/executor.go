@@ -18,6 +18,7 @@
 package exec
 
 import (
+	"fmt"
 	"math"
 	"math/big"
 	"runtime"
@@ -31,7 +32,6 @@ import (
 
 	eupk "github.com/arcology-network/eu"
 	cache "github.com/arcology-network/storage-committer/storage/tempcache"
-	"github.com/arcology-network/storage-committer/type/univalue"
 	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 
 	"github.com/arcology-network/common-lib/exp/mempool"
@@ -255,7 +255,7 @@ func (exec *Executor) startExec() {
 				exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>start execute", zap.Bool("Sequence.Parallel", task.Sequence.Parallel), zap.Int("txs counter", len(task.Sequence.Msgs)))
 				if task.Sequence.Parallel {
 					results := make([]*eucommon.Result, 0, len(task.Sequence.Msgs))
-					mtransitions := make(map[uint64][]*univalue.Univalue, len(task.Sequence.Msgs))
+					mtransitions := make(map[uint64][]*univaluepk.Univalue, len(task.Sequence.Msgs))
 					for j := range task.Sequence.Msgs {
 						job := eupk.JobSequence{
 							ID:      uint64(j),
@@ -286,8 +286,8 @@ func (exec *Executor) startExec() {
 		}(index)
 	}
 }
-func (exec *Executor) parseResults(alltransitions []*univalue.Univalue) map[uint64][]*univalue.Univalue {
-	mTransitions := make(map[uint64][]*univalue.Univalue, len(alltransitions))
+func (exec *Executor) parseResults(alltransitions []*univaluepk.Univalue) map[uint64][]*univaluepk.Univalue {
+	mTransitions := make(map[uint64][]*univaluepk.Univalue, len(alltransitions))
 	for i := range alltransitions {
 		id := alltransitions[i].GetTx()
 		mTransitions[id] = append(mTransitions[id], alltransitions[i])
@@ -295,14 +295,14 @@ func (exec *Executor) parseResults(alltransitions []*univalue.Univalue) map[uint
 
 	return mTransitions
 }
-func addGroupIds(groupid uint64, accessRecords univalue.Univalues) univalue.Univalues {
+func addGroupIds(groupid uint64, accessRecords univaluepk.Univalues) univaluepk.Univalues {
 	for i := range accessRecords {
 		accessRecords[i].Setsequence(groupid)
 	}
 	return accessRecords
 }
 
-func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result, mTransitions map[uint64][]*univalue.Univalue, debug bool) {
+func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result, mTransitions map[uint64][]*univaluepk.Univalue, debug bool) {
 	counter := len(results)
 	exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>>>>>>>sendResult", zap.Bool("debug", debug), zap.Int("results counter", counter))
 	sendingEuResults := make([]*eushared.EuResult, counter)
@@ -338,6 +338,7 @@ func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result,
 
 		if (*result).Receipt.Status == 0 {
 			faileds[i] = 1
+			exec.AddLog(log.LogLevel_Error, "Tx failed", zap.String("txhash", fmt.Sprintf("%x", (*result).TxHash[:])), zap.Error((*result).EvmResult.Err))
 		}
 		euresult := eushared.EuResult{}
 		euresult.H = string((*result).TxHash[:])

@@ -23,10 +23,8 @@ import (
 	"sync"
 	"time"
 
-	cmncmn "github.com/arcology-network/common-lib/common"
 	mtypes "github.com/arcology-network/main/types"
 	ccdb "github.com/arcology-network/storage-committer/storage/ethstorage"
-	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
@@ -42,6 +40,12 @@ import (
 	eucommon "github.com/arcology-network/common-lib/types"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
+)
+
+const (
+	TxGas        = 21000
+	zoomout      = 2
+	defaultPrice = 255
 )
 
 type Monaco struct {
@@ -333,12 +337,33 @@ func (m *Monaco) GetStorageAt(address ethcmn.Address, key string, number int64) 
 
 func (m *Monaco) EstimateGas(msg eth.CallMsg) (uint64, error) {
 	// TODO
-	return 0x10000000, nil
+	// return 0x10000000, nil
+
+	// If the transaction is a plain value transfer, short circuit estimation and directly try 21000.
+	if len(msg.Data) == 0 {
+		return TxGas, nil
+	}
+
+	//set GasPrice and GasLimit
+	request, maxGasLimit := m.callmsgToRequest(msg)
+
+	// try run
+	var response core.ExecutionResult
+	err := intf.Router.Call("estimate-executor", "ExecTxs", request, &response)
+	if err != nil {
+		return uint64(0), err
+	}
+	gas := response.UsedGas * zoomout
+	if gas > maxGasLimit {
+		gas = maxGasLimit
+	}
+	return gas, response.Err
+
 }
 
 func (m *Monaco) GasPrice() (*big.Int, error) {
 	// TODO
-	return new(big.Int).SetUint64(0xff), nil
+	return new(big.Int).SetUint64(defaultPrice), nil
 }
 
 func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPCTransaction, error) {
@@ -359,13 +384,37 @@ func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPCTransaction,
 	return response.Data.(*mtypes.RPCTransaction), nil
 }
 
-func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
-	var response mtypes.ExecutorResponses
+func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorRequest, uint64) {
 	var to *ethcmn.Address
 	if msg.To != nil {
 		addr := ethcmn.BytesToAddress(msg.To.Bytes())
 		to = &addr
 	}
+	if msg.Value == nil {
+		msg.Value = big.NewInt(0)
+	}
+	var err error
+	price := msg.GasPrice
+	if price == nil {
+		price, err = m.GasPrice()
+		if err != nil {
+			price = big.NewInt(defaultPrice)
+		}
+	}
+	msg.GasPrice = price
+
+	gas := msg.Gas
+	if gas == 0 {
+		balance, err := m.GetBalance(msg.From, 0)
+		if err != nil {
+			balance = big.NewInt(0)
+		}
+		maxGasLimit := big.NewInt(0)
+		maxGasLimit = maxGasLimit.Div(balance, price)
+		gas = maxGasLimit.Uint64()
+	}
+	msg.Gas = gas
+
 	message := core.NewMessage(
 		ethcmn.BytesToAddress(msg.From.Bytes()),
 		to,
@@ -378,36 +427,40 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 		false,
 	)
 	hash, _ := msgHash(&message)
-	err := intf.Router.Call("executor-1", "ExecTxs", &actor.Message{
-		Height: 0,
-		Name:   actor.MsgTxsToExecute,
-		Msgid:  cmncmn.GenerateUUID(),
-		Data: &mtypes.ExecutorRequest{
-			Sequences: []*mtypes.ExecutingSequence{
-				{
-					Msgs: []*eucommon.StandardMessage{
-						{
-							TxHash: hash,
-							Native: &message,
-							ID:     0,
-						},
+	return &mtypes.ExecutorRequest{
+		Sequences: []*mtypes.ExecutingSequence{
+			{
+				Msgs: []*eucommon.StandardMessage{
+					{
+						TxHash: hash,
+						Native: &message,
+						ID:     0,
 					},
-					Parallel:   true,
-					SequenceId: hash,
-					// Txids:      []uint32{0},
 				},
+				Parallel:   true,
+				SequenceId: hash,
 			},
-			Height:        0,
-			GenerationIdx: 0,
-			Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
-			Parallelism:   1,
-			Debug:         true,
 		},
-	}, &response)
+		Height:        0,
+		GenerationIdx: 0,
+		Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
+		Parallelism:   1,
+		Debug:         true,
+	}, gas
+}
+
+func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
+	// try run
+	var response core.ExecutionResult
+	request, _ := m.callmsgToRequest(msg)
+	err := intf.Router.Call("estimate-executor", "ExecTxs", request, &response)
 	if err != nil {
 		return nil, err
 	}
-	return response.CallResults[0], nil
+	if response.Err != nil {
+		return nil, response.Err
+	}
+	return response.ReturnData, nil
 }
 
 func (m *Monaco) SendRawTransaction(rawTx []byte) (ethcmn.Hash, error) {

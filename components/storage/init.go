@@ -19,6 +19,7 @@ package storage
 
 import (
 	"github.com/arcology-network/streamer/actor"
+	intf "github.com/arcology-network/streamer/interface"
 )
 
 func init() {
@@ -29,5 +30,9 @@ func init() {
 	})
 	actor.Factory.Register("general_url_async", func(concurrency int, groupId string) actor.IWorkerEx {
 		return NewDBHandlerAsync(concurrency, groupId, actor.MsgGeneralDB, actor.MsgGeneralPrecommit, actor.MsgGeneralCommit, actor.MsgGeneralCompleted)
+	})
+
+	intf.Factory.Register("global_lock", func(int, string) interface{} {
+		return NewModulesGuard()
 	})
 }

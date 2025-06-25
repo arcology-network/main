@@ -50,6 +50,9 @@
         
         "storage.metrics": {},
         "exec_rpc": {},
+        "exec_debug": {
+            "chain_id": "__global__"
+        },
         "executor": {
             "chain_id": "__global__"
         },
@@ -161,6 +164,10 @@
         {
             "name": "executor-1",
             "service": "exec_rpc"
+        },
+        {
+            "name": "executor-debug",
+            "service": "exec_debug"
         },
         {
             "name": "storage",
@@ -275,6 +282,10 @@
         {
             "name": "schdstore",
             "service": "storage.schdstore"
+        },
+        {
+            "name": "global-lock",
+            "service": "global_lock"
         }
     ]
 }

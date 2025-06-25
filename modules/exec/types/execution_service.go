@@ -32,6 +32,7 @@ type ExecMessagers struct {
 	Config   *evmAdaptorCommon.Config
 	Sequence *mtypes.ExecutingSequence
 	Debug    bool
+	Msgid    uint64
 }
 
 type ExecutionResponse struct {

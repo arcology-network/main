@@ -22,7 +22,6 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"math"
 	"math/big"
 	"net/http"
 	"time"
@@ -32,7 +31,6 @@ import (
 	wal "github.com/arcology-network/main/modules/eth-api/wallet"
 	mtypes "github.com/arcology-network/main/types"
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
-	ethereum "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -315,18 +313,14 @@ func accounts(ctx context.Context) (interface{}, error) {
 }
 
 func estimateGas(ctx context.Context, params []interface{}) (interface{}, error) {
-	// msg, err := ToCallMsg(params[0], true)
-	// if err != nil {
-	// 	fmt.Printf("*************invalid call msg given %v\n", params[0])
-	// 	return nil, jsonrpc.InvalidParams("invalid call msg given %v", params[0])
-	// }
-
-	//gas, err := backend.EstimateGas(msg)
-	gas, err := backend.EstimateGas(ethereum.CallMsg{})
+	msg, err := ToCallMsg(params[0], true)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		fmt.Printf("*************invalid call msg given %v\n", params[0])
+		return nil, jsonrpc.InvalidParams("invalid call msg given %v", params[0])
 	}
-	return NumberToHex(gas), nil
+
+	gas, err := backend.EstimateGas(msg)
+	return gas, nil
 }
 
 func gasPrice(ctx context.Context) (interface{}, error) {
@@ -488,15 +482,7 @@ func call(ctx context.Context, params []interface{}) (interface{}, error) {
 	if err != nil {
 		return nil, jsonrpc.InvalidParams("invalid call msg given %v", params[0])
 	}
-	if msg.Gas == 0 {
-		msg.Gas = math.MaxUint32
-	}
-	if msg.GasPrice == nil {
-		msg.GasPrice = big.NewInt(0xff)
-	}
-	if msg.Value == nil {
-		msg.Value = big.NewInt(0)
-	}
+
 	ret, err := backend.Call(msg)
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)

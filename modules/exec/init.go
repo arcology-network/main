@@ -25,8 +25,14 @@ import (
 func init() {
 	actor.Factory.Register("exec_rpc", NewRpcService)
 	actor.Factory.Register("executor", NewExecutor)
+	actor.Factory.Register("exec_debug", NewEstimateExecutor)
 
 	intf.Factory.Register("exec_rpc", func(concurrency int, groupId string) interface{} {
 		return NewRpcService(concurrency, groupId)
 	})
+
+	intf.Factory.Register("exec_debug", func(concurrency int, groupId string) interface{} {
+		return NewEstimateExecutor(concurrency, groupId)
+	})
+
 }
