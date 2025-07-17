@@ -30,7 +30,7 @@ import (
 
 	apihandler "github.com/arcology-network/eu/apihandler"
 	statestore "github.com/arcology-network/storage-committer"
-	cache "github.com/arcology-network/storage-committer/storage/tempcache"
+	cache "github.com/arcology-network/storage-committer/storage/cache"
 )
 
 type Pool struct {

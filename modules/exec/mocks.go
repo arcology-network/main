@@ -18,8 +18,8 @@
 package exec
 
 import (
-	eupk "github.com/arcology-network/eu"
 	eucommon "github.com/arcology-network/eu/common"
+	eupk "github.com/arcology-network/eu/common"
 	eushared "github.com/arcology-network/eu/shared"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	mtypes "github.com/arcology-network/main/types"

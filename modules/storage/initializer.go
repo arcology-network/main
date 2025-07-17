@@ -38,7 +38,7 @@ import (
 	"github.com/holiman/uint256"
 
 	apihandler "github.com/arcology-network/eu/apihandler"
-	cache "github.com/arcology-network/storage-committer/storage/tempcache"
+	cache "github.com/arcology-network/storage-committer/storage/cache"
 	evmcore "github.com/ethereum/go-ethereum/core"
 
 	"github.com/arcology-network/common-lib/exp/mempool"

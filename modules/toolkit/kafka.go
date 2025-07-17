@@ -73,11 +73,11 @@ func (c *kafka) OnMessageArrived(msgs []*actor.Message) error {
 							if strings.Contains(key, c.queryKey) {
 								size = size + 1
 								total = total + 1
-								nonce := transitionData[j].Value().(*commutative.Uint64).Delta().(uint64)
-
-								if nonce > 1 {
-									fmt.Printf("=====height=%v======h=%x   %v\n", v.Height, []byte((*data)[i].H), nonce)
-								} else if nonce == 1 {
+								nonce, _ := transitionData[j].Value().(*commutative.Uint64).Delta()
+								nonceV := nonce.(uint64)
+								if nonceV > 1 {
+									fmt.Printf("=====height=%v======h=%x   %v\n", v.Height, []byte((*data)[i].H), nonceV)
+								} else if nonceV == 1 {
 									cc = cc + 1
 								}
 

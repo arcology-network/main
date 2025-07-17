@@ -303,7 +303,7 @@ func formatValue(value interface{}) string {
 		return fmt.Sprintf(" = %v", value.(*noncommutative.Bytes).Value())
 	case *commutative.U256:
 		v := value.(*commutative.U256).Value()
-		d := value.(*commutative.U256).Delta()
+		d, _ := value.(*commutative.U256).Delta()
 		return fmt.Sprintf(" = %v + %v", v.(*uint256.Int).ToBig(), d.(*uint256.Int).ToBig())
 	case *commutative.Int64:
 		v := value.(*commutative.Int64).Value()
