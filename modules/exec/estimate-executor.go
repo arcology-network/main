@@ -29,13 +29,12 @@ import (
 	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 
-	eupk "github.com/arcology-network/eu"
-	cache "github.com/arcology-network/storage-committer/storage/tempcache"
+	eupk "github.com/arcology-network/eu/common"
+	cache "github.com/arcology-network/storage-committer/storage/cache"
 	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 
 	"github.com/arcology-network/common-lib/exp/mempool"
 
-	"github.com/arcology-network/common-lib/types"
 	apihandler "github.com/arcology-network/eu/apihandler"
 	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
@@ -203,28 +202,40 @@ func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) {
 		results := make([]*eucommon.Result, 0, len(task.Sequence.Msgs))
 		mtransitions := make(map[uint64][]*univaluepk.Univalue, len(task.Sequence.Msgs))
 		for j := range task.Sequence.Msgs {
-			job := eupk.JobSequence{
-				ID:      uint64(j),
-				StdMsgs: []*types.StandardMessage{task.Sequence.Msgs[j]},
-			}
+
 			api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 				return exec.store.WriteCache
 			}, func(cache *cache.WriteCache) { cache.Clear() }))
-			job.Run(task.Config, api, GetThreadID(job.StdMsgs[0].TxHash))
-			results = append(results, job.Results...)
-			mtransitions[uint64(task.Sequence.Msgs[j].ID)] = job.Results[0].Transitions()
+			jobsequence := eupk.JobSequence{
+				ID:     uint64(j),
+				SeqAPI: api,
+			}
+			jobsequence.AppendMsg(task.Sequence.Msgs[j])
+
+			jobsequence.Run(task.Config, api, GetThreadID(jobsequence.Jobs[0].StdMsg.TxHash))
+			results = append(results, jobsequence.Jobs[0].Results)
+			mtransitions[uint64(task.Sequence.Msgs[j].ID)] = jobsequence.Jobs[0].Results.Transitions()
 		}
 		exec.sendResults(task.Msgid, results[0].EvmResult)
 	} else {
-		job := eupk.JobSequence{
-			ID:      uint64(0),
-			StdMsgs: task.Sequence.Msgs,
-		}
 		api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 			return exec.store.WriteCache
 		}, func(cache *cache.WriteCache) { cache.Clear() }))
-		job.Run(task.Config, api, GetThreadID(job.StdMsgs[0].TxHash))
-		exec.sendResults(task.Msgid, job.Results[0].EvmResult)
+
+		jobsequence := eupk.JobSequence{
+			ID:     uint64(0),
+			SeqAPI: api,
+		}
+		for i := range task.Sequence.Msgs {
+			jobsequence.AppendMsg(task.Sequence.Msgs[i])
+		}
+
+		jobsequence.Run(task.Config, api, GetThreadID(task.Sequence.Msgs[0].TxHash))
+		results := make([]*eucommon.Result, len(task.Sequence.Msgs))
+		for i := range task.Sequence.Msgs {
+			results[i] = jobsequence.Jobs[i].Results
+		}
+		exec.sendResults(task.Msgid, jobsequence.Jobs[0].Results.EvmResult)
 	}
 }
 

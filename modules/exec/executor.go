@@ -30,8 +30,8 @@ import (
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"go.uber.org/zap"
 
-	eupk "github.com/arcology-network/eu"
-	cache "github.com/arcology-network/storage-committer/storage/tempcache"
+	eupk "github.com/arcology-network/eu/common"
+	cache "github.com/arcology-network/storage-committer/storage/cache"
 	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 
 	"github.com/arcology-network/common-lib/exp/mempool"
@@ -257,30 +257,43 @@ func (exec *Executor) startExec() {
 					results := make([]*eucommon.Result, 0, len(task.Sequence.Msgs))
 					mtransitions := make(map[uint64][]*univaluepk.Univalue, len(task.Sequence.Msgs))
 					for j := range task.Sequence.Msgs {
-						job := eupk.JobSequence{
-							ID:      uint64(j),
-							StdMsgs: []*types.StandardMessage{task.Sequence.Msgs[j]},
-						}
 						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 							return exec.store.WriteCache
 						}, func(cache *cache.WriteCache) { cache.Clear() }))
-						job.Run(task.Config, api, GetThreadID(job.StdMsgs[0].TxHash))
-						results = append(results, job.Results...)
-						mtransitions[uint64(task.Sequence.Msgs[j].ID)] = job.Results[0].Transitions()
+						jobsequence := eupk.JobSequence{
+							ID:     uint64(j),
+							SeqAPI: api,
+						}
+						jobsequence.AppendMsg(task.Sequence.Msgs[j])
+
+						jobsequence.Run(task.Config, api, GetThreadID(task.Sequence.Msgs[j].TxHash))
+						results = append(results, jobsequence.Jobs[0].Results)
+						mtransitions[uint64(task.Sequence.Msgs[j].ID)] = jobsequence.Jobs[0].Results.Transitions()
 					}
 					exec.sendResults(task.Sequence.GroupIds, results, mtransitions, task.Debug)
 				} else {
-					job := eupk.JobSequence{
-						ID:      uint64(0),
-						StdMsgs: task.Sequence.Msgs,
-					}
 					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 						return exec.store.WriteCache
 					}, func(cache *cache.WriteCache) { cache.Clear() }))
-					job.Run(task.Config, api, GetThreadID(job.StdMsgs[0].TxHash))
-					transitions := job.GetClearedTransition()
+
+					jobsequence := eupk.JobSequence{
+						ID:     uint64(0),
+						SeqAPI: api,
+					}
+					for i := range task.Sequence.Msgs {
+						jobsequence.AppendMsg(task.Sequence.Msgs[i])
+					}
+
+					jobsequence.Run(task.Config, api, GetThreadID(task.Sequence.Msgs[0].TxHash))
+					transitions := jobsequence.GetClearedTransition()
 					mtransitions := exec.parseResults(transitions)
-					exec.sendResults(task.Sequence.GroupIds, job.Results, mtransitions, task.Debug)
+
+					results := make([]*eucommon.Result, len(task.Sequence.Msgs))
+					for i := range task.Sequence.Msgs {
+						results[i] = jobsequence.Jobs[i].Results
+					}
+
+					exec.sendResults(task.Sequence.GroupIds, results, mtransitions, task.Debug)
 				}
 			}
 		}(index)
