@@ -81,7 +81,7 @@ func (fd *Feedback) OnMessageArrived(msgs []*actor.Message) error {
 func (fd *Feedback) addUnivalues(data []*eushared.EuResult) error {
 	for i := range data {
 		for j := range data[i].Trans {
-			if data[i].Trans[j].GetPath() != nil && strings.Contains(*data[i].Trans[j].GetPath(), stgcommon.FULL_FUNC_PATH) {
+			if data[i].Trans[j].GetPath() != nil && strings.Contains(*data[i].Trans[j].GetPath(), stgcommon.FULL_PARA_PROP_PATH) {
 				fd.feeds = append(fd.feeds, data[i].Trans[j])
 			}
 		}
