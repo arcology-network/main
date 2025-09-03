@@ -310,7 +310,7 @@ func (exec *Executor) parseResults(alltransitions []*univaluepk.Univalue) map[ui
 }
 func addGroupIds(groupid uint64, accessRecords univaluepk.Univalues) univaluepk.Univalues {
 	for i := range accessRecords {
-		accessRecords[i].Setsequence(groupid)
+		accessRecords[i].Property.SetSequence(groupid)
 	}
 	return accessRecords
 }
