@@ -31,7 +31,6 @@ import (
 
 	eupk "github.com/arcology-network/eu/common"
 	cache "github.com/arcology-network/storage-committer/storage/cache"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 
 	"github.com/arcology-network/common-lib/exp/mempool"
 
@@ -200,7 +199,7 @@ func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) {
 
 	if task.Sequence.Parallel {
 		results := make([]*eucommon.Result, 0, len(task.Sequence.Msgs))
-		mtransitions := make(map[uint64][]*univaluepk.Univalue, len(task.Sequence.Msgs))
+
 		for j := range task.Sequence.Msgs {
 
 			api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
@@ -214,7 +213,7 @@ func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) {
 
 			jobsequence.Run(task.Config, api, GetThreadID(jobsequence.Jobs[0].StdMsg.TxHash))
 			results = append(results, jobsequence.Jobs[0].Results)
-			mtransitions[uint64(task.Sequence.Msgs[j].ID)] = jobsequence.Jobs[0].Results.Transitions()
+			results[0].EvmResult.UsedGas += jobsequence.Jobs[0].PrepaidGas
 		}
 		exec.sendResults(task.Msgid, results[0].EvmResult)
 	} else {
