@@ -40,11 +40,11 @@ require (
 )
 
 require (
-	github.com/arcology-network/common-lib v1.9.1-0.20250613001412-0529984b08ff
-	github.com/arcology-network/eu v0.0.0-20250613011027-19d5049c61bc
-	github.com/arcology-network/scheduler v0.0.0-20250613010534-e8a32339f176
-	github.com/arcology-network/storage-committer v1.9.1-0.20250613004728-e65a2bc7058d
-	github.com/arcology-network/streamer v0.0.0-20250613011500-55349a304767
+	github.com/arcology-network/common-lib v1.9.1-0.20250904084038-46913d516a25
+	github.com/arcology-network/eu v0.0.0-20250904090038-47a1fa24bb98
+	github.com/arcology-network/scheduler v0.0.0-20250904085309-0fef85fb7953
+	github.com/arcology-network/storage-committer v1.9.1-0.20250904084742-3c998d22800e
+	github.com/arcology-network/streamer v0.0.0-20250904090314-38e0e13ca98b
 	github.com/ethereum/go-ethereum v1.14.8
 )
 
