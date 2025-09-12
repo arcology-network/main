@@ -95,7 +95,7 @@
         "receipt-hashing.calculator": {},
         "receipt-hashing.metrics": {
             "maxRecords": 20000,
-            "logfile": "./tps.log"
+            "logfile": "./status.log"
         },
         "eth_api": {
             "filter_timeout_mins": 5,
