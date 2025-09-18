@@ -316,7 +316,7 @@ func formatValue(value interface{}) string {
 func formatTransitions(transitions []univaluepk.Univalue) string {
 	var str string
 	for _, t := range transitions {
-		str += fmt.Sprintf("[%v:%v,%v,%v]%s%s\n", t.GetTx(), t.Reads(), t.Writes(), t.Preexist(), (*t.GetPath()), formatValue(t.Value()))
+		str += fmt.Sprintf("[%v:%v,%v]%s%s\n", t.GetTx(), t.Reads(), t.Writes(), (*t.GetPath()), formatValue(t.Value()))
 	}
 	return str
 }

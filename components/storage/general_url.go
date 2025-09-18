@@ -83,7 +83,7 @@ func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) 
 			for i := start; i < end; i++ {
 				if values[i] != nil {
 					univalue := values[i].(*univaluepk.Univalue)
-					if univalue.Value() != nil && univalue.Preexist() && univalue.Value().(interfaces.Type).TypeID() == commutative.PATH { // Skip meta data
+					if univalue.Value() != nil && univalue.Value().(interfaces.Type).TypeID() == commutative.PATH { // Skip meta data
 						metaKeys[i] = keys[i]
 						encodedMetas[i] = univalue.Value().(interfaces.Type).StorageEncode(keys[i])
 

@@ -138,7 +138,7 @@ func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, res
 		fmt.Printf("----------arbitrate result-------conflicts Info------------\n")
 		arbitratorn.Conflicts(conflicts).Print()
 		response.CPairLeft, response.CPairRight = parseResult(conflicts)
-		rs.CheckPoint("arbitrate return results***********", zap.Int("left", len(response.CPairLeft)), zap.Int("right", len(response.CPairRight)))
+		rs.CheckPoint("arbitrate return results***********", zap.Uint64s("left", response.CPairLeft), zap.Uint64s("right", response.CPairRight))
 		// return nil
 	}
 	rs.arbitrator.Clear()
@@ -168,7 +168,6 @@ func parseRequests(txsListGroup [][]evmCommon.Hash, results *[]*types.AccessReco
 
 func parseResult(conflits arbitratorn.Conflicts) ([]uint64, []uint64) {
 	_, _, pairs := conflits.ToDict()
-
 	left := make([]uint64, 0, len(pairs))
 	right := make([]uint64, 0, len(pairs))
 	for _, pair := range pairs {
