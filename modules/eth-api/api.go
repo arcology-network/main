@@ -19,7 +19,6 @@ package ethapi
 
 import (
 	"context"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"math/big"
@@ -264,7 +263,7 @@ func getCode(ctx context.Context, params []interface{}) (interface{}, error) {
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return fmt.Sprintf("0x%x", code), nil
+	return NumberToHex(code), nil
 }
 
 func getBalance(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -305,7 +304,7 @@ func getStorageAt(ctx context.Context, params []interface{}) (interface{}, error
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return "0x" + hex.EncodeToString(value), nil
+	return NumberToHex(value), nil
 }
 
 func accounts(ctx context.Context) (interface{}, error) {
@@ -320,7 +319,7 @@ func estimateGas(ctx context.Context, params []interface{}) (interface{}, error)
 	}
 
 	gas, err := backend.EstimateGas(msg)
-	return gas, nil
+	return NumberToHex(gas), nil
 }
 
 func gasPrice(ctx context.Context) (interface{}, error) {
@@ -487,7 +486,7 @@ func call(ctx context.Context, params []interface{}) (interface{}, error) {
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return "0x" + hex.EncodeToString(ret), nil
+	return NumberToHex(ret), nil
 }
 
 func getLogs(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -644,7 +643,7 @@ func sign(ctx context.Context, params []interface{}) (interface{}, error) {
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return fmt.Sprintf("%x", retData), nil
+	return NumberToHex(retData), nil
 }
 
 func signTransaction(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -656,7 +655,7 @@ func signTransaction(ctx context.Context, params []interface{}) (interface{}, er
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}
-	return fmt.Sprintf("%x", rawTx), nil
+	return NumberToHex(rawTx), nil
 }
 func feeHistory(ctx context.Context) (interface{}, error) {
 	return mtypes.FeeHistoryResult{}, nil
