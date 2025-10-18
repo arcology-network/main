@@ -170,7 +170,11 @@ func (g *generation) setMsgProperty() []evmCommon.Hash {
 				if len(msg.Native.Data) > 4 {
 					sign = sign[:4]
 				}
-				g.context.txHash2Sign[msg.TxHash] = [4]byte(sign)
+				if len(sign) == 0 {
+					g.context.txHash2Sign[msg.TxHash] = [4]byte{}
+				} else {
+					g.context.txHash2Sign[msg.TxHash] = [4]byte(sign)
+				}
 			}
 			h := evmCommon.BytesToHash(msg.TxHash[:])
 			executed = append(executed, h)
