@@ -299,7 +299,7 @@ func (m *Monaco) GetBalance(address ethcmn.Address, number int64) (*big.Int, err
 		},
 	}, &response)
 	if err != nil {
-		return nil, err
+		return big.NewInt(0), nil
 	}
 	return response.Data.(*big.Int), nil
 }
