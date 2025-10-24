@@ -6,27 +6,24 @@ toolchain go1.22.5
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.29.0
 
-// replace github.com/deliveroo/jsonrpc-go => github.com/cody-yang/jsonrpc-go v1.0.1-0.20211228012857-b14ec8026f6b
+replace github.com/deliveroo/jsonrpc-go => ../jsonrpc-go/
 
-replace github.com/deliveroo/jsonrpc-go => ../../cody-yang/jsonrpc-go/
+replace github.com/arcology-network/streamer => ../streamer/
 
-// replace github.com/arcology-network/streamer => ../streamer/
+replace github.com/arcology-network/scheduler => ../scheduler/
 
-// replace github.com/arcology-network/scheduler => ../scheduler/
+replace github.com/arcology-network/common-lib => ../common-lib/
 
-// replace github.com/arcology-network/common-lib => ../common-lib/
-
-// replace github.com/arcology-network/consensus-engine => ../consensus-engine/
+replace github.com/arcology-network/consensus-engine => ../consensus-engine/
 
 replace github.com/ethereum/go-ethereum v1.14.8 => ../concurrent-evm/
 
-// replace github.com/arcology-network/eu => ../eu
+replace github.com/arcology-network/eu => ../eu
 
-// replace github.com/arcology-network/storage-committer => ../storage-committer/
+replace github.com/arcology-network/storage-committer => ../storage-committer/
 
 require (
 	github.com/BurntSushi/toml v1.3.2
-	github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845
 	github.com/go-kit/kit v0.10.0
 	github.com/go-zookeeper/zk v1.0.2
 	github.com/golang-jwt/jwt/v4 v4.5.0
@@ -40,13 +37,15 @@ require (
 )
 
 require (
-	github.com/arcology-network/common-lib v1.9.1-0.20250918121719-e35aaab097f3
-	github.com/arcology-network/eu v0.0.0-20250918125206-14ef66343bb4
-	github.com/arcology-network/scheduler v0.0.0-20250918124702-64b50a8f22ac
-	github.com/arcology-network/storage-committer v1.9.1-0.20250918123336-0d750d223a7b
-	github.com/arcology-network/streamer v0.0.0-20250918125619-a36e9157d9d8
-	github.com/ethereum/go-ethereum v1.14.8
+	github.com/arcology-network/common-lib v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/consensus-engine v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/eu v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/scheduler v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/storage-committer v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/streamer v0.0.0-00010101000000-000000000000
 )
+
+require github.com/ethereum/go-ethereum v1.14.8
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
