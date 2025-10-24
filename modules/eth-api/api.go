@@ -85,12 +85,12 @@ func blockNumber(ctx context.Context) (interface{}, error) {
 func getHeaderByNumber(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
 	}
 
 	block, err := backend.GetHeaderByNumber(number)
-	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+	if err != nil || block.Header == nil {
+		return nil, nil
 	}
 	return RPCMarshalHeader(block.Header), nil
 }
@@ -98,17 +98,17 @@ func getHeaderByNumber(ctx context.Context, params []interface{}) (interface{}, 
 func getBlockByNumber(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
 	}
 
 	isTransaction, err := ToBool(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid isTransaction  given %v", params[1])
+		return nil, jsonrpc.InvalidParams("invalid isTransaction  given :%v", err)
 	}
 
 	block, err := backend.GetBlockByNumber(number, isTransaction)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return parseBlock(block, isTransaction), nil
 }
@@ -116,12 +116,12 @@ func getBlockByNumber(ctx context.Context, params []interface{}) (interface{}, e
 func getHeaderByHash(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid hash given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
 	}
 
 	block, err := backend.GetHeaderByHash(hash)
-	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+	if err != nil || block.Header == nil {
+		return nil, nil
 	}
 	return RPCMarshalHeader(block.Header), nil
 }
@@ -129,17 +129,17 @@ func getHeaderByHash(ctx context.Context, params []interface{}) (interface{}, er
 func getBlockByHash(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid hash given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
 	}
 
 	isTransaction, err := ToBool(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid isTransaction  given %v", params[1])
+		return nil, jsonrpc.InvalidParams("invalid isTransaction  given :%v", err)
 	}
 
 	block, err := backend.GetBlockByHash(hash, isTransaction)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return parseBlock(block, isTransaction), nil
 }
@@ -182,7 +182,9 @@ func RPCMarshalHeader(head *ethtyp.Header) map[string]interface{} {
 	return result
 }
 func parseBlock(block *mtypes.RPCBlock, isTransaction bool) interface{} {
-
+	if block.Header == nil {
+		return nil
+	}
 	uncles := make([]string, 0)
 	header := block.Header
 
@@ -233,17 +235,17 @@ func parseBlock(block *mtypes.RPCBlock, isTransaction bool) interface{} {
 func getTransactionCount(ctx context.Context, params []interface{}) (interface{}, error) {
 	address, err := ToAddress(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid address given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 
 	number, err := ToBlockNumber(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[1])
+		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
 	}
 
 	nonce, err := backend.GetTransactionCount(address, number)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return NumberToHex(nonce), nil
 }
@@ -251,17 +253,17 @@ func getTransactionCount(ctx context.Context, params []interface{}) (interface{}
 func getCode(ctx context.Context, params []interface{}) (interface{}, error) {
 	address, err := ToAddress(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid address given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 
 	number, err := ToBlockNumber(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[1])
+		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
 	}
 
 	code, err := backend.GetCode(address, number)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return NumberToHex(code), nil
 }
@@ -269,17 +271,17 @@ func getCode(ctx context.Context, params []interface{}) (interface{}, error) {
 func getBalance(ctx context.Context, params []interface{}) (interface{}, error) {
 	address, err := ToAddress(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid address given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 
 	number, err := ToBlockNumber(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[1])
+		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
 	}
 
 	balance, err := backend.GetBalance(address, number)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return NumberToHex(balance), nil
 }
@@ -287,22 +289,22 @@ func getBalance(ctx context.Context, params []interface{}) (interface{}, error) 
 func getStorageAt(ctx context.Context, params []interface{}) (interface{}, error) {
 	address, err := ToAddress(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid address given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 
 	key, err := ToHash(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid key given %v", params[1])
+		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
 	}
 
 	number, err := ToBlockNumber(params[2])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[2])
+		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
 	}
 
 	value, err := backend.GetStorageAt(address, key.Hex(), number)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return NumberToHex(value), nil
 }
@@ -314,18 +316,17 @@ func accounts(ctx context.Context) (interface{}, error) {
 func estimateGas(ctx context.Context, params []interface{}) (interface{}, error) {
 	msg, err := ToCallMsg(params[0], true)
 	if err != nil {
-		fmt.Printf("*************invalid call msg given %v\n", params[0])
-		return nil, jsonrpc.InvalidParams("invalid call msg given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid call msg given :%v", err)
 	}
 
-	gas, err := backend.EstimateGas(msg)
+	gas, _ := backend.EstimateGas(msg)
 	return NumberToHex(gas), nil
 }
 
 func gasPrice(ctx context.Context) (interface{}, error) {
 	gp, err := backend.GasPrice()
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return NumberToHex(gp), nil
 }
@@ -333,7 +334,7 @@ func gasPrice(ctx context.Context) (interface{}, error) {
 func sendTransaction(ctx context.Context, params []interface{}) (interface{}, error) {
 	tx, err := ToSendTxArgs(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid transaction given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid transaction given :%v", err)
 	}
 
 	rawTx, err := wallet.SignTx(0, tx.Nonce, tx.To, tx.Value, tx.Gas, tx.GasPrice, tx.Data)
@@ -351,18 +352,18 @@ func sendTransaction(ctx context.Context, params []interface{}) (interface{}, er
 func getBlockReceipts(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
 	}
 	var receipts []*ethtyp.Receipt
 	receipts, err = backend.GetBlockReceipts(uint64(number))
 	if err != nil {
-		return nil, errors.New("not found receipts")
+		return nil, nil
 	}
 	allfields := make([]map[string]interface{}, len(receipts))
 	for i := range receipts {
 		tx, err := backend.GetTransactionByHash(receipts[i].TxHash)
 		if err != nil {
-			return nil, jsonrpc.InternalError(err)
+			return nil, nil
 		}
 		allfields[i] = marshalReceipt(receipts[i], tx)
 	}
@@ -372,7 +373,7 @@ func getBlockReceipts(ctx context.Context, params []interface{}) (interface{}, e
 func getTransactionReceipt(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid hash given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
 	}
 	var receipt *ethtyp.Receipt
 
@@ -385,7 +386,7 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 		receipt, err = backend.GetTransactionReceipt(hash)
 		if err != nil {
 			if queryIdx == queryCounter-1 {
-				return nil, jsonrpc.InternalError(err)
+				return nil, nil
 			}
 			time.Sleep(time.Duration(time.Second * 1))
 		} else {
@@ -395,7 +396,7 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 
 	tx, err := backend.GetTransactionByHash(hash)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 
 	return marshalReceipt(receipt, tx), nil
@@ -437,12 +438,12 @@ func marshalReceipt(receipt *ethtyp.Receipt, tx *mtypes.RPCTransaction) map[stri
 func getTransactionByHash(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid hash given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
 	}
 
 	tx, err := backend.GetTransactionByHash(hash)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 
 	return ToTransactionResponse(tx, options.ChainID), nil
@@ -451,7 +452,7 @@ func getTransactionByHash(ctx context.Context, params []interface{}) (interface{
 func sendRawTransaction(ctx context.Context, params []interface{}) (interface{}, error) {
 	bytes, err := ToBytes(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid raw transaction given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid raw transaction given :%v", err)
 	}
 
 	hash, err := backend.SendRawTransaction(bytes)
@@ -465,7 +466,7 @@ func sendRawTransactions(ctx context.Context, params []interface{}) (interface{}
 	for i := range params {
 		bytes, err := ToBytes(params[i])
 		if err != nil {
-			return nil, jsonrpc.InvalidParams("invalid raw transaction given %v", params[i])
+			return nil, jsonrpc.InvalidParams("invalid raw transaction given :%v", err)
 		}
 		txs[i] = bytes
 	}
@@ -477,9 +478,9 @@ func sendRawTransactions(ctx context.Context, params []interface{}) (interface{}
 }
 
 func call(ctx context.Context, params []interface{}) (interface{}, error) {
-	msg, err := ToCallMsg(params[0], true)
+	msg, err := ToCallMsg(params[0], false)
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid call msg given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid call msg given : %v", err)
 	}
 
 	ret, err := backend.Call(msg)
@@ -492,12 +493,12 @@ func call(ctx context.Context, params []interface{}) (interface{}, error) {
 func getLogs(ctx context.Context, params []interface{}) (interface{}, error) {
 	filter, err := ToFilter(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid filter given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid filter given : %v", err)
 	}
 
 	logs, err := backend.GetLogs(filter)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return logs, nil
 }
@@ -505,12 +506,12 @@ func getLogs(ctx context.Context, params []interface{}) (interface{}, error) {
 func getBlockTransactionCountByHash(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid hash given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
 	}
 
 	txsNum, err := backend.GetBlockTransactionCountByHash(hash)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return NumberToHex(txsNum), nil
 }
@@ -518,12 +519,12 @@ func getBlockTransactionCountByHash(ctx context.Context, params []interface{}) (
 func getBlockTransactionCountByNumber(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid number given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid number given : %v", err)
 	}
 
 	txsNum, err := backend.GetBlockTransactionCountByNumber(number)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return NumberToHex(txsNum), nil
 }
@@ -531,57 +532,57 @@ func getBlockTransactionCountByNumber(ctx context.Context, params []interface{})
 func getTransactionByBlockHashAndIndex(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid hash given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
 	}
 
 	index, err := ToBlockIndex(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid index given %v", params[1])
+		return nil, jsonrpc.InvalidParams("invalid index given :%v", err)
 	}
 
 	tx, err := backend.GetTransactionByBlockHashAndIndex(hash, index)
-	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+	if err != nil || tx == nil {
+		return nil, nil
 	}
 	return ToTransactionResponse(tx, options.ChainID), nil
 }
 func getTransactionByBlockNumberAndIndex(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid number given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
 	}
 	index, err := ToBlockIndex(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid index given %v", params[1])
+		return nil, jsonrpc.InvalidParams("invalid block index given :%v", err)
 	}
 
 	tx, err := backend.GetTransactionByBlockNumberAndIndex(number, index)
-	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+	if err != nil || tx == nil {
+		return nil, nil
 	}
 	return ToTransactionResponse(tx, options.ChainID), nil
 }
 func getUncleCountByBlockHash(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid hash given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
 	}
 
 	txsNum, err := backend.GetUncleCountByBlockHash(hash)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return NumberToHex(txsNum), nil
 }
 func getUncleCountByBlockNumber(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid number given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
 	}
 
 	txsNum, err := backend.GetUncleCountByBlockNumber(number)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return NumberToHex(txsNum), nil
 }
@@ -633,11 +634,11 @@ func coinbase(ctx context.Context) (interface{}, error) {
 func sign(ctx context.Context, params []interface{}) (interface{}, error) {
 	address, err := ToAddress(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid address given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 	txdata, err := ToBytes(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid bytes given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid bytes given :%v", err)
 	}
 	retData, err := wallet.Sign(address, txdata)
 	if err != nil {
@@ -649,7 +650,7 @@ func sign(ctx context.Context, params []interface{}) (interface{}, error) {
 func signTransaction(ctx context.Context, params []interface{}) (interface{}, error) {
 	tx, err := ToSendTxArgs(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid transaction given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid transaction given :%v", err)
 	}
 	rawTx, err := wallet.SignTx(0, tx.Nonce, tx.To, tx.Value, tx.Gas, tx.GasPrice, tx.Data)
 	if err != nil {
@@ -658,19 +659,28 @@ func signTransaction(ctx context.Context, params []interface{}) (interface{}, er
 	return NumberToHex(rawTx), nil
 }
 func feeHistory(ctx context.Context) (interface{}, error) {
-	return mtypes.FeeHistoryResult{}, nil
+	nilbig := (*hexutil.Big)(big.NewInt(0))
+	results := mtypes.FeeHistoryResult{
+		OldestBlock:  nilbig,
+		GasUsedRatio: []float64{0.0},
+		Reward: [][]*hexutil.Big{
+			{nilbig},
+		},
+		BaseFee: []*hexutil.Big{nilbig},
+	}
+	return results, nil
 }
 func syncing(ctx context.Context) (interface{}, error) {
 	ok, err := backend.Syncing()
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return fmt.Sprintf("%v", ok), nil
 }
 func mining(ctx context.Context) (interface{}, error) {
 	ok, err := backend.Proposer()
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return fmt.Sprintf("%v", ok), nil
 }
@@ -678,7 +688,7 @@ func mining(ctx context.Context) (interface{}, error) {
 func newFilter(ctx context.Context, params []interface{}) (interface{}, error) {
 	filter, err := ToFilter(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid filter given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid filter given :%v", err)
 	}
 
 	id, err := backend.NewFilter(filter)
@@ -705,7 +715,7 @@ func newPendingTransactionFilter(ctx context.Context, params []interface{}) (int
 func uninstallFilter(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := ToID(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid filter given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid filter given :%v", err)
 	}
 	ok, err := backend.UninstallFilter(id)
 	if err != nil {
@@ -717,23 +727,23 @@ func uninstallFilter(ctx context.Context, params []interface{}) (interface{}, er
 func getFilterChanges(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := ToID(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid filter given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid filter given :%v", err)
 	}
 	results, err := backend.GetFilterChanges(id)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return results, nil
 }
 func getFilterLogs(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := ToID(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid filter given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid filter given :%v", err)
 	}
 
 	logs, err := backend.GetFilterLogs(id)
 	if err != nil {
-		return nil, jsonrpc.InternalError(err)
+		return nil, nil
 	}
 	return logs, nil
 }
@@ -866,15 +876,15 @@ func exchangeTransitionConfigurationV1(ctx context.Context, params []interface{}
 func getProof(ctx context.Context, params []interface{}) (interface{}, error) {
 	address, err := ToAddress(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid address given %v", params[0])
+		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 	keys, err := ToKeys(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid keys given %v", params[1])
+		return nil, jsonrpc.InvalidParams("invalid keys given :%v", err)
 	}
 	blockParameter, err := mtypes.ParseBlockParameter(params[2])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid blockParameter given %v,err:%v", params[2], err)
+		return nil, jsonrpc.InvalidParams("invalid blockParameter given :%v", err)
 	}
 	// blockTag, err := ToHash(params[2])
 	// if err != nil {

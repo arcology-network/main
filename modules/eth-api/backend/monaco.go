@@ -532,6 +532,9 @@ func (m *Monaco) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) 
 	if err != nil {
 		return nil, err
 	}
+	if response.Data == nil {
+		return nil, nil
+	}
 	return response.Data.(*mtypes.RPCTransaction), nil
 }
 func (m *Monaco) GetTransactionByBlockNumberAndIndex(number int64, index int) (*mtypes.RPCTransaction, error) {
@@ -545,6 +548,9 @@ func (m *Monaco) GetTransactionByBlockNumberAndIndex(number int64, index int) (*
 	}, &response)
 	if err != nil {
 		return nil, err
+	}
+	if response.Data == nil {
+		return nil, nil
 	}
 	return response.Data.(*mtypes.RPCTransaction), nil
 }

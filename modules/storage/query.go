@@ -331,6 +331,9 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 		if err != nil {
 			return err
 		}
+		if block.Header == nil {
+			return nil
+		}
 		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), height, uint64(request.Index), block.Header.BaseFee, signerType)
 		if err != nil {
 			return err
@@ -343,7 +346,9 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 		if err != nil {
 			return err
 		}
-
+		if block.Header == nil {
+			return nil
+		}
 		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), height, uint64(request.Index), block.Header.BaseFee, signerType)
 		if err != nil {
 			return err
@@ -487,8 +492,13 @@ func (rs *Storage) getBlockTxs(height uint64) int {
 }
 func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*mtypes.RPCBlock, uint8, error) {
 	var block *mtypes.MonacoBlock
+	if height == 0 {
+		return &mtypes.RPCBlock{}, 0, nil
+	}
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
-
+	if block == nil {
+		return &mtypes.RPCBlock{}, 0, nil
+	}
 	header := evmTypes.Header{}
 	for i := range block.Headers {
 		if block.Headers[i][0] != mtypes.AppType_Eth {

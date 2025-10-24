@@ -156,15 +156,15 @@ func ToCallMsg(v interface{}, needFrom bool) (eth.CallMsg, error) {
 			}
 		}
 
-		if needFrom {
-			if from, ok := m["from"]; !ok {
-				return eth.CallMsg{}, errors.New("from field missing")
-			} else if str, ok := from.(string); !ok {
+		// if needFrom {
+		if from, ok := m["from"]; ok {
+			if str, ok := from.(string); !ok {
 				return eth.CallMsg{}, errors.New("unexpected data type given in from field")
 			} else {
 				msg.From = ethcmn.HexToAddress(str)
 			}
 		}
+		// }
 
 		if to, ok := m["to"]; ok {
 			if str, ok := to.(string); !ok {
