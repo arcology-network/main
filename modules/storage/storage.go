@@ -135,9 +135,6 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 				BlobGasUsed:   parentinfo.BlobGasUsed,
 			}, &na)
 		case actor.MsgSelectedReceipts:
-			// for _, item := range v.Data.([]interface{}) {
-			// 	receipts = append(receipts, item.(*evmTypes.Receipt))
-			// }
 			receipts = v.Data.([]*evmTypes.Receipt)
 		case actor.MsgPendingBlock:
 			block = v.Data.(*mtypes.MonacoBlock)
@@ -196,11 +193,14 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 				receipts[i].BlockHash = evmCommon.BytesToHash(blockHash)
 				receipts[i].BlockNumber = big.NewInt(int64(block.Height))
 				receipts[i].TransactionIndex = uint(i)
-
-				for k := range receipts[i].Logs {
-					receipts[i].Logs[k].BlockHash = receipts[i].BlockHash
-					receipts[i].Logs[k].TxHash = receipts[i].TxHash
-					receipts[i].Logs[k].TxIndex = receipts[i].TransactionIndex
+				if receipts[i].Status == 0 {
+					receipts[i].Logs = []*evmTypes.Log{}
+				} else {
+					for k := range receipts[i].Logs {
+						receipts[i].Logs[k].BlockHash = receipts[i].BlockHash
+						receipts[i].Logs[k].TxHash = receipts[i].TxHash
+						receipts[i].Logs[k].TxIndex = receipts[i].TransactionIndex
+					}
 				}
 				keys[i] = string(receipts[i].TxHash.Bytes())
 			}
