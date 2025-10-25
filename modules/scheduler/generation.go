@@ -115,7 +115,7 @@ func (g *generation) process() *types.InclusiveList {
 	}
 
 	deletedDict := make(map[evmCommon.Hash]struct{})
-	for _, rId := range cpLeft {
+	for _, rId := range cpRight {
 		deletedDict[g.context.txHash2IdBiMap.GetInverse(rId)] = struct{}{}
 	}
 
