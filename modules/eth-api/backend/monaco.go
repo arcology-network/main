@@ -357,7 +357,7 @@ func (m *Monaco) EstimateGas(msg eth.CallMsg) (uint64, error) {
 	if gas > maxGasLimit {
 		gas = maxGasLimit
 	}
-	return gas, response.Err
+	return gas, nil
 
 }
 
@@ -457,9 +457,7 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	if response.Err != nil {
-		return nil, response.Err
-	}
+
 	return response.ReturnData, nil
 }
 
