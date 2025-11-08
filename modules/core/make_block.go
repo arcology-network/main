@@ -24,6 +24,7 @@ import (
 
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/storage/transactional"
+	types "github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	intf "github.com/arcology-network/streamer/interface"
@@ -58,6 +59,7 @@ func (m *MakeBlock) Inputs() ([]string, bool) {
 		actor.MsgWithDrawHash,
 		actor.MsgSignerType,
 		actor.MsgGenerationReapingCompleted,
+		actor.MsgInclusive,
 	}, true
 }
 
@@ -81,6 +83,8 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	txSelected := [][]byte{}
 	parentinfo := &mtypes.ParentInfo{}
 	height := uint64(0)
+	inclusivelist := []evmCommon.Hash{}
+	var selectedInfo *mtypes.SelectedTxsInfo
 	// timestamp := big.NewInt(0)
 	var blockParams *mtypes.BlockParams
 	var blockStart *actor.BlockStart
@@ -96,13 +100,13 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 
 			height = blockStart.Height
 		case actor.MsgSelectedTxInfo:
-			info := v.Data.(*mtypes.SelectedTxsInfo)
-			isnil, err := m.IsNil(info, "txSelected")
+			selectedInfo = v.Data.(*mtypes.SelectedTxsInfo)
+			isnil, err := m.IsNil(selectedInfo, "txSelected")
 			if isnil {
 				return err
 			}
-			txhash = info.Txhash
-			txSelected = info.Txs
+			txhash = selectedInfo.Txhash
+			// txSelected = info.Txs
 		case actor.MsgAcctHash:
 			// hash := v.Data.(*evmCommon.Hash)
 			hash := v.Data.([32]byte)
@@ -136,7 +140,8 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 		case actor.MsgWithDrawHash:
 			withDrawHash = v.Data.(*evmCommon.Hash)
 		case actor.MsgGenerationReapingCompleted:
-
+		case actor.MsgInclusive:
+			inclusivelist = v.Data.(*types.InclusiveList).HashList
 		}
 	}
 
@@ -147,6 +152,7 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	// 	txhash = evmTypes.EmptyTxsHash
 	// 	rcpthash = evmTypes.EmptyReceiptsHash
 	// }
+	txSelected = OrderTxs(selectedInfo, inclusivelist)
 
 	header := m.CreateHerder(parentinfo, height, blockStart, accthash, gasused, txhash, rcpthash, blockParams, bloom, withDrawHash)
 	block, err := CreateBlock(header, txSelected, SignerType)
@@ -179,6 +185,18 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	m.ParentTime = header.Time
 
 	return nil
+}
+
+func OrderTxs(selectedInfo *mtypes.SelectedTxsInfo, inclusivelist []evmCommon.Hash) [][]byte {
+	mmp := make(map[evmCommon.Hash]int, len(inclusivelist))
+	for i := range selectedInfo.HashList {
+		mmp[selectedInfo.HashList[i]] = i
+	}
+	txSelected := make([][]byte, len(inclusivelist))
+	for i := range inclusivelist {
+		txSelected[i] = selectedInfo.Txs[mmp[inclusivelist[i]]]
+	}
+	return txSelected
 }
 
 func (m *MakeBlock) CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, blockstart *actor.BlockStart, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, blockParams *mtypes.BlockParams, bloom evmTypes.Bloom, withdrawhash *evmCommon.Hash) *evmTypes.Header {

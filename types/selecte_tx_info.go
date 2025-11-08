@@ -5,6 +5,7 @@ import (
 )
 
 type SelectedTxsInfo struct {
-	Txhash evmCommon.Hash
-	Txs    [][]byte
+	Txhash   evmCommon.Hash
+	Txs      [][]byte
+	HashList []evmCommon.Hash
 }

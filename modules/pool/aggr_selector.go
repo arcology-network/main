@@ -246,6 +246,7 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 	} else {
 		msgs, transactions, txs := a.opAdaptor.ReapEnd(reaped)
 		sendMsgs := make([]*types.StandardMessage, len(msgs))
+		hashList := make([]evmCommon.Hash, len(msgs))
 		for i := range msgs {
 			sendMsgs[i] = &types.StandardMessage{
 				ID:     uint64(i + 1),
@@ -254,6 +255,7 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 				Source: msgs[i].Source,
 			}
 			sendMsgs[i].Native.SkipAccountChecks = true
+			hashList[i] = msgs[i].TxHash
 		}
 		a.MsgBroker.Send(actor.MsgMessagersReaped, sendMsgs, height)
 		a.CheckPoint("send messagersReaped", zap.Int("msgs", len(msgs)))
@@ -262,8 +264,9 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 			txhash = evmTypes.DeriveSha(evmTypes.Transactions(transactions), trie.NewStackTrie(nil))
 		}
 		a.MsgBroker.Send(actor.MsgSelectedTxInfo, &mtypes.SelectedTxsInfo{
-			Txhash: txhash,
-			Txs:    txs,
+			Txhash:   txhash,
+			Txs:      txs,
+			HashList: hashList,
 		}, height)
 		a.MsgBroker.Send(actor.MsgSignerType, a.opAdaptor.SignerType, height)
 		a.CheckPoint("send selectedtx", zap.String("txhash", fmt.Sprintf("%x", txhash)))
