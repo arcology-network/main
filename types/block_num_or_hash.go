@@ -76,6 +76,30 @@ func ParseBlockParameter(v interface{}) (*BlockNumberOrHash, error) {
 	}
 }
 
+func (bnh *BlockNumberOrHash) ParseBlockNumber(bnumber *big.Int, latestheight uint64) (*big.Int, error) {
+	var retnumber uint64
+	switch bnumber {
+	case big.NewInt(BlockNumberLatest):
+		retnumber = latestheight
+	case big.NewInt(BlockNumberEarliest):
+		retnumber = 0
+	case big.NewInt(BlockNumberPending):
+		retnumber = latestheight
+	case big.NewInt(BlockNumberFinalized):
+		retnumber = latestheight
+	case big.NewInt(BlockNumberSafe):
+		retnumber = latestheight
+	default:
+		retnumber = bnumber.Uint64()
+	}
+	bnumber = new(big.Int).SetUint64(retnumber)
+	if retnumber > latestheight {
+		return bnumber, errors.New("future block")
+	}
+
+	return bnumber, nil
+}
+
 func (bnh *BlockNumberOrHash) Number() (*big.Int, bool) {
 	if bnh.BlockNumber != nil {
 		return bnh.BlockNumber, true

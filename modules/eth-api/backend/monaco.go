@@ -274,13 +274,13 @@ func (m *Monaco) GetHeaderByHash(hash ethcmn.Hash) (*mtypes.RPCBlock, error) {
 	return GetHeaderFromHash(hash)
 }
 
-func (m *Monaco) GetCode(address ethcmn.Address, number int64) ([]byte, error) {
+func (m *Monaco) GetCode(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
 	var response mtypes.QueryResult
 	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Code,
 		Data: mtypes.RequestParameters{
-			Number:  number,
-			Address: address,
+			BlockParams: blockParams,
+			Address:     address,
 		},
 	}, &response)
 	if err != nil {
@@ -289,13 +289,13 @@ func (m *Monaco) GetCode(address ethcmn.Address, number int64) ([]byte, error) {
 	return response.Data.([]byte), nil
 }
 
-func (m *Monaco) GetBalance(address ethcmn.Address, number int64) (*big.Int, error) {
+func (m *Monaco) GetBalance(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (*big.Int, error) {
 	var response mtypes.QueryResult
 	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Balance_Eth,
 		Data: &mtypes.RequestParameters{
-			Number:  number,
-			Address: address,
+			BlockParams: blockParams,
+			Address:     address,
 		},
 	}, &response)
 	if err != nil {
@@ -304,13 +304,13 @@ func (m *Monaco) GetBalance(address ethcmn.Address, number int64) (*big.Int, err
 	return response.Data.(*big.Int), nil
 }
 
-func (m *Monaco) GetTransactionCount(address ethcmn.Address, number int64) (uint64, error) {
+func (m *Monaco) GetTransactionCount(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (uint64, error) {
 	var response mtypes.QueryResult
 	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_TransactionCount,
 		Data: mtypes.RequestParameters{
-			Number:  number,
-			Address: address,
+			BlockParams: blockParams,
+			Address:     address,
 		},
 	}, &response)
 	if err != nil {
@@ -319,14 +319,14 @@ func (m *Monaco) GetTransactionCount(address ethcmn.Address, number int64) (uint
 	return response.Data.(uint64), nil
 }
 
-func (m *Monaco) GetStorageAt(address ethcmn.Address, key string, number int64) ([]byte, error) {
+func (m *Monaco) GetStorageAt(address ethcmn.Address, key string, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
 	var response mtypes.QueryResult
 	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Storage,
 		Data: mtypes.RequestStorage{
-			Number:  number,
-			Address: address,
-			Key:     key,
+			BlockParams: blockParams,
+			Address:     address,
+			Key:         key,
 		},
 	}, &response)
 	if err != nil {
@@ -405,7 +405,7 @@ func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorRequest, uin
 
 	gas := msg.Gas
 	if gas == 0 {
-		balance, err := m.GetBalance(msg.From, 0)
+		balance, err := m.GetBalance(msg.From, &mtypes.BlockNumberOrHash{BlockNumber: big.NewInt(0)})
 		if err != nil {
 			balance = big.NewInt(0)
 		}
@@ -494,11 +494,11 @@ func (m *Monaco) GetTransactionReceipt(hash ethcmn.Hash) (*types.Receipt, error)
 	return response.Data.(*types.Receipt), nil
 }
 
-func (m *Monaco) GetBlockReceipts(height uint64) ([]*types.Receipt, error) {
+func (m *Monaco) GetBlockReceipts(blockParams *mtypes.BlockNumberOrHash) ([]*types.Receipt, error) {
 	var response mtypes.QueryResult
 	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Block_Receipts,
-		Data:      height,
+		Data:      blockParams,
 	}, &response)
 	if err != nil {
 		return nil, err

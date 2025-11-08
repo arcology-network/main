@@ -19,6 +19,7 @@ package types
 
 import (
 	"fmt"
+	"math/big"
 
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/storage/filedb"
@@ -72,21 +73,20 @@ func NewIndexer(filedb *filedb.FileDB, cacheSize int) *Indexer {
 	return &indexer
 }
 
-func (indexer *Indexer) QueryBlockHashHeight(hash string) uint64 {
+func (indexer *Indexer) QueryBlockHashHeight(hash string) *big.Int {
 	height := indexer.CachesHeight.Query(hash)
 	if height != nil {
-		return height.(uint64)
+		return new(big.Int).SetUint64(height.(uint64))
 	}
-	data, err := indexer.Db.Get(hash)
-	if err != nil {
-		return 0
+	data, err := indexer.Db.Get(indexer.GetHashHeightKey(hash))
+	if err != nil || data == nil {
+		return big.NewInt(-1)
 	}
 	hashHeight := uint64(codec.Uint64(0).Decode(data).(codec.Uint64))
 	indexer.AddBlockHashHeight(hashHeight, hash, false)
-	return hashHeight
+	return new(big.Int).SetUint64(hashHeight)
 }
 func (indexer *Indexer) AddBlockHashHeight(height uint64, hash string, isSave bool) {
-
 	indexer.CachesHeight.Add(height, []string{hash}, []interface{}{height})
 	if isSave {
 		indexer.Db.Set(indexer.GetHashHeightKey(hash), codec.Uint64(height).Encode())

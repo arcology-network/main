@@ -92,7 +92,7 @@ func getHeaderByNumber(ctx context.Context, params []interface{}) (interface{}, 
 	if err != nil || block.Header == nil {
 		return nil, nil
 	}
-	return RPCMarshalHeader(block.Header), nil
+	return RPCMarshalHeader(block.Header, block.Size), nil
 }
 
 func getBlockByNumber(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -123,7 +123,7 @@ func getHeaderByHash(ctx context.Context, params []interface{}) (interface{}, er
 	if err != nil || block.Header == nil {
 		return nil, nil
 	}
-	return RPCMarshalHeader(block.Header), nil
+	return RPCMarshalHeader(block.Header, block.Size), nil
 }
 
 func getBlockByHash(ctx context.Context, params []interface{}) (interface{}, error) {
@@ -145,7 +145,7 @@ func getBlockByHash(ctx context.Context, params []interface{}) (interface{}, err
 }
 
 // RPCMarshalHeader converts the given header to the RPC output .
-func RPCMarshalHeader(head *ethtyp.Header) map[string]interface{} {
+func RPCMarshalHeader(head *ethtyp.Header, size uint64) map[string]interface{} {
 	result := map[string]interface{}{
 		"number":           (*hexutil.Big)(head.Number),
 		"hash":             head.Hash(),
@@ -163,12 +163,14 @@ func RPCMarshalHeader(head *ethtyp.Header) map[string]interface{} {
 		"timestamp":        hexutil.Uint64(head.Time),
 		"transactionsRoot": head.TxHash,
 		"receiptsRoot":     head.ReceiptHash,
+		"size":             hexutil.Uint64(size),
 	}
 	if head.BaseFee != nil {
 		result["baseFeePerGas"] = (*hexutil.Big)(head.BaseFee)
 	}
 	if head.WithdrawalsHash != nil {
 		result["withdrawalsRoot"] = head.WithdrawalsHash
+		result["withdrawals"] = []string{}
 	}
 	if head.BlobGasUsed != nil {
 		result["blobGasUsed"] = hexutil.Uint64(*head.BlobGasUsed)
@@ -188,32 +190,8 @@ func parseBlock(block *mtypes.RPCBlock, isTransaction bool) interface{} {
 	uncles := make([]string, 0)
 	header := block.Header
 
-	blockResult := RPCMarshalHeader(header)
+	blockResult := RPCMarshalHeader(header, block.Size)
 	blockResult["uncles"] = uncles
-
-	// blockResult := map[string]interface{}{
-	// 	"uncles": uncles,
-
-	// 	"number":           (*hexutil.Big)(header.Number),
-	// 	"hash":             header.Hash(),
-	// 	"parentHash":       header.ParentHash,
-	// 	"nonce":            header.Nonce,
-	// 	"mixHash":          header.MixDigest,
-	// 	"sha3Uncles":       header.UncleHash,
-	// 	"logsBloom":        header.Bloom,
-	// 	"stateRoot":        header.Root,
-	// 	"miner":            header.Coinbase,
-	// 	"difficulty":       (*hexutil.Big)(header.Difficulty),
-	// 	"extraData":        hexutil.Bytes(header.Extra),
-	// 	"size":             hexutil.Uint64(header.Size()),
-	// 	"gasLimit":         hexutil.Uint64(header.GasLimit),
-	// 	"gasUsed":          hexutil.Uint64(header.GasUsed),
-	// 	"timestamp":        hexutil.Uint64(header.Time),
-	// 	"transactionsRoot": header.TxHash,
-	// 	"receiptsRoot":     header.ReceiptHash,
-	// 	"totalDifficulty":  (*hexutil.Big)(header.Difficulty),
-	// 	// "transactions":     transactions,
-	// }
 
 	if isTransaction {
 		transactions := make([]*mtypes.RPCTransaction, len(block.Transactions))
@@ -224,7 +202,7 @@ func parseBlock(block *mtypes.RPCBlock, isTransaction bool) interface{} {
 	} else {
 		hashes := make([]string, len(block.Transactions))
 		for i := range block.Transactions {
-			hashes[i] = fmt.Sprintf("%x", block.Transactions[i])
+			hashes[i] = fmt.Sprintf("0x%x", block.Transactions[i])
 		}
 		blockResult["transactions"] = hashes
 	}
@@ -238,12 +216,11 @@ func getTransactionCount(ctx context.Context, params []interface{}) (interface{}
 		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 
-	number, err := ToBlockNumber(params[1])
+	blockParameter, err := mtypes.ParseBlockParameter(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
+		return nil, jsonrpc.InvalidParams("invalid blockParameter given :%v", err)
 	}
-
-	nonce, err := backend.GetTransactionCount(address, number)
+	nonce, err := backend.GetTransactionCount(address, blockParameter)
 	if err != nil {
 		return nil, nil
 	}
@@ -256,12 +233,12 @@ func getCode(ctx context.Context, params []interface{}) (interface{}, error) {
 		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 
-	number, err := ToBlockNumber(params[1])
+	blockParameter, err := mtypes.ParseBlockParameter(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
+		return nil, jsonrpc.InvalidParams("invalid blockParameter given :%v", err)
 	}
 
-	code, err := backend.GetCode(address, number)
+	code, err := backend.GetCode(address, blockParameter)
 	if err != nil {
 		return nil, nil
 	}
@@ -274,12 +251,12 @@ func getBalance(ctx context.Context, params []interface{}) (interface{}, error) 
 		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 
-	number, err := ToBlockNumber(params[1])
+	blockParameter, err := mtypes.ParseBlockParameter(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
+		return nil, jsonrpc.InvalidParams("invalid blockParameter given :%v", err)
 	}
 
-	balance, err := backend.GetBalance(address, number)
+	balance, err := backend.GetBalance(address, blockParameter)
 	if err != nil {
 		return nil, nil
 	}
@@ -292,17 +269,17 @@ func getStorageAt(ctx context.Context, params []interface{}) (interface{}, error
 		return nil, jsonrpc.InvalidParams("invalid address given :%v", err)
 	}
 
-	key, err := ToHash(params[1])
+	key, err := ToStorageKey(params[1])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
+		return nil, jsonrpc.InvalidParams("invalid StorageKey given :%v", err)
 	}
 
-	number, err := ToBlockNumber(params[2])
+	blockParameter, err := mtypes.ParseBlockParameter(params[2])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
+		return nil, jsonrpc.InvalidParams("invalid blockParameter given :%v", err)
 	}
 
-	value, err := backend.GetStorageAt(address, key.Hex(), number)
+	value, err := backend.GetStorageAt(address, key.Hex(), blockParameter)
 	if err != nil {
 		return nil, nil
 	}
@@ -319,8 +296,8 @@ func estimateGas(ctx context.Context, params []interface{}) (interface{}, error)
 		return nil, jsonrpc.InvalidParams("invalid call msg given :%v", err)
 	}
 
-	gas, _ := backend.EstimateGas(msg)
-	return NumberToHex(gas), nil
+	gas, err := backend.EstimateGas(msg)
+	return NumberToHex(gas), err
 }
 
 func gasPrice(ctx context.Context) (interface{}, error) {
@@ -350,12 +327,12 @@ func sendTransaction(ctx context.Context, params []interface{}) (interface{}, er
 }
 
 func getBlockReceipts(ctx context.Context, params []interface{}) (interface{}, error) {
-	number, err := ToBlockNumber(params[0])
+	blockParameter, err := mtypes.ParseBlockParameter(params[0])
 	if err != nil {
-		return nil, jsonrpc.InvalidParams("invalid block number given :%v", err)
+		return nil, jsonrpc.InvalidParams("invalid blockParameter given :%v", err)
 	}
 	var receipts []*ethtyp.Receipt
-	receipts, err = backend.GetBlockReceipts(uint64(number))
+	receipts, err = backend.GetBlockReceipts(blockParameter)
 	if err != nil {
 		return nil, nil
 	}

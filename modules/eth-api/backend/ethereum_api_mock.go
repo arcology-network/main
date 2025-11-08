@@ -114,7 +114,7 @@ func (mock *EthereumAPIMock) GetHeaderByNumber(number int64) (*mtypes.RPCBlock, 
 	return nil, nil
 }
 
-func (mock *EthereumAPIMock) GetCode(address ethcmn.Address, number int64) ([]byte, error) {
+func (mock *EthereumAPIMock) GetCode(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
 	if bytes.Equal(address.Bytes(), ethcmn.HexToAddress("0x608060405234801561001057600080fd5b503360").Bytes()) {
 		return []byte{0xff, 0xff}, nil
 	} else if bytes.Equal(address.Bytes(), ethcmn.HexToAddress("0x60c3610025600b82828239805160001a60731461").Bytes()) {
@@ -125,16 +125,16 @@ func (mock *EthereumAPIMock) GetCode(address ethcmn.Address, number int64) ([]by
 	return nil, nil
 }
 
-func (mock *EthereumAPIMock) GetBalance(address ethcmn.Address, number int64) (*big.Int, error) {
+func (mock *EthereumAPIMock) GetBalance(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (*big.Int, error) {
 	balance, _ := new(big.Int).SetString("10000000000000000", 0)
 	return balance, nil
 }
 
-func (mock *EthereumAPIMock) GetTransactionCount(address ethcmn.Address, number int64) (uint64, error) {
+func (mock *EthereumAPIMock) GetTransactionCount(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (uint64, error) {
 	return 0, nil
 }
 
-func (mock *EthereumAPIMock) GetStorageAt(address ethcmn.Address, key string, number int64) ([]byte, error) {
+func (mock *EthereumAPIMock) GetStorageAt(address ethcmn.Address, key string, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
 	return ethcmn.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000").Bytes(), nil
 }
 
@@ -192,7 +192,7 @@ func (mock *EthereumAPIMock) GetTransactionReceipt(hash ethcmn.Hash) (*ethtyp.Re
 	}, nil
 }
 
-func (mock *EthereumAPIMock) GetBlockReceipts(height uint64) ([]*ethtyp.Receipt, error) {
+func (mock *EthereumAPIMock) GetBlockReceipts(blockParams *mtypes.BlockNumberOrHash) ([]*ethtyp.Receipt, error) {
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
 

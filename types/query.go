@@ -73,8 +73,8 @@ type QueryResult struct {
 }
 
 type RequestParameters struct {
-	Number  int64
-	Address ethCommon.Address
+	BlockParams *BlockNumberOrHash
+	Address     ethCommon.Address
 }
 
 type RequestBlockEth struct {
@@ -84,9 +84,9 @@ type RequestBlockEth struct {
 	FullTx bool
 }
 type RequestStorage struct {
-	Number  int64
-	Address ethCommon.Address
-	Key     string
+	BlockParams *BlockNumberOrHash
+	Address     ethCommon.Address
+	Key         string
 }
 
 type RequestBalance struct {

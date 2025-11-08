@@ -59,6 +59,7 @@ type RPCTransaction struct {
 type RPCBlock struct {
 	Header       *ethtyp.Header
 	Transactions []interface{}
+	Size         uint64
 }
 
 type FeeHistoryResult struct {

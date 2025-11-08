@@ -35,6 +35,33 @@ import (
 	"go.uber.org/zap"
 )
 
+func (rs *Storage) getHeightByHashOrNumber(blockParams *mtypes.BlockNumberOrHash) (*big.Int, error) {
+	var height *big.Int
+	if hash, ok := blockParams.Hash(); ok {
+		hashstr := string(hash.Bytes())
+		err := intf.Router.Call("indexerstore", "GetHeightByHash", &hashstr, &height)
+		if err != nil {
+			return big.NewInt(0), err
+		}
+		if height.Cmp(big.NewInt(0)) < 0 {
+			return big.NewInt(0), errors.New("not found")
+		}
+	} else if height, ok = blockParams.Number(); ok {
+		//
+	}
+	return blockParams.ParseBlockNumber(height, rs.lastHeight)
+}
+
+func (rs *Storage) findHeightByHash(hash evmCommon.Hash) (*big.Int, error) {
+	var height *big.Int
+	hashstr := string(hash.Bytes())
+	err := intf.Router.Call("indexerstore", "GetHeightByHash", &hashstr, &height)
+	if err != nil {
+		return big.NewInt(0), err
+	}
+	return height, nil
+}
+
 func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
 	switch request.QueryType {
 	case mtypes.QueryType_LatestHeight:
@@ -199,26 +226,49 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 	case mtypes.QueryType_TransactionCount:
 		request := request.Data.(mtypes.RequestParameters)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
+
+		_, err := rs.getHeightByHashOrNumber(request.BlockParams)
+		if err != nil {
+			return err
+		}
+
 		var nonce uint64
 		intf.Router.Call("urlstore", "GetNonce", &address, &nonce)
 		response.Data = nonce
 	case mtypes.QueryType_Code:
 		request := request.Data.(mtypes.RequestParameters)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
+
+		_, err := rs.getHeightByHashOrNumber(request.BlockParams)
+		if err != nil {
+			return err
+		}
+
 		var code []byte
 		intf.Router.Call("urlstore", "GetCode", &address, &code)
 		response.Data = code
 	case mtypes.QueryType_Balance_Eth:
 		request := request.Data.(*mtypes.RequestParameters)
 		address := fmt.Sprintf("%x", request.Address.Bytes())
+
+		_, err := rs.getHeightByHashOrNumber(request.BlockParams)
+		if err != nil {
+			return err
+		}
+
 		var balance *big.Int
-		err := intf.Router.Call("urlstore", "GetBalance", &address, &balance)
+		err = intf.Router.Call("urlstore", "GetBalance", &address, &balance)
 		if err != nil {
 			return err
 		}
 		response.Data = balance
 	case mtypes.QueryType_Storage:
 		request := request.Data.(mtypes.RequestStorage)
+		_, err := rs.getHeightByHashOrNumber(request.BlockParams)
+		if err != nil {
+			return err
+		}
+
 		address := fmt.Sprintf("%x", request.Address.Bytes())
 		var value []byte
 		intf.Router.Call("urlstore", "GetEthStorage", &UrlEthStorageGetRequest{
@@ -244,14 +294,14 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 
 		response.Data = receipt
 	case mtypes.QueryType_Block_Receipts:
-		height := request.Data.(uint64)
 
-		var receipts []*evmTypes.Receipt
-		intf.Router.Call("receiptstore", "GetBlockReceipts", height, &receipts)
-		if receipts == nil {
-			response.Data = nil
-			return errors.New("receipts not found")
+		request := request.Data.(*mtypes.BlockNumberOrHash)
+		height, err := rs.getHeightByHashOrNumber(request)
+		if err != nil {
+			return err
 		}
+		var receipts []*evmTypes.Receipt
+		intf.Router.Call("receiptstore", "GetBlockReceipts", height.Uint64(), &receipts)
 
 		response.Data = receipts
 	case mtypes.QueryType_Transaction:
@@ -263,7 +313,7 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 			response.Data = nil
 			return errors.New("hash not found")
 		}
-		block, signerType, err := rs.getRpcBlock(position.Height, false, true)
+		block, signerType, err := rs.getRpcBlock(new(big.Int).SetUint64(position.Height), false, true)
 		if err != nil {
 			return err
 		}
@@ -276,7 +326,7 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 		request := request.Data.(*mtypes.RequestBlockEth)
 		queryHeight := rs.getQueryHeight(request.Number)
 
-		rpcBlock, _, err := rs.getRpcBlock(queryHeight, request.FullTx, false)
+		rpcBlock, _, err := rs.getRpcBlock(new(big.Int).SetUint64(queryHeight), request.FullTx, false)
 		if err != nil {
 			return err
 		}
@@ -285,16 +335,18 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 		request := request.Data.(*mtypes.RequestBlockEth)
 		queryHeight := rs.getQueryHeight(request.Number)
 
-		rpcBlock, _, err := rs.getRpcBlock(queryHeight, false, true)
+		rpcBlock, _, err := rs.getRpcBlock(new(big.Int).SetUint64(queryHeight), false, true)
 		if err != nil {
 			return err
 		}
 		response.Data = rpcBlock
 	case mtypes.QueryType_HeaderByHash:
 		request := request.Data.(*mtypes.RequestBlockEth)
-		hash := string(request.Hash.Bytes())
-		var height uint64
-		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
+
+		height, err := rs.findHeightByHash(request.Hash)
+		if err != nil {
+			return err
+		}
 		rpcBlock, _, err := rs.getRpcBlock(height, false, true)
 		if err != nil {
 			return err
@@ -302,9 +354,12 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 		response.Data = rpcBlock
 	case mtypes.QueryType_BlocByHash:
 		request := request.Data.(*mtypes.RequestBlockEth)
-		hash := string(request.Hash.Bytes())
-		var height uint64
-		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
+
+		height, err := rs.findHeightByHash(request.Hash)
+		if err != nil {
+			return err
+		}
+
 		rpcBlock, _, err := rs.getRpcBlock(height, request.FullTx, false)
 		if err != nil {
 			return err
@@ -314,19 +369,24 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 		request := request.Data.(*evm.FilterQuery)
 		response.Data = rs.caches.Query(*request)
 	case mtypes.QueryType_TxNumsByHash:
-		hash := string(request.Data.(evmCommon.Hash).Bytes())
-		var height uint64
-		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
-		response.Data = rs.getBlockTxs(height)
+		height, err := rs.findHeightByHash(request.Data.(evmCommon.Hash))
+		if err != nil {
+			return err
+		}
+
+		response.Data = rs.getBlockTxs(height.Uint64())
 	case mtypes.QueryType_TxNumsByNumber:
 		number := request.Data.(int64)
 		height := rs.getQueryHeight(number)
 		response.Data = rs.getBlockTxs(height)
 	case mtypes.QueryType_TxByHashAndIdx:
 		request := request.Data.(*mtypes.RequestBlockEth)
-		hash := string(request.Hash.Bytes())
-		var height uint64
-		intf.Router.Call("indexerstore", "GetHeightByHash", &hash, &height)
+
+		height, err := rs.findHeightByHash(request.Hash)
+		if err != nil {
+			return err
+		}
+
 		block, signerType, err := rs.getRpcBlock(height, false, true)
 		if err != nil {
 			return err
@@ -334,7 +394,7 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 		if block.Header == nil {
 			return nil
 		}
-		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), height, uint64(request.Index), block.Header.BaseFee, signerType)
+		transaction, err := rs.getTransactionByPosition(block.Header.Hash(), height.Uint64(), uint64(request.Index), block.Header.BaseFee, signerType)
 		if err != nil {
 			return err
 		}
@@ -342,7 +402,7 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 	case mtypes.QueryType_TxByNumberAndIdx:
 		request := request.Data.(*mtypes.RequestBlockEth)
 		height := rs.getQueryHeight(request.Number)
-		block, signerType, err := rs.getRpcBlock(height, false, true)
+		block, signerType, err := rs.getRpcBlock(new(big.Int).SetUint64(height), false, true)
 		if err != nil {
 			return err
 		}
@@ -390,77 +450,80 @@ func (rs *Storage) getTransactionByPosition(blockHash evmCommon.Hash, height uin
 		result.BlockNumber = (*hexutil.Big)(new(big.Int).SetUint64(height))
 		result.TransactionIndex = (*hexutil.Uint64)(&idx)
 	}
-	switch tx.Type() {
-	case evmTypes.DepositTxType:
-		srcHash := tx.SourceHash()
-		isSystemTx := tx.IsSystemTx()
-		result.SourceHash = &srcHash
-		if isSystemTx {
-			// Only include IsSystemTx when true
-			result.IsSystemTx = &isSystemTx
-		}
-		result.Mint = (*hexutil.Big)(tx.Mint())
-
-		var receipt *evmTypes.Receipt
-		intf.Router.Call("receiptstore", "Get", &position, &receipt)
-
-		if receipt != nil && receipt.DepositNonce != nil {
-			result.Nonce = hexutil.Uint64(*receipt.DepositNonce)
-			if receipt.DepositReceiptVersion != nil {
-				result.DepositReceiptVersion = new(hexutil.Uint64)
-				*result.DepositReceiptVersion = hexutil.Uint64(*receipt.DepositReceiptVersion)
+	/*
+		switch tx.Type() {
+		case evmTypes.DepositTxType:
+			srcHash := tx.SourceHash()
+			isSystemTx := tx.IsSystemTx()
+			result.SourceHash = &srcHash
+			if isSystemTx {
+				// Only include IsSystemTx when true
+				result.IsSystemTx = &isSystemTx
 			}
-		}
-	case evmTypes.LegacyTxType:
-		if v.Sign() == 0 && r.Sign() == 0 && s.Sign() == 0 { // pre-bedrock relayed tx does not have a signature
-			result.ChainID = (*hexutil.Big)(new(big.Int).Set(rs.chainID))
-			break
-		}
-		// if a legacy transaction has an EIP-155 chain id, include it explicitly
-		if id := tx.ChainId(); id.Sign() != 0 {
-			result.ChainID = (*hexutil.Big)(id)
-		}
+			result.Mint = (*hexutil.Big)(tx.Mint())
 
-	case evmTypes.AccessListTxType:
-		al := tx.AccessList()
-		yparity := hexutil.Uint64(v.Sign())
-		result.Accesses = &al
-		result.ChainID = (*hexutil.Big)(tx.ChainId())
-		result.YParity = &yparity
+			var receipt *evmTypes.Receipt
+			intf.Router.Call("receiptstore", "Get", &position, &receipt)
 
-	case evmTypes.DynamicFeeTxType:
-		al := tx.AccessList()
-		yparity := hexutil.Uint64(v.Sign())
-		result.Accesses = &al
-		result.ChainID = (*hexutil.Big)(tx.ChainId())
-		result.YParity = &yparity
-		result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
-		result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
-		// if the transaction has been mined, compute the effective gas price
-		if baseFee != nil && blockHash != (evmCommon.Hash{}) {
-			// price = min(gasTipCap + baseFee, gasFeeCap)
-			result.GasPrice = (*hexutil.Big)(effectiveGasPrice(tx, baseFee))
-		} else {
-			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
-		}
-
-	case evmTypes.BlobTxType:
-		al := tx.AccessList()
-		yparity := hexutil.Uint64(v.Sign())
-		result.Accesses = &al
-		result.ChainID = (*hexutil.Big)(tx.ChainId())
-		result.YParity = &yparity
-		result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
-		result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
-		// if the transaction has been mined, compute the effective gas price
-		if baseFee != nil && blockHash != (evmCommon.Hash{}) {
-			result.GasPrice = (*hexutil.Big)(effectiveGasPrice(tx, baseFee))
-		} else {
-			result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
-		}
-		result.MaxFeePerBlobGas = (*hexutil.Big)(tx.BlobGasFeeCap())
-		result.BlobVersionedHashes = tx.BlobHashes()
+			if receipt != nil && receipt.DepositNonce != nil {
+				result.Nonce = hexutil.Uint64(*receipt.DepositNonce)
+				if receipt.DepositReceiptVersion != nil {
+					result.DepositReceiptVersion = new(hexutil.Uint64)
+					*result.DepositReceiptVersion = hexutil.Uint64(*receipt.DepositReceiptVersion)
+				}
+			}
+		case evmTypes.LegacyTxType:
+	*/
+	if v.Sign() == 0 && r.Sign() == 0 && s.Sign() == 0 { // pre-bedrock relayed tx does not have a signature
+		result.ChainID = (*hexutil.Big)(new(big.Int).Set(rs.chainID))
+		// break
 	}
+	// if a legacy transaction has an EIP-155 chain id, include it explicitly
+	if id := tx.ChainId(); id.Sign() != 0 {
+		result.ChainID = (*hexutil.Big)(id)
+	}
+	/*
+		case evmTypes.AccessListTxType:
+			al := tx.AccessList()
+			yparity := hexutil.Uint64(v.Sign())
+			result.Accesses = &al
+			result.ChainID = (*hexutil.Big)(tx.ChainId())
+			result.YParity = &yparity
+
+		case evmTypes.DynamicFeeTxType:
+			al := tx.AccessList()
+			yparity := hexutil.Uint64(v.Sign())
+			result.Accesses = &al
+			result.ChainID = (*hexutil.Big)(tx.ChainId())
+			result.YParity = &yparity
+			result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
+			result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
+			// if the transaction has been mined, compute the effective gas price
+			if baseFee != nil && blockHash != (evmCommon.Hash{}) {
+				// price = min(gasTipCap + baseFee, gasFeeCap)
+				result.GasPrice = (*hexutil.Big)(effectiveGasPrice(tx, baseFee))
+			} else {
+				result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
+			}
+
+		case evmTypes.BlobTxType:
+			al := tx.AccessList()
+			yparity := hexutil.Uint64(v.Sign())
+			result.Accesses = &al
+			result.ChainID = (*hexutil.Big)(tx.ChainId())
+			result.YParity = &yparity
+			result.GasFeeCap = (*hexutil.Big)(tx.GasFeeCap())
+			result.GasTipCap = (*hexutil.Big)(tx.GasTipCap())
+			// if the transaction has been mined, compute the effective gas price
+			if baseFee != nil && blockHash != (evmCommon.Hash{}) {
+				result.GasPrice = (*hexutil.Big)(effectiveGasPrice(tx, baseFee))
+			} else {
+				result.GasPrice = (*hexutil.Big)(tx.GasFeeCap())
+			}
+			result.MaxFeePerBlobGas = (*hexutil.Big)(tx.BlobGasFeeCap())
+			result.BlobVersionedHashes = tx.BlobHashes()
+		}
+	*/
 	return result, nil
 }
 
@@ -490,12 +553,13 @@ func (rs *Storage) getBlockTxs(height uint64) int {
 	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
 	return len(block.Txs)
 }
-func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*mtypes.RPCBlock, uint8, error) {
+func (rs *Storage) getRpcBlock(height *big.Int, fulltx bool, onlyHeader bool) (*mtypes.RPCBlock, uint8, error) {
 	var block *mtypes.MonacoBlock
-	if height == 0 {
+	if height == nil || height.Cmp(big.NewInt(0)) < 0 {
 		return &mtypes.RPCBlock{}, 0, nil
 	}
-	intf.Router.Call("blockstore", "GetByHeight", &height, &block)
+	uheight := height.Uint64()
+	intf.Router.Call("blockstore", "GetByHeight", &uheight, &block)
 	if block == nil {
 		return &mtypes.RPCBlock{}, 0, nil
 	}
@@ -513,8 +577,12 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*mt
 		}
 		header = ethheader
 	}
-
+	data, err := block.GobEncode()
+	if err != nil {
+		return &mtypes.RPCBlock{}, 0, nil
+	}
 	rpcBlock := mtypes.RPCBlock{
+		Size:   uint64(len(data)),
 		Header: &header,
 	}
 	if onlyHeader {
@@ -523,7 +591,7 @@ func (rs *Storage) getRpcBlock(height uint64, fulltx bool, onlyHeader bool) (*mt
 	if fulltx {
 		transactions := make([]interface{}, len(block.Txs))
 		for i := range block.Txs {
-			rpctransaction, err := rs.getTransactionByPosition(header.Hash(), height, uint64(i), header.BaseFee, block.Signer)
+			rpctransaction, err := rs.getTransactionByPosition(header.Hash(), uheight, uint64(i), header.BaseFee, block.Signer)
 			if err != nil {
 				return nil, 0, err
 			}

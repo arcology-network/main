@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"math/big"
 	"os"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -35,6 +36,12 @@ import (
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethflt "github.com/ethereum/go-ethereum/eth/filters"
+)
+
+var (
+	regAddress     = regexp.MustCompile(`^0x[0-9a-fA-F]{40}$`)
+	regHash        = regexp.MustCompile(`^0x[0-9a-f]{64}$`)
+	regBlockNumber = regexp.MustCompile(`^0x(0|[1-9a-f][0-9a-f]*)$`) //
 )
 
 func AttachChainId(tx *mtypes.RPCTransaction, chainid uint64) *mtypes.RPCTransaction { //} map[string]string {
@@ -93,7 +100,7 @@ func ToBool(v interface{}) (bool, error) {
 }
 
 func ToAddress(v interface{}) (ethcmn.Address, error) {
-	if str, ok := v.(string); !ok {
+	if str, ok := v.(string); !ok || !regAddress.MatchString(str) {
 		return ethcmn.Address{}, errors.New("unexpected data type given")
 	} else {
 		return ethcmn.HexToAddress(str), nil
@@ -104,7 +111,27 @@ func ToHash(v interface{}) (ethcmn.Hash, error) {
 	if str, ok := v.(string); !ok {
 		return ethcmn.Hash{}, errors.New("unexpected data type given")
 	} else {
-		return ethcmn.HexToHash(str), nil
+		if regHash.MatchString(str) {
+			return ethcmn.HexToHash(str), nil
+		} else {
+			return ethcmn.Hash{}, errors.New("unable to decode hash: hex string invalid")
+		}
+	}
+}
+
+func ToStorageKey(v interface{}) (ethcmn.Hash, error) {
+	if str, ok := v.(string); !ok {
+		return ethcmn.Hash{}, errors.New("unexpected data type given")
+	} else {
+		if len(str) > 66 {
+			return ethcmn.Hash{}, errors.New("unable to decode storage key: hex string too long, want at most 32 bytes")
+		} else if len(str) < 66 {
+			return ethcmn.Hash{}, errors.New("unable to decode storage key: hex string invalid")
+		} else if regHash.MatchString(str) {
+			return ethcmn.HexToHash(str), nil
+		} else {
+			return ethcmn.Hash{}, errors.New("unable to decode storage key: hex string invalid")
+		}
 	}
 }
 
@@ -246,7 +273,7 @@ func ToSendTxArgs(v interface{}) (SendTxArgs, error) {
 		}
 	} else {
 		number, _ := ToBlockNumber("latest")
-		nonce, err = backend.GetTransactionCount(callMsg.From, number)
+		nonce, err = backend.GetTransactionCount(callMsg.From, &mtypes.BlockNumberOrHash{BlockNumber: big.NewInt(number)})
 		if err != nil {
 			return SendTxArgs{}, jsonrpc.InternalError(err)
 		}

@@ -38,10 +38,10 @@ type EthereumAPI interface {
 	GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*mtypes.RPCBlock, error)
 	GetHeaderByNumber(number int64) (*mtypes.RPCBlock, error)
 	GetHeaderByHash(hash ethcmn.Hash) (*mtypes.RPCBlock, error)
-	GetCode(address ethcmn.Address, number int64) ([]byte, error)
-	GetBalance(address ethcmn.Address, number int64) (*big.Int, error)
-	GetTransactionCount(address ethcmn.Address, number int64) (uint64, error)
-	GetStorageAt(address ethcmn.Address, key string, number int64) ([]byte, error)
+	GetCode(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) ([]byte, error)
+	GetBalance(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (*big.Int, error)
+	GetTransactionCount(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (uint64, error)
+	GetStorageAt(address ethcmn.Address, key string, blockParams *mtypes.BlockNumberOrHash) ([]byte, error)
 
 	EstimateGas(msg eth.CallMsg) (uint64, error)
 	GasPrice() (*big.Int, error)
@@ -51,7 +51,7 @@ type EthereumAPI interface {
 	Call(msg eth.CallMsg) ([]byte, error)
 	SendRawTransaction(rawTx []byte) (ethcmn.Hash, error)
 	GetTransactionReceipt(hash ethcmn.Hash) (*ethtyp.Receipt, error)
-	GetBlockReceipts(height uint64) ([]*ethtyp.Receipt, error)
+	GetBlockReceipts(blockParams *mtypes.BlockNumberOrHash) ([]*ethtyp.Receipt, error)
 	GetLogs(filter eth.FilterQuery) ([]*ethtyp.Log, error)
 
 	GetBlockTransactionCountByHash(hash ethcmn.Hash) (int, error)

@@ -19,6 +19,7 @@ package storage
 
 import (
 	"context"
+	"math/big"
 
 	"github.com/arcology-network/common-lib/storage/filedb"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
@@ -64,9 +65,8 @@ func (is *IndexerStore) SaveBlockHash(ctx context.Context, request *SaveIndexBlo
 	return nil
 }
 
-func (is *IndexerStore) GetHeightByHash(ctx context.Context, hash *string, height *uint64) error {
-	h := is.db.QueryBlockHashHeight(*hash)
-	*height = h
+func (is *IndexerStore) GetHeightByHash(ctx context.Context, hash *string, height **big.Int) error {
+	*height = is.db.QueryBlockHashHeight(*hash)
 	return nil
 }
 
