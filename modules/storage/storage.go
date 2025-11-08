@@ -207,24 +207,24 @@ func (s *Storage) OnMessageArrived(msgs []*actor.Message) error {
 		}
 		common.ParallelWorker(len(receipts), s.Concurrency, worker)
 
-		if len(receipts) > 0 {
-			intf.Router.Call("receiptstore", "Save", &SaveReceiptsRequest{
-				Height:   height,
-				Receipts: receipts,
-			}, &na)
-			intf.Router.Call("indexerstore", "Save", &SaveIndexRequest{
-				Height: height,
-				keys:   keys,
-				IsSave: true,
-			}, &na)
-			intf.Router.Call("indexerstore", "SaveBlockHash", &SaveIndexBlockHashRequest{
-				Height: height,
-				Hash:   string(blockHash),
-				IsSave: true,
-			}, &na)
-			s.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>> receipt save", zap.Int("total", len(receipts)), zap.Int("failed", failed), zap.Duration("time", time.Since(t0)))
-			s.caches.Add(height, receipts)
-		}
+		// if len(receipts) > 0 {
+		intf.Router.Call("receiptstore", "Save", &SaveReceiptsRequest{
+			Height:   height,
+			Receipts: receipts,
+		}, &na)
+		intf.Router.Call("indexerstore", "Save", &SaveIndexRequest{
+			Height: height,
+			keys:   keys,
+			IsSave: true,
+		}, &na)
+		intf.Router.Call("indexerstore", "SaveBlockHash", &SaveIndexBlockHashRequest{
+			Height: height,
+			Hash:   string(blockHash),
+			IsSave: true,
+		}, &na)
+		s.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>>>>>>>>>> receipt save", zap.Int("total", len(receipts)), zap.Int("failed", failed), zap.Duration("time", time.Since(t0)))
+		s.caches.Add(height, receipts)
+		// }
 
 		s.AddLog(log.LogLevel_Info, "<<<<<<<<<<<<<<<<<<<<< storage gather info completed", zap.Duration("save time", time.Since(savet)), zap.Uint64("blockNo", height))
 		s.lastHeight = height
