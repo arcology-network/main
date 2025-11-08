@@ -64,7 +64,7 @@ func GetStorage(ds interfaces.ReadOnlyStore, addr, key string) ([]byte, error) {
 	path := getStorageKeyPath(addr, key)
 	obj, err := ds.Retrive(path, new(noncommutative.Bytes))
 	if err != nil || obj == nil {
-		return []byte{}, err
+		return make([]byte, 32), err
 	}
 
 	bys := obj.(*noncommutative.Bytes).Value().(codec.Bytes)
