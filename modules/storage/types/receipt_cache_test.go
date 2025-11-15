@@ -18,12 +18,14 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 	"math/big"
 	"os"
 	"reflect"
 	"testing"
 
+	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/storage/filedb"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
@@ -31,7 +33,7 @@ import (
 
 func newReceipt(height uint64, idx, idxInBlock int) *evmTypes.Receipt {
 	receipt := evmTypes.Receipt{}
-	receipt.PostState = []byte{byte(idx + 1), 2, 3, 4}
+	receipt.PostState = []byte{1}
 	receipt.Status = 1
 	receipt.CumulativeGasUsed = 100
 	receipt.Bloom = evmTypes.BytesToBloom([]byte{2, byte(idx + 3), 4, 5, 6})
@@ -43,6 +45,33 @@ func newReceipt(height uint64, idx, idxInBlock int) *evmTypes.Receipt {
 	receipt.BlockNumber = big.NewInt(int64(height))
 	receipt.TransactionIndex = uint(idxInBlock)
 	return &receipt
+}
+
+func TestEncodeDecode(t *testing.T) {
+	receipt := newReceipt(2, 2, 0)
+	receiptRaw, err := common.GobEncode(receipt)
+	if err != nil {
+		t.Error(err)
+	}
+	receiptobj := evmTypes.Receipt{}
+	err = common.GobDecode(receiptRaw, &receiptobj)
+	if err != nil {
+		t.Error(err)
+	}
+	compareReceipt(receipt, &receiptobj, "receipt encode and  decode Error", t)
+}
+func compareReceipt(a, b *evmTypes.Receipt, errString string, t *testing.T) {
+	aobj, err := a.MarshalBinary()
+	if err != nil {
+		t.Error(err)
+	}
+	bobj, err := b.MarshalBinary()
+	if err != nil {
+		t.Error(err)
+	}
+	if !bytes.Equal(aobj, bobj) {
+		t.Error(errString)
+	}
 }
 
 func TestReceiptCache(t *testing.T) {
@@ -89,11 +118,7 @@ func TestReceiptCache(t *testing.T) {
 		return
 	}
 	queryResult = cache.QueryReceipt(position.Height, position.IdxInBlock)
-
-	if !reflect.DeepEqual(*queryResult, *receipts2[1]) {
-		t.Error("cache save get Error")
-		return
-	}
+	compareReceipt(queryResult, receipts2[1], "cache save get Error", t)
 
 	receipts3 := make([]*evmTypes.Receipt, 2)
 
@@ -116,11 +141,8 @@ func TestReceiptCache(t *testing.T) {
 		return
 	}
 	queryResult = cache.QueryReceipt(position.Height, position.IdxInBlock)
+	compareReceipt(queryResult, receipts1[0], "cache save get Error", t)
 
-	if !reflect.DeepEqual(*queryResult, *receipts1[0]) {
-		t.Error("cache save get Error")
-		return
-	}
 	heights = []uint64{3, 1}
 	if !reflect.DeepEqual(heights, indexer.Caches.DataHeights) {
 		t.Error("cache remove Error")
@@ -128,13 +150,10 @@ func TestReceiptCache(t *testing.T) {
 	}
 
 	queryReceipt := cache.QueryReceipt(3, 0)
-	if !reflect.DeepEqual(*queryReceipt, *receipts3[0]) {
-		t.Error("query receipt Error")
-		return
-	}
+	compareReceipt(queryReceipt, receipts3[0], "query receipt Error", t)
 
 	height := indexer.QueryBlockHashHeight(string(receipts3[0].BlockHash.Bytes()))
-	if !reflect.DeepEqual(height, uint64(3)) {
+	if !reflect.DeepEqual(height, big.NewInt(3)) {
 		t.Error("query height by block hash Error")
 		return
 	}

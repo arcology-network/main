@@ -18,6 +18,7 @@
 package types
 
 import (
+	"bytes"
 	"math"
 	"math/big"
 	"os"
@@ -65,9 +66,10 @@ func newBlock(height uint64, idx int) (*mtypes.MonacoBlock, []evmCommon.Hash) {
 	}
 
 	block := &mtypes.MonacoBlock{
-		Height:  height,
-		Headers: headers,
-		Txs:     txSelected,
+		Blockhash: header.Hash().Bytes(),
+		Height:    height,
+		Headers:   headers,
+		Txs:       txSelected,
 	}
 	return block, txhashes
 }
@@ -132,12 +134,30 @@ func TestBlockCache(t *testing.T) {
 	tx := cache.QueryTx(3, 1)
 	data := evmCommon.Hex2Bytes("01" + txs[5])
 	otx := new(evmTypes.Transaction)
-	if err := evmRlp.DecodeBytes(data[1:], otx); err != nil {
-		t.Error("tx decode Error")
+
+	if err := otx.UnmarshalBinary(data[1:]); err != nil {
+		t.Error(err)
 	}
-	if !reflect.DeepEqual(*tx, *otx) {
-		t.Error("cache save get Error")
-		return
+
+	// otx := new(evmTypes.Transaction)
+	// if err := evmRlp.DecodeBytes(data[1:], otx); err != nil {
+	// 	t.Error("tx decode Error")
+	// }
+	// if !reflect.DeepEqual(*tx, *otx) {
+	// 	t.Error("cache save get transaction Error")
+	// 	return
+	// }
+	txd, err := tx.MarshalBinary()
+	if err != nil {
+		t.Error("tx encode Error")
+	}
+	otxd, err := otx.MarshalBinary()
+	if err != nil {
+		t.Error("otx encode Error")
+	}
+
+	if !bytes.Equal(txd, otxd) {
+		t.Error("cache save get transaction Error")
 	}
 
 	os.RemoveAll("blockfiles")

@@ -33,7 +33,7 @@ func GetBalance(ds interfaces.ReadOnlyStore, addr string) (*big.Int, error) {
 	if err != nil {
 		return nil, err
 	}
-	if obj == nil || obj == nil {
+	if obj == nil {
 		return big.NewInt(0), nil
 	}
 
