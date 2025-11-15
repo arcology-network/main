@@ -2,23 +2,27 @@
     "settings": {
         "prometheus_listen_addr": ":19009",
         "envs": {
-            "generate_apc_handle": "generation",
+            "generate_apc_handle": "block",
             "generate_url_update": true,
             "generate_acct_root": true,
             "init_db": true,
-            "cached":true
+            "dbpath": "../arcology/urlfiles",
+            "cached": true,
+            "transactional": true
         }
     },
     "actors": {
-        "-general_url-stateful_euresult_aggr_selector": {
+        "-general_url-stateless_euresult_aggr_selector": {
             "general_url": {
-                "generate_apc_handle": "__env__",
+                "generate_apc_handle": "generation",
                 "generate_url_update": "__env__",
-                "generate_acct_root": "__env__",
                 "init_db": "__env__",
-                "cached":"__env__"
+                "dbpath": "__env__",
+                "cached":"__env__",
+                "object_cached": true,
+                "transactional":"__env__"
             },
-            "stateful_euresult_aggr_selector": {
+            "stateless_euresult_aggr_selector": {
                 "output": "executed"
             }
         },

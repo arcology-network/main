@@ -3,7 +3,6 @@
         "prometheus_listen_addr": ":19003"
     },
     "actors": {
-        "make_block": {},
-        "core.initializer": {}
+        "make_block": {}
     }
 }
