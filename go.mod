@@ -6,21 +6,21 @@ toolchain go1.22.5
 
 replace google.golang.org/grpc => google.golang.org/grpc v1.29.0
 
-replace github.com/deliveroo/jsonrpc-go => ../jsonrpc-go/
+replace github.com/deliveroo/jsonrpc-go => github.com/arcology-network/jsonrpc-go v0.0.0-20251024134102-a907d9a0d7e2
 
-replace github.com/arcology-network/streamer => ../streamer/
+// replace github.com/arcology-network/streamer => ../streamer/
 
-replace github.com/arcology-network/scheduler => ../scheduler/
+// replace github.com/arcology-network/scheduler => ../scheduler/
 
-replace github.com/arcology-network/common-lib => ../common-lib/
+// replace github.com/arcology-network/common-lib => ../common-lib/
 
-replace github.com/arcology-network/consensus-engine => ../consensus-engine/
+// replace github.com/arcology-network/consensus-engine => ../consensus-engine/
 
-replace github.com/ethereum/go-ethereum v1.14.8 => ../concurrent-evm/
+replace github.com/ethereum/go-ethereum v1.14.8 => github.com/arcology-network/concurrent-evm v0.0.0-20250714082425-8009ff40403f
 
-replace github.com/arcology-network/eu => ../eu
+// replace github.com/arcology-network/eu => ../eu
 
-replace github.com/arcology-network/storage-committer => ../storage-committer/
+// replace github.com/arcology-network/storage-committer => ../storage-committer/
 
 require (
 	github.com/BurntSushi/toml v1.3.2
@@ -37,12 +37,12 @@ require (
 )
 
 require (
-	github.com/arcology-network/common-lib v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/consensus-engine v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/eu v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/scheduler v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/storage-committer v0.0.0-00010101000000-000000000000
-	github.com/arcology-network/streamer v0.0.0-00010101000000-000000000000
+	github.com/arcology-network/common-lib v1.9.1-0.20251112075051-e3046bddd333
+	github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845
+	github.com/arcology-network/eu v0.0.0-20251114133829-738e3fdeabb8
+	github.com/arcology-network/scheduler v0.0.0-20251112083325-a533092eabf1
+	github.com/arcology-network/storage-committer v1.9.1-0.20251112080202-1f75b95ce882
+	github.com/arcology-network/streamer v0.0.0-20251114134926-8b51b13e064f
 )
 
 require github.com/ethereum/go-ethereum v1.14.8
