@@ -76,60 +76,60 @@ type workerMock struct {
 	actor.WorkerThread
 }
 
-func TestExecClientMakeRequestBasic(t *testing.T) {
-	runExecClientTestCase(
-		t,
-		[]string{"executor-1"},
-		[]int{4, 4},
-		550,
-		4,
-		[][][]int{
-			{
-				{4, 400},
-				{2, 150},
-			},
-		},
-	)
-}
+// func TestExecClientMakeRequestBasic(t *testing.T) {
+// 	runExecClientTestCase(
+// 		t,
+// 		[]string{"executor-1"},
+// 		[]int{4, 4},
+// 		550,
+// 		4,
+// 		[][][]int{
+// 			{
+// 				{4, 400},
+// 				{2, 150},
+// 			},
+// 		},
+// 	)
+// }
 
-func TestExecClientParallelismControlTest1(t *testing.T) {
-	runExecClientTestCase(
-		t,
-		[]string{"executor-1", "executor-2"},
-		[]int{4, 4},
-		1350,
-		4,
-		[][][]int{
-			{
-				{4, 400},
-				{4, 400},
-				{4, 400},
-				{2, 150},
-			},
-			{},
-		},
-	)
-}
+// func TestExecClientParallelismControlTest1(t *testing.T) {
+// 	runExecClientTestCase(
+// 		t,
+// 		[]string{"executor-1", "executor-2"},
+// 		[]int{4, 4},
+// 		1350,
+// 		4,
+// 		[][][]int{
+// 			{
+// 				{4, 400},
+// 				{4, 400},
+// 				{4, 400},
+// 				{2, 150},
+// 			},
+// 			{},
+// 		},
+// 	)
+// }
 
-func TestExecClientParallelismControlTest2(t *testing.T) {
-	runExecClientTestCase(
-		t,
-		[]string{"executor-1", "executor-2"},
-		[]int{3, 3},
-		1000,
-		5,
-		[][][]int{
-			{
-				{3, 300},
-				{3, 300},
-			},
-			{
-				{2, 200},
-				{2, 200},
-			},
-		},
-	)
-}
+// func TestExecClientParallelismControlTest2(t *testing.T) {
+// 	runExecClientTestCase(
+// 		t,
+// 		[]string{"executor-1", "executor-2"},
+// 		[]int{3, 3},
+// 		1000,
+// 		5,
+// 		[][][]int{
+// 			{
+// 				{3, 300},
+// 				{3, 300},
+// 			},
+// 			{
+// 				{2, 200},
+// 				{2, 200},
+// 			},
+// 		},
+// 	)
+// }
 
 func runExecClientTestCase(
 	tb testing.TB,

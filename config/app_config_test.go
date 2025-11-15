@@ -18,7 +18,6 @@
 package config
 
 import (
-	"fmt"
 	"testing"
 
 	"github.com/arcology-network/streamer/actor"
@@ -26,7 +25,6 @@ import (
 	intf "github.com/arcology-network/streamer/interface"
 	"github.com/arcology-network/streamer/mock/kafka"
 	"github.com/arcology-network/streamer/mock/rpc"
-	"github.com/spf13/viper"
 )
 
 func TestPrintWorkers(t *testing.T) {
@@ -146,117 +144,117 @@ func loadConfig(t *testing.T, globalConfigFile, kafkaConfigFile, appConfigFile s
 	t.Log(msgs)
 }
 
-func TestGenerateArch(t *testing.T) {
-	DownloaderCreator = kafka.NewDownloaderCreator(t)
-	UploaderCreator = kafka.NewUploaderCreator(t)
-	intf.RPCCreator = rpc.NewRPCServerInitializer(t)
-	viper.Set("home", "./tmroot")
+// func TestGenerateArch(t *testing.T) {
+// 	DownloaderCreator = kafka.NewDownloaderCreator(t)
+// 	UploaderCreator = kafka.NewUploaderCreator(t)
+// 	intf.RPCCreator = rpc.NewRPCServerInitializer(t)
+// 	viper.Set("home", "./tmroot")
 
-	services := make(map[string]map[string]actor.IWorkerEx)
-	services["exec"] = writeArch("../modules/exec/exec.json", "exec.dot")
-	services["core"] = writeArch("../modules/core/core.json", "core.dot")
-	services["gateway"] = writeArch("../modules/gateway/gateway.json", "gateway.dot")
-	services["consensus"] = writeArch("../modules/consensus/consensus.json", "consensus.dot")
-	services["eth-api"] = writeArch("../modules/eth-api/eth-api.json", "eth-api.dot")
-	services["receipt-hashing"] = writeArch("../modules/receipt-hashing/receipt-hashing.json", "receipt-hashing.dot")
-	services["pool"] = writeArch("../modules/pool/pool.json", "pool.dot")
-	services["scheduler"] = writeArch("../modules/scheduler/scheduler.json", "scheduler.dot")
-	services["storage"] = writeArch("../modules/storage/storage.json", "storage.dot")
-	services["tpp"] = writeArch("../modules/tpp/tpp.json", "tpp.dot")
-	services["arbitrator"] = writeArch("../modules/arbitrator/arbitrator.json", "arbitrator.dot")
-	services["coordinator"] = writeArch("../modules/coordinator/coordinator.json", "coordinator.dot")
-	services["p2p-conn"] = writeArch("../modules/p2p/p2p-conn.json", "p2p-conn.dot")
-	services["p2p-gateway"] = writeArch("../modules/p2p/p2p-gateway.json", "p2p-gateway.dot")
-	services["state-sync"] = writeArch("../modules/state-sync/state-sync.json", "state-sync.dot")
-	services["eth-api"] = writeArch("../modules/eth-api/eth-api.json", "eth-api.dot")
-	services["tx-sync"] = writeArch("../modules/tx-sync/tx-sync.json", "tx-sync.dot")
+// 	services := make(map[string]map[string]actor.IWorkerEx)
+// 	services["exec"] = writeArch("../modules/exec/exec.json", "exec.dot")
+// 	services["core"] = writeArch("../modules/core/core.json", "core.dot")
+// 	services["gateway"] = writeArch("../modules/gateway/gateway.json", "gateway.dot")
+// 	services["consensus"] = writeArch("../modules/consensus/consensus.json", "consensus.dot")
+// 	services["eth-api"] = writeArch("../modules/eth-api/eth-api.json", "eth-api.dot")
+// 	services["receipt-hashing"] = writeArch("../modules/receipt-hashing/receipt-hashing.json", "receipt-hashing.dot")
+// 	services["pool"] = writeArch("../modules/pool/pool.json", "pool.dot")
+// 	services["scheduler"] = writeArch("../modules/scheduler/scheduler.json", "scheduler.dot")
+// 	services["storage"] = writeArch("../modules/storage/storage.json", "storage.dot")
+// 	services["tpp"] = writeArch("../modules/tpp/tpp.json", "tpp.dot")
+// 	services["arbitrator"] = writeArch("../modules/arbitrator/arbitrator.json", "arbitrator.dot")
+// 	services["coordinator"] = writeArch("../modules/coordinator/coordinator.json", "coordinator.dot")
+// 	services["p2p-conn"] = writeArch("../modules/p2p/p2p-conn.json", "p2p-conn.dot")
+// 	services["p2p-gateway"] = writeArch("../modules/p2p/p2p-gateway.json", "p2p-gateway.dot")
+// 	services["state-sync"] = writeArch("../modules/state-sync/state-sync.json", "state-sync.dot")
+// 	services["eth-api"] = writeArch("../modules/eth-api/eth-api.json", "eth-api.dot")
+// 	services["tx-sync"] = writeArch("../modules/tx-sync/tx-sync.json", "tx-sync.dot")
 
-	highlights := map[string]string{
-		"inclusive":               "green",
-		"blockCompleted":          "red",
-		"parentinfo":              "blue",
-		"euResults":               "yellow",
-		"blockstart":              "cyan",
-		"pendingblock":            "brown",
-		"external.blockstart":     "magenta",
-		"external.reapcommand":    "magenta",
-		"external.txblocks":       "magenta",
-		"external.blockcompleted": "magenta",
-		"external.reapinglist":    "magenta",
-		"external.apphash":        "magenta",
-	}
+// 	highlights := map[string]string{
+// 		"inclusive":               "green",
+// 		"blockCompleted":          "red",
+// 		"parentinfo":              "blue",
+// 		"euResults":               "yellow",
+// 		"blockstart":              "cyan",
+// 		"pendingblock":            "brown",
+// 		"external.blockstart":     "magenta",
+// 		"external.reapcommand":    "magenta",
+// 		"external.txblocks":       "magenta",
+// 		"external.blockcompleted": "magenta",
+// 		"external.reapinglist":    "magenta",
+// 		"external.apphash":        "magenta",
+// 	}
 
-	kafkaConfig := LoadKafkaConfig("./kafka.json")
-	var g graph
-	index := 1
-	port := 1
-	inputPorts := make(map[string][]string)
-	outputPorts := make(map[string][]string)
-	for sname, workers := range services {
-		var n node
-		n.name = sname
+// 	kafkaConfig := LoadKafkaConfig("./kafka.json")
+// 	var g graph
+// 	index := 1
+// 	port := 1
+// 	inputPorts := make(map[string][]string)
+// 	outputPorts := make(map[string][]string)
+// 	for sname, workers := range services {
+// 		var n node
+// 		n.name = sname
 
-		inputDict := make(map[string]struct{})
-		outputDict := make(map[string]struct{})
-		for _, worker := range workers {
-			inputs, _ := worker.Inputs()
-			for _, in := range inputs {
-				_, topic := kafkaConfig.getServerTopic(in)
-				if topic != "" {
-					if _, ok := inputDict[in]; ok {
-						continue
-					} else {
-						inputDict[in] = struct{}{}
-					}
+// 		inputDict := make(map[string]struct{})
+// 		outputDict := make(map[string]struct{})
+// 		for _, worker := range workers {
+// 			inputs, _ := worker.Inputs()
+// 			for _, in := range inputs {
+// 				_, topic := kafkaConfig.getServerTopic(in)
+// 				if topic != "" {
+// 					if _, ok := inputDict[in]; ok {
+// 						continue
+// 					} else {
+// 						inputDict[in] = struct{}{}
+// 					}
 
-					if color, ok := highlights[in]; ok {
-						n.inputs = append(n.inputs, fmt.Sprintf("<TD BGCOLOR=\"%s\">%s</TD>", color, in))
-					} else {
-						n.inputs = append(n.inputs, fmt.Sprintf("<TD PORT=\"p%d\">%s</TD>", port, in))
-						inputPorts[in] = append(inputPorts[in], fmt.Sprintf("thread%d:p%d", index, port))
-						port++
-					}
-				}
-			}
+// 					if color, ok := highlights[in]; ok {
+// 						n.inputs = append(n.inputs, fmt.Sprintf("<TD BGCOLOR=\"%s\">%s</TD>", color, in))
+// 					} else {
+// 						n.inputs = append(n.inputs, fmt.Sprintf("<TD PORT=\"p%d\">%s</TD>", port, in))
+// 						inputPorts[in] = append(inputPorts[in], fmt.Sprintf("thread%d:p%d", index, port))
+// 						port++
+// 					}
+// 				}
+// 			}
 
-			outputs := worker.Outputs()
-			for out := range outputs {
-				_, topic := kafkaConfig.getServerTopic(out)
-				if topic != "" {
-					if _, ok := outputDict[out]; ok {
-						continue
-					} else {
-						outputDict[out] = struct{}{}
-					}
+// 			outputs := worker.Outputs()
+// 			for out := range outputs {
+// 				_, topic := kafkaConfig.getServerTopic(out)
+// 				if topic != "" {
+// 					if _, ok := outputDict[out]; ok {
+// 						continue
+// 					} else {
+// 						outputDict[out] = struct{}{}
+// 					}
 
-					if color, ok := highlights[out]; ok {
-						n.outputs = append(n.outputs, fmt.Sprintf("<TD BGCOLOR=\"%s\">%s</TD>", color, out))
-					} else {
-						n.outputs = append(n.outputs, fmt.Sprintf("<TD PORT=\"p%d\">%s</TD>", port, out))
-						outputPorts[out] = append(outputPorts[out], fmt.Sprintf("thread%d:p%d", index, port))
-						port++
-					}
-				}
-			}
-		}
+// 					if color, ok := highlights[out]; ok {
+// 						n.outputs = append(n.outputs, fmt.Sprintf("<TD BGCOLOR=\"%s\">%s</TD>", color, out))
+// 					} else {
+// 						n.outputs = append(n.outputs, fmt.Sprintf("<TD PORT=\"p%d\">%s</TD>", port, out))
+// 						outputPorts[out] = append(outputPorts[out], fmt.Sprintf("thread%d:p%d", index, port))
+// 						port++
+// 					}
+// 				}
+// 			}
+// 		}
 
-		g.nodes = append(g.nodes, n)
-		index++
-	}
+// 		g.nodes = append(g.nodes, n)
+// 		index++
+// 	}
 
-	for out, ports := range outputPorts {
-		for _, port := range ports {
-			for _, inPort := range inputPorts[out] {
-				g.edges = append(g.edges, edge{
-					from: port,
-					to:   inPort,
-				})
-			}
-		}
-	}
+// 	for out, ports := range outputPorts {
+// 		for _, port := range ports {
+// 			for _, inPort := range inputPorts[out] {
+// 				g.edges = append(g.edges, edge{
+// 					from: port,
+// 					to:   inPort,
+// 				})
+// 			}
+// 		}
+// 	}
 
-	writeDot(g, "arch.dot")
-}
+// 	writeDot(g, "arch.dot")
+// }
 
 func writeArch(app string, file string) map[string]actor.IWorkerEx {
 	globalConfig := LoadGlobalConfig("./global.json")

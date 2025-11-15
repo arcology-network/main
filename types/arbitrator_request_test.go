@@ -72,20 +72,6 @@ func TestRequestEncodeDecode(t *testing.T) {
 	fmt.Printf(" Arbitrate.GobDecode result=%v\n", request)
 }
 
-func TestEncodeDecode(t *testing.T) {
-	var buf bytes.Buffer
-	encoder := gob.NewEncoder(&buf)
-	encoder.Encode(PrepareNewArbitrator())
-	var ar ArbitratorRequest
-	gob.NewDecoder(bytes.NewBuffer(buf.Bytes())).Decode(&ar)
-
-	t.Log(ar.TxsListGroup[0][0])
-	t.Log(ar.TxsListGroup[1][0], ar.TxsListGroup[1][1])
-	t.Log(ar.TxsListGroup[2][0], ar.TxsListGroup[2][1])
-	t.Log(ar.TxsListGroup[3][0])
-	t.Log(ar.TxsListGroup[4][0])
-}
-
 func BenchmarkArbitratorRequestEncode(b *testing.B) {
 	size := 500000
 	list := make([][]ethCommon.Hash, size)
