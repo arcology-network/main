@@ -18,6 +18,7 @@
 package backend
 
 import (
+	"encoding/json"
 	"math/big"
 
 	mtypes "github.com/arcology-network/main/types"
@@ -27,6 +28,7 @@ import (
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	ethtyp "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
+	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -89,4 +91,5 @@ type EthereumAPI interface {
 	GetProof(rq *mtypes.RequestProof) (*ccdb.AccountResult, error)
 
 	SendRawTransactions(rawTxs [][]byte) (uint64, error)
+	TraceTransaction(hash ethcmn.Hash, config *tracers.TraceConfig) (json.RawMessage, error)
 }

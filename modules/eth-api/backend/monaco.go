@@ -18,6 +18,7 @@
 package backend
 
 import (
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"sync"
@@ -40,6 +41,8 @@ import (
 	eucommon "github.com/arcology-network/common-lib/types"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
+
+	"github.com/ethereum/go-ethereum/eth/tracers"
 )
 
 const (
@@ -676,4 +679,47 @@ func (m *Monaco) GetFilterLogs(id ID) ([]*types.Log, error) {
 		return nil, err
 	}
 	return returnLogs(logs), nil
+}
+
+func (m *Monaco) TraceTransaction(hash ethcmn.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
+	// var response mtypes.QueryReplayMsgResult
+	var response mtypes.QueryResult
+	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+		QueryType: mtypes.QueryType_TxMessage,
+		Data:      hash,
+	}, &response)
+	if err != nil {
+		return nil, err
+	}
+	queryResult := response.Data.(*mtypes.QueryReplayMsgResult)
+
+	request := &mtypes.ExecutorRequest{
+		Sequences: []*mtypes.ExecutingSequence{
+			{
+				Msgs: []*eucommon.StandardMessage{
+					{
+						TxHash: hash,
+						Native: queryResult.Msg,
+						ID:     0,
+					},
+				},
+				Parallel:   true,
+				SequenceId: hash,
+				Config:     config,
+				Ctx:        queryResult.Ctx,
+			},
+		},
+		Height:        0,
+		GenerationIdx: 0,
+		Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
+		Parallelism:   1,
+		Debug:         true,
+	}
+
+	var result mtypes.QueryResult //json.RawMessage
+	err = intf.Router.Call("estimate-executor", "ExecTxsWithTrace", request, &result)
+	if err != nil {
+		return nil, err
+	}
+	return result.Data.(json.RawMessage), nil
 }

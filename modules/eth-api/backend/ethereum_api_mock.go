@@ -19,6 +19,7 @@ package backend
 
 import (
 	"bytes"
+	"encoding/json"
 	"math/big"
 	"sync"
 
@@ -34,6 +35,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/eth/tracers"
 )
 
 type EthereumAPIMock struct {
@@ -292,4 +294,7 @@ func (mock *EthereumAPIMock) GetFilterLogs(id ID) ([]*ethtyp.Log, error) {
 }
 func (mock *EthereumAPIMock) SendRawTransactions(rawTxs [][]byte) (uint64, error) {
 	return 0, nil
+}
+func (mock *EthereumAPIMock) TraceTransaction(hash ethcmn.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
+	return json.RawMessage{}, nil
 }

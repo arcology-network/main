@@ -23,6 +23,8 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	ethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/eth/tracers"
 )
 
 const (
@@ -42,6 +44,7 @@ const (
 	QueryType_Receipt_Eth      = "receiptEth"
 	QueryType_Block_Receipts   = "blockReceipts"
 	QueryType_Transaction      = "transaction"
+	QueryType_TxMessage        = "txMessage"
 	QueryType_Block_Eth        = "blockEth"
 	QueryType_HeaderByHash     = "headerByHash"
 	QueryType_HeaderByNumber   = "headerByNumber"
@@ -70,6 +73,11 @@ type QueryRequest struct {
 
 type QueryResult struct {
 	Data interface{}
+}
+
+type QueryReplayMsgResult struct {
+	Msg *core.Message
+	Ctx *tracers.Context
 }
 
 type RequestParameters struct {

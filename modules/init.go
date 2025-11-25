@@ -34,4 +34,6 @@ import (
 	_ "github.com/arcology-network/main/modules/toolkit"
 	_ "github.com/arcology-network/main/modules/tpp"
 	_ "github.com/arcology-network/main/modules/tx-sync"
+	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
+	_ "github.com/ethereum/go-ethereum/eth/tracers/native" //register all native tracer
 )

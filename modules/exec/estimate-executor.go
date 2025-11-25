@@ -41,6 +41,8 @@ import (
 	cmncmn "github.com/arcology-network/common-lib/common"
 	statestore "github.com/arcology-network/storage-committer"
 	evmCore "github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/eth/tracers"
+	"github.com/ethereum/go-ethereum/eth/tracers/logger"
 )
 
 const (
@@ -174,16 +176,52 @@ func (exec *EstimateExecutor) ExecTxs(ctx context.Context, request *mtypes.Execu
 	response.Err = results.Err
 	return nil
 }
+func (exec *EstimateExecutor) ExecTxsWithTrace(ctx context.Context, request *mtypes.ExecutorRequest, response *mtypes.QueryResult) error {
+	chResults := make(chan *evmCore.ExecutionResult)
+	exec.pendingTxsGuard.Lock()
+	msgId := cmncmn.GenerateUUID()
+	exec.pendingTxs[msgId] = chResults
+	exec.pendingTxsGuard.Unlock()
+	for i := range request.Sequences[0].Msgs {
+		request.Sequences[0].Msgs[i].Native.SkipAccountChecks = true
+	}
+	tracer, err := exec.sendNewTask(request.Sequences[0], msgId)
+	if err != nil {
+		return err
+	}
+	<-chResults
+
+	if request.Sequences[0].Config != nil {
+		result, err := tracer.GetResult()
+		response.Data = result
+		return err
+	}
+	return nil
+}
 
 func (exec *EstimateExecutor) sendNewTask(
 	sequence *mtypes.ExecutingSequence,
 	msgid uint64,
-) {
+) (tracers.Tracer, error) {
 	config := exetyp.MainConfig(exec.chainId)
 	config.Coinbase = exec.execParams.Coinbase
 	config.BlockNumber = new(big.Int).SetUint64(exec.height)
 	config.Time = exec.timestamp
 	config.ParentHash = evmCommon.BytesToHash(exec.execParams.ParentInfo.ParentHash.Bytes())
+	var tracer tracers.Tracer
+	if sequence.Config != nil {
+
+		var err error
+		tracer = logger.NewStructLogger(sequence.Config.Config)
+		if sequence.Config.Tracer != nil {
+			tracer, err = tracers.DefaultDirectory.New(*sequence.Config.Tracer, sequence.Ctx, sequence.Config.TracerConfig)
+			if err != nil {
+				return nil, err
+			}
+		}
+		config.VMConfig.Tracer = tracer
+		config.VMConfig.NoBaseFee = true
+	}
 	task := &exetyp.ExecMessagers{
 		Sequence: sequence,
 		Config:   config,
@@ -191,6 +229,7 @@ func (exec *EstimateExecutor) sendNewTask(
 		Msgid:    msgid,
 	}
 	exec.taskCh <- task
+	return tracer, nil
 }
 
 func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) {

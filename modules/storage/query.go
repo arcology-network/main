@@ -24,6 +24,7 @@ import (
 	"math/big"
 	"time"
 
+	"github.com/arcology-network/common-lib/types"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
 	intf "github.com/arcology-network/streamer/interface"
@@ -32,6 +33,7 @@ import (
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/eth/tracers"
 	"go.uber.org/zap"
 )
 
@@ -414,6 +416,47 @@ func (rs *Storage) Query(ctx context.Context, request *mtypes.QueryRequest, resp
 			return err
 		}
 		response.Data = transaction
+	case mtypes.QueryType_TxMessage:
+		hash := request.Data.(evmCommon.Hash)
+		txhashstr := string(hash.Bytes())
+		var position *mstypes.Position
+		intf.Router.Call("indexerstore", "GetPosition", &txhashstr, &position)
+		if position == nil {
+			response.Data = nil
+			return errors.New("hash not found")
+		}
+
+		var tx *evmTypes.Transaction
+		err := intf.Router.Call("blockstore", "GetTransaction", position, &tx)
+		if err != nil {
+			return err
+		}
+
+		block, signerType, err := rs.getRpcBlock(new(big.Int).SetUint64(position.Height), false, true)
+		if err != nil {
+			return err
+		}
+
+		standardTransaction := types.StandardTransaction{
+			TxHash:            hash,
+			NativeTransaction: tx,
+			Signer:            signerType,
+		}
+		signer := mtypes.MakeSigner(signerType, rs.chainID)
+		err = standardTransaction.UnSign(signer)
+		if err != nil {
+			return err
+		}
+
+		response.Data = &mtypes.QueryReplayMsgResult{
+			Msg: standardTransaction.NativeMessage,
+			Ctx: &tracers.Context{
+				BlockHash:   block.Header.TxHash,
+				BlockNumber: big.NewInt(int64(position.Height)),
+				TxIndex:     position.IdxInBlock,
+				TxHash:      hash,
+			},
+		}
 	}
 
 	return nil

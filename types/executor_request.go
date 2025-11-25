@@ -26,6 +26,7 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	eucommon "github.com/arcology-network/common-lib/types"
 	ethCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/eth/tracers"
 )
 
 type ExecutingSequence struct {
@@ -33,6 +34,8 @@ type ExecutingSequence struct {
 	Parallel   bool
 	SequenceId ethCommon.Hash
 	GroupIds   []uint64
+	Config     *tracers.TraceConfig
+	Ctx        *tracers.Context
 }
 
 func NewExecutingSequence(msgs []*eucommon.StandardMessage, parallel bool) *ExecutingSequence {

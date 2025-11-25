@@ -35,6 +35,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	ethtyp "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
+	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/rs/cors"
 )
 
@@ -737,8 +738,21 @@ func txpoolContent(ctx context.Context) (interface{}, error) {
 	}
 	return blockResult, nil
 }
-func traceTransaction(ctx context.Context) (interface{}, error) {
-	return nil, nil
+func traceTransaction(ctx context.Context, params []interface{}) (interface{}, error) {
+	hash, err := ToHash(params[0])
+	if err != nil {
+		return nil, jsonrpc.InvalidParams("invalid hash given :%v", err)
+	}
+	var tracer *tracers.TraceConfig
+	if len(params) == 2 {
+		tracer, err = ParseJsonParam[tracers.TraceConfig](params[1], "TraceConfig")
+		if err != nil {
+			return nil, jsonrpc.InvalidParams("invalid options given :%v", err)
+		}
+	} else {
+		return nil, jsonrpc.InvalidParams("invalid options given ")
+	}
+	return backend.TraceTransaction(hash, tracer)
 }
 func maxPriorityFeePerGas(ctx context.Context) (interface{}, error) {
 	return big.NewInt(1), nil
