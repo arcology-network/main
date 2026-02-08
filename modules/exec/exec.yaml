@@ -1,0 +1,33 @@
+settings:
+  prometheus_listen_addr: ":19004"
+  envs:
+    generate_apc_handle: block
+    generate_url_update: true
+    generate_acct_root: true
+    init_db: true
+    dbpath: "../arcology/urlfiles"
+    cached: true
+    transactional: true
+
+actors:
+  "-general_url-stateless_euresult_aggr_selector":
+    general_url:
+      generate_apc_handle: generation
+      generate_url_update: "__env__"
+      init_db: "__env__"
+      dbpath: "__env__"
+      cached: "__env__"
+      object_cached: true
+      transactional: "__env__"
+    stateless_euresult_aggr_selector:
+      output: executed
+
+  exec_rpc: {}
+
+  exec_debug:
+    chain_id: "__global__"
+    eus: 1
+
+  executor:
+    chain_id: "__global__"
+    idx: 0

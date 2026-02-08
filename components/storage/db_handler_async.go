@@ -19,9 +19,9 @@ package storage
 
 import (
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
 
 	statestore "github.com/arcology-network/storage-committer"
+	scommon "github.com/arcology-network/streamer/common"
 )
 
 const (
@@ -29,9 +29,12 @@ const (
 	dbStateCommit
 )
 
-type DBHandlerAsync struct {
-	actor.WorkerThread
+type DBTask struct {
+	Msg     *scommon.Message
+	ExecCtx *actor.ExecutionContext
+}
 
+type DBHandlerAsync struct {
 	StateStore             *statestore.StateStore
 	state                  int
 	dbhandle               string
@@ -41,19 +44,18 @@ type DBHandlerAsync struct {
 
 	generateAcctRoot bool
 
-	taskCh chan *actor.Message
+	taskCh chan *DBTask
 }
 
-func NewDBHandlerAsync(concurrency int, groupId string, dbhandle, precommitMsg, commitMsg, generationCompletedMsg string) *DBHandlerAsync {
+func NewDBHandlerAsync(dbhandle, precommitMsg, commitMsg, generationCompletedMsg string) *DBHandlerAsync {
 	handler := &DBHandlerAsync{
 		dbhandle:               dbhandle,
 		state:                  dbStateWaitInit,
 		precommitMsg:           precommitMsg,
 		commitMsg:              commitMsg,
 		generationCompletedMsg: generationCompletedMsg,
-		taskCh:                 make(chan *actor.Message, 20),
+		taskCh:                 make(chan *DBTask, 20),
 	}
-	handler.Set(concurrency, groupId)
 	return handler
 }
 
@@ -66,66 +68,76 @@ func (handler *DBHandlerAsync) Inputs() ([]string, bool) {
 func (handler *DBHandlerAsync) Outputs() map[string]int {
 	outputs := make(map[string]int)
 	if handler.generateAcctRoot {
-		outputs[actor.MsgAcctHash] = 1
+		outputs[scommon.MsgAcctHash] = 1
 	}
 	return outputs
 }
 
 func (handler *DBHandlerAsync) Config(params map[string]interface{}) {
+
 	if v, ok := params["generate_acct_root"]; !ok {
 		panic("parameter not found: generate_acct_root")
 	} else {
 		handler.generateAcctRoot = v.(bool)
 	}
-}
 
-func (handler *DBHandlerAsync) OnStart() {
 	go func() {
 		for {
-			msg := <-handler.taskCh
+			task := <-handler.taskCh
 
-			if msg.Name == handler.precommitMsg {
-				handler.AddLog(log.LogLevel_Info, "Before Precommit Async.")
+			switch task.Msg.Name {
+			case handler.precommitMsg:
+				task.ExecCtx.LogDebug("Before Precommit Async.")
 				handler.StateStore.AsyncPrecommit()
-				handler.AddLog(log.LogLevel_Info, "After Precommit Async.")
-			} else if msg.Name == handler.generationCompletedMsg {
+				task.ExecCtx.LogDebug("After Precommit Async.")
+			case handler.generationCompletedMsg:
 				if handler.generateAcctRoot {
-					handler.MsgBroker.Send(actor.MsgAcctHash, handler.StateStore.Backend().EthStore().LatestWorldTrieRoot(), msg.Height)
+					task.ExecCtx.Send(scommon.MsgAcctHash, handler.StateStore.Backend().EthStore().LatestWorldTrieRoot(), task.Msg.Height)
 				}
-				handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateCommit >>>>>>>>")
-			} else if msg.Name == handler.commitMsg {
-				handler.AddLog(log.LogLevel_Info, "Before Commit Async.")
-				handler.StateStore.AsyncCommit(msg.Height)
-				handler.AddLog(log.LogLevel_Info, "After Commit Async.")
-				handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStatePrecommit >>>>>>>>")
+				task.ExecCtx.LogDebug("change into dbStateCommit")
+			case handler.commitMsg:
+				task.ExecCtx.LogDebug("Before Commit Async.")
+				handler.StateStore.AsyncCommit(task.Msg.Height)
+				task.ExecCtx.LogDebug("After Commit Async.")
+				task.ExecCtx.LogDebug("change into dbStatePrecommit")
 			}
 
 		}
 	}()
 }
 
-func (handler *DBHandlerAsync) OnMessageArrived(msgs []*actor.Message) error {
-	msg := msgs[0]
-	if handler.state == dbStateWaitInit {
-		if msg.Name == handler.dbhandle {
-			handler.StateStore = msg.Data.(*statestore.StateStore)
-			handler.state = dbStateCommit
-			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStatePrecommit,ready ************************")
-		}
-	} else {
-		if msg.Name == handler.precommitMsg ||
-			msg.Name == handler.generationCompletedMsg ||
-			msg.Name == handler.commitMsg {
-			handler.taskCh <- msg
-		}
+func (handler *DBHandlerAsync) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(handler.dbhandle, handler.Initialization)
+	reg.Register(handler.precommitMsg, handler.dbAsync)
+	reg.Register(handler.generationCompletedMsg, handler.dbAsync)
+	reg.Register(handler.commitMsg, handler.dbAsync)
+}
+
+func (handler *DBHandlerAsync) Initialization(ctx *actor.ActionContext) error {
+	handler.StateStore = ctx.Messages[0].Data.(*statestore.StateStore)
+	handler.state = dbStateCommit
+	ctx.ExecCtx.LogDebug("change into dbStatePrecommit,ready")
+	return nil
+}
+
+func (handler *DBHandlerAsync) dbAsync(ctx *actor.ActionContext) error {
+	handler.taskCh <- &DBTask{
+		Msg:     ctx.Messages[0],
+		ExecCtx: ctx.ExecCtx.Fork(),
 	}
 	return nil
 }
 
-func (handler *DBHandlerAsync) GetStateDefinitions() map[int][]string {
-	return map[int][]string{
-		dbStateWaitInit: {handler.dbhandle},
-		dbStateCommit:   {handler.precommitMsg, handler.generationCompletedMsg, handler.commitMsg},
+func (handler *DBHandlerAsync) GetFSMRules() map[int]actor.FSMRule {
+	return map[int]actor.FSMRule{
+		dbStateWaitInit: {Accept: []string{
+			handler.dbhandle,
+		}},
+		dbStateCommit: {Accept: []string{
+			handler.precommitMsg,
+			handler.generationCompletedMsg,
+			handler.commitMsg,
+		}},
 	}
 }
 

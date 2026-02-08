@@ -54,11 +54,11 @@ type Handler struct {
 func NewHandler(scanCache *mstypes.ScanCache, params map[string]interface{}) *Handler {
 	handle := Handler{
 		scanCache:      scanCache,
-		fetchFrequency: time.Duration(params["prometheus_fetch_frequency"].(float64)) * time.Second, //time.Duration(waits) * time.Second
-		fetchAhead:     int64(params["prometheus_fetch_ahead"].(float64)),
+		fetchFrequency: time.Duration(params["prometheus_fetch_frequency"].(int)) * time.Second, //time.Duration(waits) * time.Second
+		fetchAhead:     int64(params["prometheus_fetch_ahead"].(int)),
 		host:           params["prometheus_host"].(string),
 		step:           params["prometheus_fetch_step"].(string),
-		coefficient:    uint64(params["coefficient"].(float64)),
+		coefficient:    uint64(params["coefficient"].(int)),
 	}
 
 	tim := kafkalib.SyncTimer{}

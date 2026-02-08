@@ -20,76 +20,67 @@ package gateway
 import (
 	"github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/components/storage"
-	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
-	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
-	"github.com/arcology-network/streamer/log"
-	evmCommon "github.com/ethereum/go-ethereum/common"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 )
 
 type TxRepeatedChecker struct {
-	actor.WorkerThread
 	checklist *storage.CheckedList
 	waits     int64
 	maxSize   int
 }
 
 // return a Subscriber struct
-func NewTxRepeatedChecker(concurrency int, groupid string) actor.IWorkerEx {
+func NewTxRepeatedChecker() actor.Business {
 	receiver := TxRepeatedChecker{}
-	receiver.Set(concurrency, groupid)
 	return &receiver
 }
 
 func (r *TxRepeatedChecker) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgTxLocalsUnChecked,
-		actor.MsgTxBlocks,
+		scommon.MsgTxLocalsUnChecked,
+		scommon.MsgTxBlocks,
 	}, false
 }
 
 func (r *TxRepeatedChecker) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgCheckedTxs: 100,
-		actor.MsgTxLocals:   100,
+		scommon.MsgCheckedTxs: 100,
+		scommon.MsgTxLocals:   100,
 	}
 }
 
 func (r *TxRepeatedChecker) Config(params map[string]interface{}) {
-	r.waits = int64(params["wait_seconds"].(float64))
-	r.maxSize = int(params["max_txs_num"].(float64))
-}
-
-func (r *TxRepeatedChecker) OnStart() {
+	r.waits = int64(params["wait_seconds"].(int))
+	r.maxSize = params["max_txs_num"].(int)
 	r.checklist = storage.NewCheckList(r.waits)
 }
 
-func (r *TxRepeatedChecker) OnMessageArrived(msgs []*actor.Message) error {
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgTxLocalsUnChecked:
-			data := v.Data.(*gatewayTypes.TxsPack)
-			r.checkRepeated(data, types.TxFrom_Local)
-		case actor.MsgTxBlocks:
-			pack := &gatewayTypes.TxsPack{
-				Txs: v.Data.(*types.IncomingTxs),
-			}
-			r.checkRepeated(pack, types.TxFrom_Block)
-		}
-	}
+func (r *TxRepeatedChecker) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgTxLocalsUnChecked, r.ReceivedTxLocalsUnChecked)
+	reg.Register(scommon.MsgTxBlocks, r.ReceivedTxBlocks)
+}
+
+func (r *TxRepeatedChecker) ReceivedTxLocalsUnChecked(ctx *actor.ActionContext) error {
+	r.checkRepeated(ctx, ctx.Messages[0].Data.(*types.IncomingTxs), types.TxFrom_Local)
 	return nil
 }
 
-func (r *TxRepeatedChecker) checkRepeated(txspack *gatewayTypes.TxsPack, from byte) {
-	txs := txspack.Txs.Txs
+func (r *TxRepeatedChecker) ReceivedTxBlocks(ctx *actor.ActionContext) error {
+	r.checkRepeated(ctx, ctx.Messages[0].Data.(*types.IncomingTxs), types.TxFrom_Block)
+	return nil
+}
+
+func (r *TxRepeatedChecker) checkRepeated(ctx *actor.ActionContext, txspack *types.IncomingTxs, from byte) {
+	txs := txspack.Txs
 	txLen := len(txs)
 	checkedTxs := make([][]byte, 0, txLen)
-	logid := r.AddLog(log.LogLevel_Debug, "checkRepeated")
-	interLog := r.GetLogger(logid)
-	bypassRepeatCheck := txspack.Txs.Src.BypassRepeatCheck()
+	ctx.ExecCtx.LogDebug("checkRepeated")
+
+	bypassRepeatCheck := txspack.Src.BypassRepeatCheck()
 	for i := range txs {
-		isExist := r.checklist.ExistTx(txs[i], from, interLog)
+		isExist := r.checklist.ExistTx(txs[i], from)
 		if !isExist || bypassRepeatCheck {
 			tx := txs[i]
 			sendingTx := make([]byte, len(tx)+1)
@@ -103,42 +94,29 @@ func (r *TxRepeatedChecker) checkRepeated(txspack *gatewayTypes.TxsPack, from by
 
 	//to other node with consensus
 	if from == types.TxFrom_Local {
-		r.MsgBroker.Send(actor.MsgTxLocals, txs)
+		ctx.ExecCtx.Send(scommon.MsgTxLocals, txs)
 	}
 
-	//to tpp with rpc
-	if txspack.TxHashChan != nil {
-		go func() {
-			if len(checkedTxs) > 0 {
-				response := mtypes.RawTransactionReply{}
-				intf.Router.Call("tpp", "ReceivedTransactionFromRpc", &mtypes.RawTransactionArgs{
-					Tx:  checkedTxs[0],
-					Src: txspack.Txs.Src,
-				}, &response)
-				txspack.TxHashChan <- response.TxHash.(evmCommon.Hash)
-			} else {
-				txspack.TxHashChan <- evmCommon.Hash{}
-			}
-		}()
-		return
-	}
-	//to tpp with kafka
+	//to tpp with stream,split pack
 	sendingTxs := make([][]byte, 0, r.maxSize)
 	for i := range checkedTxs {
 		if len(sendingTxs) >= r.maxSize {
-			r.MsgBroker.Send(actor.MsgCheckedTxs, &types.IncomingTxs{
-				Txs: sendingTxs,
-				Src: txspack.Txs.Src,
+			ctx.ExecCtx.Send(scommon.MsgCheckedTxs, &types.IncomingTxs{
+				Txs:       sendingTxs,
+				Src:       txspack.Src,
+				RequestID: txspack.RequestID,
 			})
 			sendingTxs = make([][]byte, 0, r.maxSize)
 		} else {
 			sendingTxs = append(sendingTxs, checkedTxs[i])
 		}
 	}
+	ctx.ExecCtx.LogDebug("TxRepeatedChecker.checkRepeated", logger.F("sendingTxs", len(sendingTxs)))
 	if len(sendingTxs) > 0 {
-		r.MsgBroker.Send(actor.MsgCheckedTxs, &types.IncomingTxs{
-			Txs: sendingTxs,
-			Src: txspack.Txs.Src,
+		ctx.ExecCtx.Send(scommon.MsgCheckedTxs, &types.IncomingTxs{
+			Txs:       sendingTxs,
+			Src:       txspack.Src,
+			RequestID: txspack.RequestID,
 		})
 	}
 

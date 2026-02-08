@@ -18,11 +18,9 @@
 package storage
 
 import (
-	"context"
-
 	"github.com/arcology-network/consensus-engine/store"
-	contyp "github.com/arcology-network/consensus-engine/types"
 	conwrk "github.com/arcology-network/main/modules/consensus"
+	"github.com/arcology-network/streamer/actor"
 	tmdb "github.com/tendermint/tm-db"
 )
 
@@ -30,112 +28,133 @@ type TmBlockStore struct {
 	impl *store.BlockStore
 }
 
-func NewTmBlockStore() *TmBlockStore {
-	// db, err := tmdb.NewDB("blockstore", tmdb.GoLevelDBBackend, "./")
-	// if err != nil {
-	// 	panic(err)
-	// }
-
-	return &TmBlockStore{
-		// impl: store.NewBlockStore(db),
-	}
+func NewTmBlockStore() actor.Business {
+	return &TmBlockStore{}
 }
+
 func (bs *TmBlockStore) Config(params map[string]interface{}) {
 	db, err := tmdb.NewDB(params["storage_tmblock_name"].(string), tmdb.GoLevelDBBackend, params["storage_tmblock_dir"].(string))
 	if err != nil {
 		panic(err)
 	}
-
 	bs.impl = store.NewBlockStore(db)
 }
 
-func (bs *TmBlockStore) Base(ctx context.Context, _ *int, ret *int64) error {
-	*ret = bs.impl.Base()
+func (bs *TmBlockStore) Inputs() ([]string, bool) {
+	return []string{}, false
+}
+
+func (bs *TmBlockStore) Outputs() map[string]int {
+	return map[string]int{}
+}
+
+func (bs *TmBlockStore) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("Base", bs.Base)
+	reg.Register("Height", bs.Height)
+	reg.Register("Size", bs.Size)
+	reg.Register("LoadBaseMeta", bs.LoadBaseMeta)
+	reg.Register("LoadBlockMeta", bs.LoadBlockMeta)
+	reg.Register("LoadBlock", bs.LoadBlock)
+	reg.Register("SaveBlock", bs.SaveBlock)
+	reg.Register("SaveBlockAsync", bs.SaveBlockAsync)
+	reg.Register("PruneBlocks", bs.PruneBlocks)
+	reg.Register("LoadBlockByHash", bs.LoadBlockByHash)
+	reg.Register("LoadBlockPart", bs.LoadBlockPart)
+	reg.Register("LoadBlockCommit", bs.LoadBlockCommit)
+	reg.Register("LoadSeenCommit", bs.LoadSeenCommit)
+	reg.Register("SaveSeenCommit", bs.SaveSeenCommit)
+}
+
+func (bs *TmBlockStore) RpcConfig() (string, int) {
+	return "tmblockstore", 20
+}
+
+func (bs *TmBlockStore) Base(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.Base())
 	return nil
 }
 
-func (bs *TmBlockStore) Height(ctx context.Context, _ *int, ret *int64) error {
-	*ret = bs.impl.Height()
+func (bs *TmBlockStore) Height(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.Height())
 	return nil
 }
 
-func (bs *TmBlockStore) Size(ctx context.Context, _ *int, ret *int64) error {
-	*ret = bs.impl.Size()
+func (bs *TmBlockStore) Size(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.Size())
 	return nil
 }
 
-func (bs *TmBlockStore) LoadBaseMeta(ctx context.Context, _ *int, ret *contyp.BlockMeta) error {
-	bm := bs.impl.LoadBaseMeta()
-	if bm != nil {
-		*ret = *bm
-	}
+func (bs *TmBlockStore) LoadBaseMeta(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.LoadBaseMeta())
 	return nil
 }
 
-func (bs *TmBlockStore) LoadBlockMeta(ctx context.Context, height *int64, ret *contyp.BlockMeta) error {
-	bm := bs.impl.LoadBlockMeta(*height)
-	if bm != nil {
-		*ret = *bm
-	}
+func (bs *TmBlockStore) LoadBlockMeta(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.LoadBlockMeta(ctx.RPC.Request.(int64)))
 	return nil
 }
 
-func (bs *TmBlockStore) LoadBlock(ctx context.Context, height *int64, ret *contyp.Block) error {
-	b := bs.impl.LoadBlock(*height)
-	if b != nil {
-		*ret = *b
-	}
+func (bs *TmBlockStore) LoadBlock(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.LoadBlock(ctx.RPC.Request.(int64)))
 	return nil
 }
 
-func (bs *TmBlockStore) SaveBlock(ctx context.Context, request *conwrk.SaveBlockRequest, _ *int) error {
+func (bs *TmBlockStore) SaveBlock(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*conwrk.SaveBlockRequest)
 	bs.impl.SaveBlockEx(request.Block, request.BlockParts, request.SeenCommit)
+	ctx.ExecCtx.SendRpcResponse("", "")
 	return nil
 }
 
-func (bs *TmBlockStore) SaveBlockAsync(ctx context.Context, request *conwrk.SaveBlockRequest, _ *int) error {
+func (bs *TmBlockStore) SaveBlockAsync(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*conwrk.SaveBlockRequest)
 	bs.impl.SaveBlockAsync(request.Block, request.BlockParts, request.SeenCommit)
+	ctx.ExecCtx.SendRpcResponse("", "")
 	return nil
 }
 
-func (bs *TmBlockStore) PruneBlocks(ctx context.Context, height *int64, ret *uint64) error {
-	pruned, err := bs.impl.PruneBlocks(*height)
-	*ret = pruned
-	return err
-}
-
-func (bs *TmBlockStore) LoadBlockByHash(ctx context.Context, hash *[]byte, ret *contyp.Block) error {
-	b := bs.impl.LoadBlockByHash(*hash)
-	if b != nil {
-		*ret = *b
+func (bs *TmBlockStore) PruneBlocks(ctx *actor.ActionContext) error {
+	height := ctx.RPC.Request.(int64)
+	pruned, err := bs.impl.PruneBlocks(height)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", pruned)
 	}
 	return nil
 }
 
-func (bs *TmBlockStore) LoadBlockPart(ctx context.Context, request *conwrk.LoadBlockPartRequest, ret *contyp.Part) error {
-	p := bs.impl.LoadBlockPart(request.Height, request.Index)
-	if p != nil {
-		*ret = *p
-	}
+func (bs *TmBlockStore) LoadBlockByHash(ctx *actor.ActionContext) error {
+	hash := ctx.RPC.Request.([]byte)
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.LoadBlockByHash(hash))
 	return nil
 }
 
-func (bs *TmBlockStore) LoadBlockCommit(ctx context.Context, height *int64, ret *contyp.Commit) error {
-	c := bs.impl.LoadBlockCommit(*height)
-	if c != nil {
-		*ret = *c
-	}
+func (bs *TmBlockStore) LoadBlockPart(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*conwrk.LoadBlockPartRequest)
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.LoadBlockPart(request.Height, request.Index))
 	return nil
 }
 
-func (bs *TmBlockStore) LoadSeenCommit(ctx context.Context, height *int64, ret *contyp.Commit) error {
-	c := bs.impl.LoadSeenCommit(*height)
-	if c != nil {
-		*ret = *c
-	}
+func (bs *TmBlockStore) LoadBlockCommit(ctx *actor.ActionContext) error {
+	height := ctx.RPC.Request.(int64)
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.LoadBlockCommit(height))
 	return nil
 }
 
-func (bs *TmBlockStore) SaveSeenCommit(ctx context.Context, request *conwrk.SaveSeenCommitRequest, _ *int) error {
-	return bs.impl.SaveSeenCommit(request.Height, request.SeenCommit)
+func (bs *TmBlockStore) LoadSeenCommit(ctx *actor.ActionContext) error {
+	height := ctx.RPC.Request.(int64)
+	ctx.ExecCtx.SendRpcResponse("", bs.impl.LoadSeenCommit(height))
+	return nil
+}
+
+func (bs *TmBlockStore) SaveSeenCommit(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*conwrk.SaveSeenCommitRequest)
+	err := bs.impl.SaveSeenCommit(request.Height, request.SeenCommit)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), "")
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", "")
+	}
+	return nil
 }

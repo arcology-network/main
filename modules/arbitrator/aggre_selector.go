@@ -18,82 +18,96 @@
 package arbitrator
 
 import (
-	"time"
-
 	ctypes "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/main/modules/arbitrator/types"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/aggregator/aggregator"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
-	"go.uber.org/zap"
 )
 
 type EuResultsAggreSelector struct {
-	actor.WorkerThread
-	ag *aggregator.Aggregator
-	// arbitrator *arbitrator.ArbitratorImpl
+	ag    *aggregator.Aggregator
+	reqId string
+	ctx   *actor.ExecutionContext
 }
 
 // return a Subscriber struct
-func NewEuResultsAggreSelector(concurrency int, groupid string) actor.IWorkerEx {
+func NewEuResultsAggreSelector() actor.Business {
 	agg := EuResultsAggreSelector{}
-	agg.Set(concurrency, groupid)
 	agg.ag = aggregator.NewAggregator()
-	// agg.arbitrator = arbitrator.NewArbitratorImpl()
 	return &agg
-}
-
-func (a *EuResultsAggreSelector) OnStart() {
 }
 
 func (a *EuResultsAggreSelector) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgBlockCompleted,
-		actor.MsgArbitrateReapinglist,
-		actor.MsgPreProcessedEuResults,
+		scommon.MsgBlockCompleted,
+		scommon.MsgArbitrateReapinglist,
+		scommon.MsgPreProcessedEuResults,
 	}, false
 }
 
 func (a *EuResultsAggreSelector) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgEuResultSelected: 1,
+		scommon.MsgEuResultSelected: 1,
 	}
 }
 
-func (a *EuResultsAggreSelector) OnMessageArrived(msgs []*actor.Message) error {
-	switch msgs[0].Name {
-	case actor.MsgBlockCompleted:
-		remainingQuantity := a.ag.OnClearInfoReceived()
-		t := time.Now()
-		// a.arbitrator.Clear()
-		types.RecordPool.ReclaimRecursive()
-		a.AddLog(log.LogLevel_Info, "clear pool", zap.Int("remainingQuantity", remainingQuantity), zap.Duration("arbitrator engine clear time", time.Since(t)))
-	case actor.MsgArbitrateReapinglist:
-		reapinglist := msgs[0].Data.(*ctypes.ReapingList)
-		result, _ := a.ag.OnListReceived(reapinglist)
-		a.SendMsg(result)
+func (a *EuResultsAggreSelector) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgBlockCompleted, a.ReceivedBlockCompleted)
+	reg.Register(scommon.MsgArbitrateReapinglist, a.ReceivedArbitrateReapinglist)
+	reg.Register(scommon.MsgPreProcessedEuResults, a.receivedPreProcessedEuResults)
+}
 
-	case actor.MsgPreProcessedEuResults:
-		data := msgs[0].Data.([]*types.AccessRecord)
-
-		if len(data) > 0 {
-			for _, v := range data {
-				euResult := v
-				result := a.ag.OnDataReceived(evmCommon.BytesToHash(euResult.TxHash[:]), euResult)
-				a.SendMsg(result)
-			}
+func (a *EuResultsAggreSelector) receivedPreProcessedEuResults(ctx *actor.ActionContext) error {
+	data := ctx.Messages[0].Data.([]*types.AccessRecord)
+	if len(data) > 0 {
+		for _, v := range data {
+			euResult := v
+			result := a.ag.OnDataReceived(evmCommon.BytesToHash(euResult.TxHash[:]), euResult)
+			a.SendMsg(result)
 		}
 	}
 	return nil
 }
+
+func (a *EuResultsAggreSelector) ReceivedBlockCompleted(ctx *actor.ActionContext) error {
+	remainingQuantity := a.ag.OnClearInfoReceived()
+	types.RecordPool.ReclaimRecursive()
+	ctx.ExecCtx.LogInfo("clear pool", logger.F("remainingQuantity", remainingQuantity))
+	return nil
+}
+func (a *EuResultsAggreSelector) ReceivedArbitrateReapinglist(ctx *actor.ActionContext) error {
+	reapinglist := ctx.Messages[0].Data.(*ctypes.ReapingList)
+	// a.reqId = ctx.ExecCtx.GetReqID()
+	a.ctx = ctx.ExecCtx.Fork()
+	result, _ := a.ag.OnListReceived(reapinglist)
+	a.SendMsg(result)
+	return nil
+}
+
+func (a *EuResultsAggreSelector) ReceivedData(ctx *actor.ActionContext) error {
+	data := ctx.Messages[0].Data.([]*types.AccessRecord)
+
+	if len(data) > 0 {
+		for _, v := range data {
+			euResult := v
+			result := a.ag.OnDataReceived(evmCommon.BytesToHash(euResult.TxHash[:]), euResult)
+			a.SendMsg(result)
+		}
+	}
+	return nil
+}
+
 func (a *EuResultsAggreSelector) SendMsg(selectedData *[]*interface{}) {
 	if selectedData != nil {
 		euResults := make([]*types.AccessRecord, len(*selectedData))
 		for i, euResult := range *selectedData {
 			euResults[i] = (*euResult).(*types.AccessRecord)
 		}
-		a.AddLog(log.LogLevel_CheckPoint, "send gather result", zap.Int("counts", len(euResults)))
-		a.MsgBroker.Send(actor.MsgEuResultSelected, &euResults)
+		a.ctx.LogInfo("send gather result", logger.F("counts", len(euResults)))
+		// ctx.ExecCtx.AddRpcReqID(a.reqId)
+		a.ctx.Send(scommon.MsgEuResultSelected, euResults)
 	}
 }

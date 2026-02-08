@@ -29,6 +29,11 @@ import (
 	"github.com/ethereum/go-ethereum/eth/tracers"
 )
 
+type ExecutorConf struct {
+	Name string `yaml:"name" json:"name"`
+	Eus  int    `yaml:"eus" json:"eus"`
+}
+
 type ExecutingSequence struct {
 	Msgs       []*eucommon.StandardMessage
 	Parallel   bool
@@ -120,9 +125,9 @@ type ExecutorRequest struct {
 	Height        uint64
 	GenerationIdx uint32
 
-	Timestamp   *big.Int
-	Parallelism uint64
-	Debug       bool
+	Timestamp *big.Int
+	ExecId    uint32
+	// Debug       bool
 }
 
 func (this *ExecutorRequest) GobEncode() ([]byte, error) {
@@ -142,8 +147,8 @@ func (this *ExecutorRequest) GobEncode() ([]byte, error) {
 		common.Uint64ToBytes(this.Height),
 		common.Uint32ToBytes(this.GenerationIdx),
 		timeStampData,
-		common.Uint64ToBytes(this.Parallelism),
-		codec.Bool(this.Debug).Encode(),
+		common.Uint32ToBytes(this.ExecId),
+		// codec.Bool(this.Debug).Encode(),
 	}
 	return codec.Byteset(data).Encode(), nil
 }
@@ -158,7 +163,7 @@ func (this *ExecutorRequest) GobDecode(data []byte) error {
 	this.Height = common.BytesToUint64(fields[1])
 	this.GenerationIdx = common.BytesToUint32(fields[2])
 	this.Timestamp = new(big.Int).SetBytes(fields[3])
-	this.Parallelism = common.BytesToUint64(fields[4])
-	this.Debug = bool(codec.Bool(this.Debug).Decode(fields[5]).(codec.Bool))
+	this.ExecId = common.BytesToUint32(fields[4])
+	// this.Debug = bool(codec.Bool(this.Debug).Decode(fields[5]).(codec.Bool))
 	return nil
 }

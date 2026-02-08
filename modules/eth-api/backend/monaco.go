@@ -18,21 +18,23 @@
 package backend
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"math/big"
 	"sync"
 	"time"
 
 	mtypes "github.com/arcology-network/main/types"
 	ccdb "github.com/arcology-network/storage-committer/storage/ethstorage"
-	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/actor"
+	"github.com/arcology-network/streamer/logger"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	ethcrp "github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/miner"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -57,25 +59,23 @@ type Monaco struct {
 
 	forkchoiceLock sync.Mutex // Lock for the forkChoiceUpdated method
 	newPayloadLock sync.Mutex // Lock for the NewPayload method
+	sender         actor.OutboundSender
 }
 
-func NewMonaco(filters *Filters) *Monaco {
+func NewMonaco(filters *Filters, sender actor.OutboundSender) *Monaco {
 	return &Monaco{
 		filters:     filters,
 		localBlocks: newPayloadQueue(),
+		sender:      sender,
 	}
 }
 
 func (api *Monaco) GetProof(rq *mtypes.RequestProof) (*ccdb.AccountResult, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("state_query", "QueryState", &mtypes.QueryRequest{
-		QueryType: mtypes.QueryType_Proof,
-		Data:      rq,
-	}, &response)
+	response, err := api.sender.SendSync("state_query", "QueryState", rq, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*ccdb.AccountResult), nil
+	return response.(*ccdb.AccountResult), nil
 }
 
 // ForkchoiceUpdatedV2 is equivalent to V1 with the addition of withdrawals in the payload attributes.
@@ -118,9 +118,9 @@ func (api *Monaco) ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadA
 		if api.localBlocks.has(id) {
 			return valid(&id), nil
 		}
-		payload, err := buildPayload(args, payloadAttributes.Transactions, chainid)
+		payload, err := buildPayload(args, payloadAttributes.Transactions, chainid, api.sender)
 		if err != nil {
-			log.Error("Failed to build payload", "err", err)
+			logger.Log.Error(context.Background(), "Monaco", "Failed to build payload", logger.F("err", err))
 			return valid(nil), engine.InvalidPayloadAttributes.With(err)
 		}
 
@@ -132,7 +132,7 @@ func (api *Monaco) ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadA
 
 // GetPayloadV2 returns a cached payload by id.
 func (api *Monaco) GetPayloadV2(payloadID engine.PayloadID) (*engine.ExecutionPayloadEnvelope, error) {
-	log.Trace("Engine API request received", "method", "GetPayload", "id", payloadID)
+	logger.Log.Debug(context.Background(), "Monaco", "Engine API request received", logger.F("method", "GetPayload"), logger.F("id", payloadID))
 	data := api.localBlocks.get(payloadID, false)
 	if data == nil {
 		return nil, engine.UnknownPayload
@@ -159,30 +159,18 @@ func (api *Monaco) invalid(err error, latestValid *types.Header) engine.PayloadS
 
 // NewPayloadV2 creates an Eth1 block, inserts it in the chain, and returns the status of the chain.
 func (api *Monaco) NewPayloadV2(params engine.ExecutableData) (engine.PayloadStatusV1, error) {
-	// api.newPayloadLock.Lock()
-	// defer api.newPayloadLock.Unlock()
-
-	// log.Trace("Engine API request received", "method", "NewPayload", "number", params.Number, "hash", params.BlockHash)
-	// block, err := engine.ExecutableDataToBlock(params, nil, nil)
-	// if err != nil {
-	// 	log.Warn("Invalid NewPayload params", "params", params, "error", err)
-	// 	return api.invalid(err, nil), nil
-	// }
-	// hash := block.Hash()
-
 	counter := 20
 	var latestHeight uint64
 	for {
-		var response mtypes.QueryResult
-		err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
-			QueryType: mtypes.QueryType_LatestHeight,
-		}, &response)
+		response, err := api.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
+			QueryType: mtypes.QueryType_BlockNumber,
+		}, 0)
+
 		if err != nil {
 			time.Sleep(200 * time.Millisecond)
 		}
 
-		latestHeight = response.Data.(uint64)
-		// fmt.Printf("----------main/modules/eth-api/backend/monaco.go----NewPayloadV2---------latestHeight:%v,params.Number:%v\n", latestHeight, params.Number)
+		latestHeight = response.(*mtypes.QueryResult).Data.(uint64)
 		if latestHeight >= params.Number {
 			break
 		}
@@ -201,162 +189,159 @@ func (api *Monaco) SignalSuperchainV1(signal *catalyst.SuperchainSignal) (params
 }
 
 func (m *Monaco) BlockNumber() (uint64, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_BlockNumber,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return 0, err
 	}
-	return response.Data.(uint64), nil
+	return response.(*mtypes.QueryResult).Data.(uint64), nil
 }
 
 func (m *Monaco) GetBlockByNumber(number int64, fullTx bool) (*mtypes.RPCBlock, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Block_Eth,
 		Data: &mtypes.RequestBlockEth{
 			Number: number,
 			FullTx: fullTx,
 		},
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*mtypes.RPCBlock), nil
+	return response.(*mtypes.QueryResult).Data.(*mtypes.RPCBlock), nil
 }
 
 func (m *Monaco) GetBlockByHash(hash ethcmn.Hash, fullTx bool) (*mtypes.RPCBlock, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_BlocByHash,
 		Data: &mtypes.RequestBlockEth{
 			Hash:   hash,
 			FullTx: fullTx,
 		},
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*mtypes.RPCBlock), nil
+	return response.(*mtypes.QueryResult).Data.(*mtypes.RPCBlock), nil
 }
 
 func (m *Monaco) GetHeaderByNumber(number int64) (*mtypes.RPCBlock, error) {
-	return GetHeaderByNumber(number)
-}
-
-func GetHeaderByNumber(number int64) (*mtypes.RPCBlock, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_HeaderByNumber,
 		Data: &mtypes.RequestBlockEth{
 			Number: number,
 		},
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*mtypes.RPCBlock), nil
+	return response.(*mtypes.QueryResult).Data.(*mtypes.RPCBlock), nil
 }
 
-func GetHeaderFromHash(hash ethcmn.Hash) (*mtypes.RPCBlock, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+func (m *Monaco) GetHeaderByHash(hash ethcmn.Hash) (*mtypes.RPCBlock, error) {
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_HeaderByHash,
 		Data: &mtypes.RequestBlockEth{
 			Hash: hash,
 		},
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*mtypes.RPCBlock), nil
-}
-
-func (m *Monaco) GetHeaderByHash(hash ethcmn.Hash) (*mtypes.RPCBlock, error) {
-	return GetHeaderFromHash(hash)
+	return response.(*mtypes.QueryResult).Data.(*mtypes.RPCBlock), nil
 }
 
 func (m *Monaco) GetCode(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Code,
-		Data: mtypes.RequestParameters{
+		Data: &mtypes.RequestParameters{
 			BlockParams: blockParams,
 			Address:     address,
 		},
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.([]byte), nil
+	return response.(*mtypes.QueryResult).Data.([]byte), nil
 }
 
 func (m *Monaco) GetBalance(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (*big.Int, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Balance_Eth,
 		Data: &mtypes.RequestParameters{
 			BlockParams: blockParams,
 			Address:     address,
 		},
-	}, &response)
+	}, 0)
+	log.Printf("EstimateGas **********1.5")
+	// response, err := m.sender.SendSync("urlstore", "GetBalance", fmt.Sprintf("%x", address.Bytes()), 0)
 	if err != nil {
 		return big.NewInt(0), nil
 	}
-	return response.Data.(*big.Int), nil
+	log.Printf("EstimateGas ***********1.7")
+	return response.(*mtypes.QueryResult).Data.(*big.Int), nil
+	// return response.(*big.Int), nil
+
 }
 
 func (m *Monaco) GetTransactionCount(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (uint64, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_TransactionCount,
-		Data: mtypes.RequestParameters{
+		Data: &mtypes.RequestParameters{
 			BlockParams: blockParams,
 			Address:     address,
 		},
-	}, &response)
+	}, 0)
+	// response, err := m.sender.SendSync("urlstore", "GetNonce", fmt.Sprintf("%x", address.Bytes()), 0)
 	if err != nil {
 		return 0, err
 	}
-	return response.Data.(uint64), nil
+	return response.(*mtypes.QueryResult).Data.(uint64), nil
+	// return response.(uint64), nil
 }
 
 func (m *Monaco) GetStorageAt(address ethcmn.Address, key string, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Storage,
-		Data: mtypes.RequestStorage{
+		Data: &mtypes.RequestStorage{
 			BlockParams: blockParams,
 			Address:     address,
 			Key:         key,
 		},
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.([]byte), nil
+	return response.(*mtypes.QueryResult).Data.([]byte), nil
 }
 
 func (m *Monaco) EstimateGas(msg eth.CallMsg) (uint64, error) {
 	// TODO
 	// return 0x10000000, nil
-
+	log.Printf("EstimateGas ****0")
 	// If the transaction is a plain value transfer, short circuit estimation and directly try 21000.
 	if len(msg.Data) == 0 {
 		return TxGas, nil
 	}
-
+	log.Printf("EstimateGas ********1")
 	//set GasPrice and GasLimit
 	request, maxGasLimit := m.callmsgToRequest(msg)
-
+	log.Printf("EstimateGas ************2")
 	// try run
-	var response core.ExecutionResult
-	err := intf.Router.Call("estimate-executor", "ExecTxs", request, &response)
+	// var response core.ExecutionResult
+	response, err := m.sender.SendSync("estimate-executor", "ExecTxs", request, 0)
 	if err != nil {
 		return uint64(0), err
 	}
-	gas := response.UsedGas * zoomout
+	log.Printf("EstimateGas ****************3")
+	gas := response.(*core.ExecutionResult).UsedGas * zoomout
 	if gas > maxGasLimit {
 		gas = maxGasLimit
 	}
@@ -370,21 +355,22 @@ func (m *Monaco) GasPrice() (*big.Int, error) {
 }
 
 func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPCTransaction, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	var response interface{}
+	var err error
+	response, err = m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Transaction,
 		Data:      hash,
-	}, &response)
+	}, 0)
 	if err != nil {
-		err = intf.Router.Call("pool", "Query", &mtypes.QueryRequest{
+		response, err = m.sender.SendSync("pool", "Query", &mtypes.QueryRequest{
 			QueryType: mtypes.QueryType_Transaction,
 			Data:      hash,
-		}, &response)
+		}, 0)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return response.Data.(*mtypes.RPCTransaction), nil
+	return response.(*mtypes.QueryResult).Data.(*mtypes.RPCTransaction), nil
 }
 
 func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorRequest, uint64) {
@@ -408,7 +394,9 @@ func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorRequest, uin
 
 	gas := msg.Gas
 	if gas == 0 {
+		log.Printf("[Monaco] callmsgToRequest start-- msg.From:%x", msg.From.Bytes())
 		balance, err := m.GetBalance(msg.From, &mtypes.BlockNumberOrHash{BlockNumber: big.NewInt(0)})
+		log.Printf("[Monaco] callmsgToRequest end  -- msg.From:%x", msg.From.Bytes())
 		if err != nil {
 			balance = big.NewInt(0)
 		}
@@ -447,38 +435,39 @@ func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorRequest, uin
 		Height:        0,
 		GenerationIdx: 0,
 		Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
-		Parallelism:   1,
-		Debug:         true,
+		// Parallelism:   1,
+		// Debug:         true,
 	}, gas
 }
 
 func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 	// try run
-	var response core.ExecutionResult
+	// var response core.ExecutionResult
 	request, _ := m.callmsgToRequest(msg)
-	err := intf.Router.Call("estimate-executor", "ExecTxs", request, &response)
+	response, err := m.sender.SendSync("estimate-executor", "ExecTxs", request, 0)
 	if err != nil {
 		return nil, err
 	}
 
-	return response.ReturnData, nil
+	return response.(*core.ExecutionResult).ReturnData, nil
 }
 
 func (m *Monaco) SendRawTransaction(rawTx []byte) (ethcmn.Hash, error) {
-	var response mtypes.RawTransactionReply
-	err := intf.Router.Call("gateway", "SendRawTransaction", &mtypes.RawTransactionArgs{
+	// var response mtypes.RawTransactionReply
+	logger.Log.Debug(context.Background(), "eth-api.monacg", "Monaco.SendRawTransaction")
+	response, err := m.sender.SendSync("gateway", "SendRawTransaction", &mtypes.RawTransactionArgs{
 		Tx: rawTx,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return ethcmn.Hash{}, err
 	}
-	return response.TxHash.(ethcmn.Hash), nil
+	return response.(*mtypes.RawTransactionReply).TxHash.(ethcmn.Hash), nil
 }
 func (m *Monaco) SendRawTransactions(rawTxs [][]byte) (uint64, error) {
-	var response mtypes.SendTransactionReply
-	err := intf.Router.Call("gateway", "ReceivedTransactions", &mtypes.SendTransactionArgs{
+	// var response mtypes.SendTransactionReply
+	_, err := m.sender.SendSync("gateway", "ReceivedTransactions", &mtypes.SendTransactionArgs{
 		Txs: rawTxs,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return 0, err
 	}
@@ -486,97 +475,99 @@ func (m *Monaco) SendRawTransactions(rawTxs [][]byte) (uint64, error) {
 }
 
 func (m *Monaco) GetTransactionReceipt(hash ethcmn.Hash) (*types.Receipt, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Receipt_Eth,
 		Data:      hash,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.(*types.Receipt), nil
+	return response.(*mtypes.QueryResult).Data.(*types.Receipt), nil
 }
 
 func (m *Monaco) GetBlockReceipts(blockParams *mtypes.BlockNumberOrHash) ([]*types.Receipt, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Block_Receipts,
 		Data:      blockParams,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.([]*types.Receipt), nil
+	return response.(*mtypes.QueryResult).Data.([]*types.Receipt), nil
 }
 
 func (m *Monaco) GetLogs(filter eth.FilterQuery) ([]*types.Log, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Logs,
 		Data:      &filter,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.Data.([]*types.Log), nil
+	return response.(*mtypes.QueryResult).Data.([]*types.Log), nil
 }
 
 func (m *Monaco) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash, index int) (*mtypes.RPCTransaction, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_TxByHashAndIdx,
 		Data: &mtypes.RequestBlockEth{
 			Hash:  hash,
 			Index: index,
 		},
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	if response.Data == nil {
+	rpcret := response.(*mtypes.QueryResult)
+	if rpcret.Data == nil {
 		return nil, nil
 	}
-	return response.Data.(*mtypes.RPCTransaction), nil
+	return rpcret.Data.(*mtypes.RPCTransaction), nil
 }
 func (m *Monaco) GetTransactionByBlockNumberAndIndex(number int64, index int) (*mtypes.RPCTransaction, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_TxByNumberAndIdx,
 		Data: &mtypes.RequestBlockEth{
 			Number: number,
 			Index:  index,
 		},
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	if response.Data == nil {
+	rpcret := response.(*mtypes.QueryResult)
+	if rpcret.Data == nil {
 		return nil, nil
 	}
-	return response.Data.(*mtypes.RPCTransaction), nil
+	return rpcret.Data.(*mtypes.RPCTransaction), nil
 }
 
 func (m *Monaco) GetBlockTransactionCountByHash(hash ethcmn.Hash) (int, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_TxNumsByHash,
 		Data:      hash,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return 0, err
 	}
-	return response.Data.(int), nil
+	return response.(*mtypes.QueryResult).Data.(int), nil
 }
 func (m *Monaco) GetBlockTransactionCountByNumber(number int64) (int, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_TxNumsByNumber,
 		Data:      number,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return 0, err
 	}
-	return response.Data.(int), nil
+	return response.(*mtypes.QueryResult).Data.(int), nil
 }
 
 type messageRLP struct {
@@ -633,25 +624,25 @@ func (m *Monaco) ProtocolVersion() (int, error) {
 //		return 10000 + 2, nil
 //	}
 func (m *Monaco) Syncing() (bool, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("consensus", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("consensus", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Syncing,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return false, err
 	}
-	return response.Data.(bool), nil
+	return response.(*mtypes.QueryResult).Data.(bool), nil
 }
 
 func (m *Monaco) Proposer() (bool, error) {
-	var response mtypes.QueryResult
-	err := intf.Router.Call("consensus", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("consensus", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Proposer,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return false, err
 	}
-	return response.Data.(bool), nil
+	return response.(*mtypes.QueryResult).Data.(bool), nil
 }
 
 func (m *Monaco) NewFilter(filter eth.FilterQuery) (ID, error) {
@@ -682,16 +673,15 @@ func (m *Monaco) GetFilterLogs(id ID) ([]*types.Log, error) {
 }
 
 func (m *Monaco) TraceTransaction(hash ethcmn.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
-	// var response mtypes.QueryReplayMsgResult
-	var response mtypes.QueryResult
-	err := intf.Router.Call("storage", "Query", &mtypes.QueryRequest{
+	// var response mtypes.QueryResult
+	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_TxMessage,
 		Data:      hash,
-	}, &response)
+	}, 0)
 	if err != nil {
 		return nil, err
 	}
-	queryResult := response.Data.(*mtypes.QueryReplayMsgResult)
+	queryResult := response.(*mtypes.QueryResult).Data.(*mtypes.QueryReplayMsgResult)
 
 	request := &mtypes.ExecutorRequest{
 		Sequences: []*mtypes.ExecutingSequence{
@@ -712,14 +702,14 @@ func (m *Monaco) TraceTransaction(hash ethcmn.Hash, config *tracers.TraceConfig)
 		Height:        0,
 		GenerationIdx: 0,
 		Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
-		Parallelism:   1,
-		Debug:         true,
+		// Parallelism:   1,
+		// Debug:         true,
 	}
 
-	var result mtypes.QueryResult //json.RawMessage
-	err = intf.Router.Call("estimate-executor", "ExecTxsWithTrace", request, &result)
+	// var result mtypes.QueryResult //json.RawMessage
+	response, err = m.sender.SendSync("estimate-executor", "ExecTxsWithTrace", request, 0)
 	if err != nil {
 		return nil, err
 	}
-	return result.Data.(json.RawMessage), nil
+	return response.(*mtypes.QueryResult).Data.(json.RawMessage), nil
 }

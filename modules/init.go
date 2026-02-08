@@ -25,15 +25,18 @@ import (
 	_ "github.com/arcology-network/main/modules/eth-api"
 	_ "github.com/arcology-network/main/modules/exec"
 	_ "github.com/arcology-network/main/modules/gateway"
-	_ "github.com/arcology-network/main/modules/p2p"
+
+	// _ "github.com/arcology-network/main/modules/p2p"
 	_ "github.com/arcology-network/main/modules/pool"
 	_ "github.com/arcology-network/main/modules/receipt-hashing"
 	_ "github.com/arcology-network/main/modules/scheduler"
-	_ "github.com/arcology-network/main/modules/state-sync"
+
+	// _ "github.com/arcology-network/main/modules/state-sync"
 	_ "github.com/arcology-network/main/modules/storage"
-	_ "github.com/arcology-network/main/modules/toolkit"
+
+	// _ "github.com/arcology-network/main/modules/toolkit"
 	_ "github.com/arcology-network/main/modules/tpp"
-	_ "github.com/arcology-network/main/modules/tx-sync"
+	// _ "github.com/arcology-network/main/modules/tx-sync"
 	_ "github.com/ethereum/go-ethereum/eth/tracers/js"
 	_ "github.com/ethereum/go-ethereum/eth/tracers/native" //register all native tracer
 )

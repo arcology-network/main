@@ -18,11 +18,10 @@
 package storage
 
 import (
-	"context"
-
 	"github.com/arcology-network/common-lib/codec"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -64,46 +63,68 @@ const (
 	statefilename = "statestore"
 )
 
-func NewStateStore() *StateStore {
-	return &StateStore{
-		// TODO
-	}
+func NewStateStore() actor.Business {
+	return &StateStore{}
 }
 
 func (ss *StateStore) Config(params map[string]interface{}) {
 	ss.db = mstypes.NewRawFiles(params["storage_state_path"].(string))
 }
 
-func (ss *StateStore) Save(ctx context.Context, request *State, _ *int) error {
+func (ss *StateStore) Inputs() ([]string, bool) {
+	return []string{}, false
+}
+
+func (ss *StateStore) Outputs() map[string]int {
+	return map[string]int{}
+}
+
+func (ss *StateStore) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("Save", ss.Save)
+	reg.Register("GetHeight", ss.GetHeight)
+	reg.Register("GetParentInfo", ss.GetParentInfo)
+}
+
+func (ss *StateStore) RpcConfig() (string, int) {
+	return "statestore", 20
+}
+
+func (ss *StateStore) Save(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*State)
 	ss.state = request
 	ss.db.Write(statefilename, ss.state.Encode())
+	ctx.ExecCtx.SendRpcResponse("", nil)
 	return nil
 }
 
-func (ss *StateStore) GetHeight(ctx context.Context, _ *int, height *uint64) error {
+func (ss *StateStore) GetHeight(ctx *actor.ActionContext) error {
 	if ss.state == nil {
 		data, err := ss.db.Read(statefilename)
 		if err != nil {
+			ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 			return err
 		}
 		ss.state = &State{}
 		ss.state = ss.state.Decode(data)
 	}
-	*height = ss.state.Height
+	ctx.ExecCtx.SendRpcResponse("", ss.state.Height)
 	return nil
 }
 
-func (ss *StateStore) GetParentInfo(ctx context.Context, na *int, parentInfo *mtypes.ParentInfo) error {
+func (ss *StateStore) GetParentInfo(ctx *actor.ActionContext) error {
 	if ss.state == nil {
 		data, err := ss.db.Read(statefilename)
 		if err != nil {
+			ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 			return err
 		}
 		ss.state = ss.state.Decode(data)
 	}
-	parentInfo.ParentHash = ss.state.ParentHash
-	parentInfo.ParentRoot = ss.state.ParentRoot
-	parentInfo.ExcessBlobGas = ss.state.ExcessBlobGas
-	parentInfo.BlobGasUsed = ss.state.BlobGasUsed
+	ctx.ExecCtx.SendRpcResponse("", &mtypes.ParentInfo{
+		ParentHash:    ss.state.ParentHash,
+		ParentRoot:    ss.state.ParentRoot,
+		ExcessBlobGas: ss.state.ExcessBlobGas,
+		BlobGasUsed:   ss.state.BlobGasUsed,
+	})
 	return nil
 }

@@ -19,52 +19,33 @@ package storage
 
 import (
 	"bufio"
-	"context"
 	"fmt"
 	"os"
 	"strconv"
 	"strings"
-	"sync"
 
 	"github.com/arcology-network/common-lib/storage/transactional"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
-var (
-	schdStore     *SchdStore
-	initSchdStore sync.Once
-)
-
-type SchdState struct {
-	Height            uint64
-	NewContracts      []evmCommon.Address
-	ConflictionLefts  []evmCommon.Address
-	ConflictionRights []evmCommon.Address
-
-	ConflictionLeftSigns  [][4]byte
-	ConflictionRightSigns [][4]byte
-}
+// var (
+// 	schdStore *SchdStore
+// )
 
 type SchdStore struct {
-	actor.WorkerThread
-
-	buf  *SchdState
+	// buf  *mtypes.SchdState
 	root string
 	f    *os.File
 }
 
-func NewSchdStore(concurrency int, groupId string) actor.IWorkerEx {
-	initSchdStore.Do(func() {
-		schdStore = &SchdStore{}
-		schdStore.Set(concurrency, groupId)
-	})
-	return schdStore
+func NewSchdStore() actor.Business {
+	return &SchdStore{}
 }
 
 func (ss *SchdStore) Inputs() ([]string, bool) {
-	return []string{actor.MsgBlockCompleted}, false
+	return []string{}, false
 }
 
 func (ss *SchdStore) Outputs() map[string]int {
@@ -83,35 +64,51 @@ func (ss *SchdStore) Config(params map[string]interface{}) {
 	}
 }
 
-func (ss *SchdStore) OnStart() {}
+func (ss *SchdStore) RpcConfig() (string, int) {
+	return "schdstore", 20
+}
 
-func (ss *SchdStore) OnMessageArrived(msgs []*actor.Message) error {
-	if ss.buf != nil {
-		ss.writeToFile(ss.buf)
+func (ss *SchdStore) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("Save", ss.Save)
+	reg.Register("SaveBack", ss.SaveBack)
+	reg.Register("DirectWrite", ss.DirectWrite)
+	reg.Register("Load", ss.Load)
+}
+
+func (ss *SchdStore) Save(ctx *actor.ActionContext) error {
+	stat := ctx.RPC.Request.(*mtypes.SchdState)
+	if stat == nil {
+		ctx.ExecCtx.SendRpcResponse("", "")
+		return nil
 	}
+	ss.writeToFile(stat)
+
+	// ctx.ExecCtx.StartCasecade()
+	ctx.ExecCtx.InvokeRPC("transactionalstore", "AddData", &transactional.AddDataRequest{
+		Data:        stat,
+		RecoverFunc: "schdstate",
+	}, "SaveBack")
+	return nil
+}
+func (ss *SchdStore) SaveBack(ctx *actor.ActionContext) error {
+	// ctx.ExecCtx.EndCasecade()
+	ctx.ExecCtx.SendRpcResponse("", "")
+	return nil
+}
+func (ss *SchdStore) DirectWrite(ctx *actor.ActionContext) error {
+	stat := ctx.RPC.Request.(*mtypes.SchdState)
+	ss.writeToFile(stat)
+	ctx.ExecCtx.SendRpcResponse("", "")
+	return nil
+}
+func (ss *SchdStore) Load(ctx *actor.ActionContext) error {
+	states := &[]mtypes.SchdState{}
+	ss.readFromFile(states)
+	ctx.ExecCtx.SendRpcResponse("", *states)
 	return nil
 }
 
-func (ss *SchdStore) Save(ctx context.Context, state *SchdState, _ *int) error {
-	ss.buf = state
-
-	var na int
-	return intf.Router.Call("transactionalstore", "AddData", &transactional.AddDataRequest{
-		Data:        state,
-		RecoverFunc: "schdstate",
-	}, &na)
-}
-
-// DirectWrite only used in recover process.
-func (ss *SchdStore) DirectWrite(ctx context.Context, state *SchdState, _ *int) error {
-	return ss.writeToFile(state)
-}
-
-func (ss *SchdStore) Load(ctx context.Context, _ *int, states *[]SchdState) error {
-	return ss.readFromFile(states)
-}
-
-func (ss *SchdStore) writeToFile(state *SchdState) error {
+func (ss *SchdStore) writeToFile(state *mtypes.SchdState) error {
 	str := formatState(state)
 	if len(str) != 0 {
 		if _, err := ss.f.WriteString(str); err != nil {
@@ -121,7 +118,7 @@ func (ss *SchdStore) writeToFile(state *SchdState) error {
 	return nil
 }
 
-func (ss *SchdStore) readFromFile(states *[]SchdState) error {
+func (ss *SchdStore) readFromFile(states *[]mtypes.SchdState) error {
 	f, err := os.Open(ss.root + "schd.txt")
 	if err != nil {
 		return err
@@ -140,7 +137,7 @@ func (ss *SchdStore) readFromFile(states *[]SchdState) error {
 		if err != nil {
 			panic(err)
 		}
-		*states = append(*states, SchdState{
+		*states = append(*states, mtypes.SchdState{
 			Height:                uint64(height),
 			NewContracts:          parseAddressArray(segments[1]),
 			ConflictionLefts:      parseAddressArray(segments[2]),
@@ -152,7 +149,7 @@ func (ss *SchdStore) readFromFile(states *[]SchdState) error {
 	return nil
 }
 
-func formatState(state *SchdState) string {
+func formatState(state *mtypes.SchdState) string {
 	if len(state.NewContracts) == 0 && len(state.ConflictionLefts) == 0 && len(state.ConflictionRights) == 0 {
 		return ""
 	}

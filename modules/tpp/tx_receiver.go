@@ -18,55 +18,44 @@
 package tpp
 
 import (
-	cmntyp "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/common-lib/types"
 	tppTypes "github.com/arcology-network/main/modules/tpp/types"
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 )
 
 type TxReceiver struct {
-	actor.WorkerThread
 }
 
 // return a Subscriber struct
-func NewTxReceiver(concurrency int, groupid string) actor.IWorkerEx {
+func NewTxReceiver() actor.Business {
 	receiver := TxReceiver{}
-	receiver.Set(concurrency, groupid)
-
 	return &receiver
 }
 
 func (r *TxReceiver) Inputs() ([]string, bool) {
-	return []string{actor.MsgCheckedTxs}, false
+	return []string{scommon.MsgCheckedTxs}, false
 }
 
 func (r *TxReceiver) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgCheckingTxs: 10,
+		scommon.MsgCheckingTxs: 10,
 	}
 }
 
-func (r *TxReceiver) OnStart() {
+func (r *TxReceiver) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgCheckedTxs, r.processTxs)
 }
 
-func (r *TxReceiver) OnMessageArrived(msgs []*actor.Message) error {
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgCheckedTxs:
-			data := v.Data.(*cmntyp.IncomingTxs)
-			r.processTxs(data)
-		}
-	}
+func (r *TxReceiver) processTxs(ctx *actor.ActionContext) error {
+	txs := ctx.Messages[0].Data.(*types.IncomingTxs)
+
+	ctx.ExecCtx.LogDebug("start processTxs Txs", logger.F("count", len(txs.Txs)))
+
+	pack := tppTypes.NewPack(txs, ctx.ExecCtx.Concurrency())
+
+	ctx.ExecCtx.Send(scommon.MsgCheckingTxs, pack)
 
 	return nil
-}
-
-func (r *TxReceiver) processTxs(txs *cmntyp.IncomingTxs) {
-
-	logid := r.AddLog(log.LogLevel_Debug, "start processTxs Txs")
-	interLog := r.GetLogger(logid)
-
-	pack := tppTypes.NewPack(txs.Txs, txs.Src, false, r.Concurrency, interLog)
-
-	r.MsgBroker.Send(actor.MsgCheckingTxs, pack)
 }

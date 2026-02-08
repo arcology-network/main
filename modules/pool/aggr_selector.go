@@ -18,28 +18,24 @@
 package pool
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"math"
 	"math/big"
-	"sync"
 
 	"github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
 	statestore "github.com/arcology-network/storage-committer"
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
-	"go.uber.org/zap"
 )
 
 type AggrSelector struct {
-	actor.WorkerThread
-
 	maxReap      int
 	obsoleteTime uint64
 	closeCheck   bool
@@ -49,7 +45,8 @@ type AggrSelector struct {
 
 	opAdaptor *OpAdaptor
 	chainID   *big.Int
-	resultch  chan *mtypes.BlockResult
+
+	ctx *actor.ExecutionContext
 }
 
 const (
@@ -59,53 +56,43 @@ const (
 	resultCollect
 )
 
-var (
-	rpcInstance actor.IWorkerEx
-	initRpcOnce sync.Once
-)
-
 // return a Subscriber struct
-func NewAggrSelector(concurrency int, groupid string) actor.IWorkerEx {
-
-	initRpcOnce.Do(func() {
-		rpcInstance = &AggrSelector{
-			state:    poolStateClean,
-			resultch: make(chan *mtypes.BlockResult, 1),
-		}
-		rpcInstance.(*AggrSelector).Set(concurrency, groupid)
-	})
+func NewAggrSelector() actor.Business {
+	rpcInstance := &AggrSelector{
+		state: poolStateClean,
+	}
 
 	return rpcInstance
 }
 
 func (a *AggrSelector) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgNonceReady,
-		actor.MsgMessager,
-		actor.MsgReapCommand,
-		actor.MsgReapinglist,
-		actor.MsgOpCommand,
-		actor.MsgSelectedReceipts,
-		actor.MsgPendingBlock,
-		actor.MsgInitialization,
+		scommon.MsgNonceReady,
+		scommon.MsgMessager,
+		scommon.MsgReapCommand,
+		scommon.MsgReapinglist,
+		scommon.MsgSelectedReceipts,
+		scommon.MsgPendingBlock,
+		scommon.MsgInitialization,
+		scommon.MsgOpCommand,
 	}, false
 }
 
 func (a *AggrSelector) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgMessagersReaped: 1,
-		actor.MsgMetaBlock:       1,
-		actor.MsgSelectedTxInfo:  1,
-		actor.MsgOpCommand:       1,
-		actor.MsgBlockParams:     1,
-		actor.MsgWithDrawHash:    1,
-		actor.MsgSignerType:      1,
+		scommon.MsgMessagersReaped: 1,
+		scommon.MsgMetaBlock:       1,
+		scommon.MsgSelectedTxInfo:  1,
+		scommon.MsgBlockParams:     1,
+		scommon.MsgWithDrawHash:    1,
+		scommon.MsgSignerType:      1,
+		scommon.MsgOpCommand:       1,
 	}
 }
 
 func (a *AggrSelector) Config(params map[string]interface{}) {
-	a.maxReap = int(params["max_reap_size"].(float64))
-	a.obsoleteTime = uint64(params["obsolete_time"].(float64))
+	a.maxReap = params["max_reap_size"].(int)
+	a.obsoleteTime = uint64(params["obsolete_time"].(int))
 	if _, ok := params["close_check"]; ok {
 		a.closeCheck = params["close_check"].(bool)
 	}
@@ -113,133 +100,157 @@ func (a *AggrSelector) Config(params map[string]interface{}) {
 	a.opAdaptor = NewOpAdaptor(a.maxReap, a.chainID)
 }
 
-func (a *AggrSelector) OnStart() {
-}
-
-func (a *AggrSelector) reap(height uint64) {
+func (a *AggrSelector) reap(ctx *actor.ActionContext, height uint64) {
 	reaped := a.pool.Reap(a.opAdaptor.ReapSize)
-	a.send(reaped, true, height)
-	a.state = poolStateCherryPick
-	a.AddLog(log.LogLevel_Info, "Reap done, switch to poolStateCherryPick")
+	a.send(ctx, reaped, true, height)
+	a.ChangeState(ctx, poolStateCherryPick, "poolStateCherryPick")
 }
 
-func (a *AggrSelector) returnResult(result *mtypes.BlockResult) {
+func (a *AggrSelector) returnResult(ctx *actor.ActionContext, result *mtypes.BlockResult) {
 	if !mtypes.RunAsL1 {
-		a.resultch <- result
+		a.ctx.SendRpcResponse("", result)
 	}
 
-	a.state = poolStateClean
-	a.AddLog(log.LogLevel_Info, "received all results, switch to poolStateClean")
+	a.ChangeState(ctx, poolStateClean, "poolStateClean")
 }
 
-func (a *AggrSelector) nonceReady(store *statestore.StateStore, heght uint64) {
+func (a *AggrSelector) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgNonceReady, a.ReceivedNonceReady)
+	reg.Register(scommon.MsgInitialization, a.ReceivedInitialization)
+	reg.Register(scommon.MsgMessager, a.ReceivedMessage)
+	reg.Register(scommon.MsgReapCommand, a.ReceivedReapCommand)
+	reg.Register(scommon.MsgOpCommand, a.ReceivedOpCommand)
+	reg.Register("ReceivedMessages", a.ReceivedMessages)
+	reg.Register(scommon.MsgReapinglist, a.ReceivedReapinglist)
+	reg.Register(scommon.MsgSelectedReceipts, a.ReceivedSelectedReceipts)
+	reg.Register(scommon.MsgPendingBlock, a.ReceivedPendingBlock)
+
+	reg.Register("Query", a.Query)
+}
+func (a *AggrSelector) ReceivedOpCommand(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	oprequest := msg.Data.(*mtypes.OpRequest)
+	ctx.ExecCtx.LogDebug("oprequest received", logger.F("oprequest.Transactions", len(oprequest.Transactions)), logger.F("oprequest.Withdrawals", len(oprequest.Withdrawals)))
+	if a.opAdaptor.AddOpCommand(oprequest.Transactions, oprequest.Withdrawals) {
+		a.reap(ctx, a.height)
+	}
+	return nil
+}
+func (a *AggrSelector) ReceivedNonceReady(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	a.nonceReady(ctx, msg.Data.(*statestore.StateStore), msg.Height)
+	return nil
+}
+func (a *AggrSelector) ReceivedInitialization(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	initialization := msg.Data.(*mtypes.Initialization)
+	a.opAdaptor.SetConfig(initialization.ChainConfig)
+	a.opAdaptor.ChangeSigner(msg.Height)
+
+	a.nonceReady(ctx, initialization.Store, msg.Height)
+	ctx.ExecCtx.LogDebug("change into poolStateReap,ready")
+	return nil
+}
+func (a *AggrSelector) nonceReady(ctx *actor.ActionContext, store *statestore.StateStore, heght uint64) {
 	if a.pool == nil {
 		a.pool = NewPool(store, a.obsoleteTime, a.closeCheck)
 	} else {
 		a.pool.Clean(heght)
-		a.AddLog(log.LogLevel_Info, fmt.Sprintf("Clear pool on height %d", heght))
+		ctx.ExecCtx.LogDebug("Clear pool", logger.F("height", heght))
 	}
 	a.opAdaptor.Reset()
-	a.state = poolStateReap
+
+	a.ChangeState(ctx, poolStateReap, "poolStateReap")
 	a.height = heght + 1
 }
+func (a *AggrSelector) ChangeState(ctx *actor.ActionContext, state int, stateName string) error {
+	a.state = state
+	ctx.ExecCtx.LogDebug("******business state change into " + stateName)
+	return nil
+}
+func (a *AggrSelector) ReceivedMessage(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
 
-func (a *AggrSelector) OnMessageArrived(msgs []*actor.Message) error {
-	msg := msgs[0]
 	switch a.state {
-
-	case poolStateClean:
-		switch msg.Name {
-		case actor.MsgNonceReady:
-			a.nonceReady(msg.Data.(*statestore.StateStore), msg.Height)
-		case actor.MsgInitialization:
-			initialization := msg.Data.(*mtypes.Initialization)
-			a.opAdaptor.SetConfig(initialization.ChainConfig)
-			a.opAdaptor.ChangeSigner(msg.Height)
-
-			a.nonceReady(initialization.Store, msg.Height)
-			a.AddLog(log.LogLevel_Debug, ">>>>>change into poolStateReap,ready ************************")
-		}
 	case poolStateReap:
-		switch msg.Name {
-		case actor.MsgMessager:
-			msgs := msg.Data.(*types.StdTransactionPack)
-			a.pool.Add(msgs.Txs, msgs.Src, msg.Height)
-		case actor.MsgReapCommand:
-			if mtypes.RunAsL1 {
-				a.MsgBroker.Send(actor.MsgOpCommand, &mtypes.OpRequest{
-					Withdrawals:  evmTypes.Withdrawals{},
-					Transactions: []*types.StandardTransaction{},
-				})
-				a.MsgBroker.Send(actor.MsgBlockParams, &mtypes.BlockParams{
-					Random:     evmCommon.Hash{},
-					BeaconRoot: &evmCommon.Hash{},
-					Times:      0,
-				})
-				a.MsgBroker.Send(actor.MsgWithDrawHash, &evmTypes.EmptyWithdrawalsHash)
-			}
-
-			if a.opAdaptor.AddReapCommand() {
-				a.reap(msg.Height)
-			}
-		case actor.MsgOpCommand:
-			oprequest := msg.Data.(*mtypes.OpRequest)
-			a.AddLog(log.LogLevel_Debug, "oprequest received", zap.Int("oprequest.Transactions", len(oprequest.Transactions)), zap.Int("oprequest.Withdrawals", len(oprequest.Withdrawals)))
-			if a.opAdaptor.AddOpCommand(oprequest.Transactions, oprequest.Withdrawals) {
-				a.reap(msg.Height)
-			}
-		}
+		msgs := msg.Data.(*types.StdTransactionPack)
+		a.pool.Add(msgs.Txs, msgs.Src, a.height)
+		ctx.ExecCtx.LogDebug("ReceivedMessage", logger.F("msgs.Txs", len(msgs.Txs)))
 	case poolStateCherryPick:
-		switch msg.Name {
-		case actor.MsgMessager:
-			msgs := msg.Data.(*types.StdTransactionPack)
-			reaped := a.pool.Add(msgs.Txs, msgs.Src, msg.Height)
-			if reaped != nil {
-				a.send(reaped, false, a.height)
-				a.state = resultCollect
-				a.AddLog(log.LogLevel_Info, "Data received, switch to resultCollect")
-			}
-		case actor.MsgReapinglist:
-			a.CheckPoint("pool received reapinglist")
+		msgs := msg.Data.(*types.StdTransactionPack)
+		reaped := a.pool.Add(msgs.Txs, msgs.Src, a.height)
+		ctx.ExecCtx.LogDebug("ReceivedMessage", logger.F("msgs.Txs", len(msgs.Txs)))
+		if reaped != nil {
+			a.send(ctx, reaped, false, a.height)
 
-			reaped := a.pool.CherryPick(a.opAdaptor.ClipReapList(msg.Data.(*types.ReapingList).List))
-			if reaped != nil {
-				a.send(reaped, false, msg.Height)
-				a.state = resultCollect
-				a.AddLog(log.LogLevel_Info, "List received, switch to resultCollect")
-			}
-		}
-	case resultCollect:
-		switch msg.Name {
-		case actor.MsgSelectedReceipts:
-			var receipts []*evmTypes.Receipt
-			// for _, item := range msg.Data.([]interface{}) {
-			// 	receipts = append(receipts, item.(*evmTypes.Receipt))
-			// }
-			receipts = msg.Data.([]*evmTypes.Receipt)
-			if ok, result := a.opAdaptor.AddReceipts(receipts); ok {
-				a.returnResult(result)
-			}
-
-		case actor.MsgPendingBlock:
-			block := msg.Data.(*mtypes.MonacoBlock)
-			if ok, result := a.opAdaptor.AddBlock(block); ok {
-				a.returnResult(result)
-			}
+			a.ChangeState(ctx, resultCollect, "resultCollect")
 		}
 	}
 	return nil
 }
 
-func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool, height uint64) {
-	a.AddLog(log.LogLevel_Debug, "reap end", zap.Int("reapeds", len(reaped)))
+func (a *AggrSelector) ReceivedReapCommand(ctx *actor.ActionContext) error {
+	// msg := ctx.Messages[0]
+	if mtypes.RunAsL1 {
+		ctx.ExecCtx.Send(scommon.MsgOpCommand, &mtypes.OpRequest{
+			Withdrawals:  evmTypes.Withdrawals{},
+			Transactions: []*types.StandardTransaction{},
+		}, a.height)
+		ctx.ExecCtx.Send(scommon.MsgBlockParams, &mtypes.BlockParams{
+			Random:     evmCommon.Hash{},
+			BeaconRoot: &evmCommon.Hash{},
+			Times:      0,
+		}, a.height)
+		ctx.ExecCtx.Send(scommon.MsgWithDrawHash, &evmTypes.EmptyWithdrawalsHash, a.height)
+	}
+	if a.opAdaptor.AddReapCommand() {
+		a.reap(ctx, a.height)
+	}
+	return nil
+}
+
+func (a *AggrSelector) ReceivedReapinglist(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	ctx.ExecCtx.LogDebug("pool received reapinglist")
+
+	ctx.ExecCtx.LogDebug("ReceivedReapinglist", logger.F("reapeds", len(msg.Data.(*types.ReapingList).List)))
+
+	reaped := a.pool.CherryPick(a.opAdaptor.ClipReapList(msg.Data.(*types.ReapingList).List))
+	if reaped != nil {
+		a.send(ctx, reaped, false, a.height)
+		a.ChangeState(ctx, resultCollect, "resultCollect")
+	}
+	return nil
+}
+
+func (a *AggrSelector) ReceivedSelectedReceipts(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	var receipts []*evmTypes.Receipt
+	receipts = msg.Data.([]*evmTypes.Receipt)
+	if ok, result := a.opAdaptor.AddReceipts(receipts); ok {
+		a.returnResult(ctx, result)
+	}
+	return nil
+}
+
+func (a *AggrSelector) ReceivedPendingBlock(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	block := msg.Data.(*mtypes.MonacoBlock)
+	if ok, result := a.opAdaptor.AddBlock(block); ok {
+		a.returnResult(ctx, result)
+	}
+	return nil
+}
+
+func (a *AggrSelector) send(ctx *actor.ActionContext, reaped []*types.StandardTransaction, isProposer bool, height uint64) {
+	ctx.ExecCtx.LogDebug("reap end", logger.F("reapeds", len(reaped)), logger.F("isProposer", isProposer))
 	if isProposer {
 		hashes := make([]evmCommon.Hash, len(reaped))
 		for i := range hashes {
 			hashes[i] = reaped[i].TxHash
 		}
 
-		a.MsgBroker.Send(actor.MsgMetaBlock, &mtypes.MetaBlock{
+		ctx.ExecCtx.Send(scommon.MsgMetaBlock, &mtypes.MetaBlock{
 			Txs:      [][]byte{},
 			Hashlist: a.opAdaptor.AppendList(hashes),
 		}, height)
@@ -257,45 +268,44 @@ func (a *AggrSelector) send(reaped []*types.StandardTransaction, isProposer bool
 			sendMsgs[i].Native.SkipAccountChecks = true
 			hashList[i] = msgs[i].TxHash
 		}
-		a.MsgBroker.Send(actor.MsgMessagersReaped, sendMsgs, height)
-		a.CheckPoint("send messagersReaped", zap.Int("msgs", len(msgs)))
+		ctx.ExecCtx.Send(scommon.MsgMessagersReaped, sendMsgs, height)
+		ctx.ExecCtx.LogInfo("send messagersReaped", logger.F("msgs", len(msgs)))
+
 		txhash := evmTypes.EmptyTxsHash
 		if len(transactions) > 0 {
 			txhash = evmTypes.DeriveSha(evmTypes.Transactions(transactions), trie.NewStackTrie(nil))
 		}
-		a.MsgBroker.Send(actor.MsgSelectedTxInfo, &mtypes.SelectedTxsInfo{
+		ctx.ExecCtx.Send(scommon.MsgSelectedTxInfo, &mtypes.SelectedTxsInfo{
 			Txhash:   txhash,
 			Txs:      txs,
 			HashList: hashList,
 		}, height)
-		a.MsgBroker.Send(actor.MsgSignerType, a.opAdaptor.SignerType, height)
-		a.CheckPoint("send selectedtx", zap.String("txhash", fmt.Sprintf("%x", txhash)))
+		ctx.ExecCtx.Send(scommon.MsgSignerType, a.opAdaptor.SignerType, height)
+		ctx.ExecCtx.LogInfo("send selectedtx", logger.F("txhash", fmt.Sprintf("%x", txhash)))
 	}
 }
 
-func (a *AggrSelector) GetStateDefinitions() map[int][]string {
-	return map[int][]string{
-
-		poolStateClean: {
-			actor.MsgNonceReady,
-			actor.MsgInitialization,
-		},
-		poolStateReap: {
-			actor.MsgMessager,
-			actor.MsgOpCommand,
-			actor.MsgReapCommand,
-		},
-		poolStateCherryPick: {
-			actor.MsgMessager,
-			actor.MsgReapinglist,
-		},
-		resultCollect: {
-			actor.MsgSelectedReceipts,
-			actor.MsgPendingBlock,
-		},
+func (a *AggrSelector) GetFSMRules() map[int]actor.FSMRule {
+	return map[int]actor.FSMRule{
+		poolStateClean: {Accept: []string{
+			scommon.MsgNonceReady,     // <- nonce-url
+			scommon.MsgInitialization, // <- storage.initilizator
+		}},
+		poolStateReap: {Accept: []string{ // <- proposer
+			scommon.MsgMessager,    // <- tpp
+			scommon.MsgReapCommand, // <- consensus
+			scommon.MsgOpCommand,   // <- op  from rpc or self
+		}},
+		poolStateCherryPick: {Accept: []string{ // <- non proposer
+			scommon.MsgMessager,    // <- tpp
+			scommon.MsgReapinglist, // <- consensus
+		}},
+		resultCollect: {Accept: []string{
+			scommon.MsgSelectedReceipts, // <- receipt aggregator
+			scommon.MsgPendingBlock,     // <- core
+		}},
 	}
 }
-
 func (a *AggrSelector) GetCurrentState() int {
 	return a.state
 }
@@ -307,9 +317,13 @@ func (a *AggrSelector) Height() uint64 {
 	return a.height
 }
 
-func (a *AggrSelector) ReceivedMessages(ctx context.Context, request *mtypes.OpRequest, response *mtypes.QueryResult) error {
-	a.MsgBroker.Send(actor.MsgOpCommand, request, a.height)
-	a.MsgBroker.Send(actor.MsgBlockParams, request.BlockParam, a.height)
+func (a *AggrSelector) RpcConfig() (string, int) {
+	return "pool", 20
+}
+func (a *AggrSelector) ReceivedMessages(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*mtypes.OpRequest)
+	ctx.ExecCtx.Send(scommon.MsgBlockParams, request.BlockParam, a.height)
+	ctx.ExecCtx.Send(scommon.MsgOpCommand, request, a.height)
 
 	var withdrawalsHash *evmCommon.Hash
 	if request.Withdrawals == nil {
@@ -320,23 +334,32 @@ func (a *AggrSelector) ReceivedMessages(ctx context.Context, request *mtypes.OpR
 		h := evmTypes.DeriveSha(evmTypes.Withdrawals(request.Withdrawals), trie.NewStackTrie(nil))
 		withdrawalsHash = &h
 	}
-	a.MsgBroker.Send(actor.MsgWithDrawHash, withdrawalsHash, a.height)
-	response.Data = <-a.resultch
+	ctx.ExecCtx.Send(scommon.MsgWithDrawHash, withdrawalsHash, a.height)
+
+	a.ctx = ctx.ExecCtx.Fork()
+
 	return nil
 }
-
-func (a *AggrSelector) Query(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
+func (a *AggrSelector) Query(ctx *actor.ActionContext) error {
+	// func (a *AggrSelector) Query(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
+	request := ctx.RPC.Request.(*mtypes.QueryRequest)
 	switch request.QueryType {
 	case mtypes.QueryType_Transaction:
 		hash := request.Data.(evmCommon.Hash)
 		st := a.pool.QueryByHash(evmCommon.BytesToHash(hash.Bytes()))
 		if st == nil {
-			response.Data = nil
+			// response.Data = nil
+			ctx.ExecCtx.SendRpcResponse("hash not found", &mtypes.QueryResult{
+				Data: nil,
+			})
 			return errors.New("hash not found")
 		}
 		txReal := st.TxRawData[1:]
 		otx := new(evmTypes.Transaction)
 		if err := otx.UnmarshalBinary(txReal); err != nil {
+			ctx.ExecCtx.SendRpcResponse("tx decode err", &mtypes.QueryResult{
+				Data: nil,
+			})
 			return errors.New("tx decode err")
 		}
 
@@ -357,8 +380,13 @@ func (a *AggrSelector) Query(ctx context.Context, request *mtypes.QueryRequest, 
 			R:        (*hexutil.Big)(r),
 			S:        (*hexutil.Big)(s),
 		}
-
-		response.Data = &transaction
+		ctx.ExecCtx.SendRpcResponse("", &mtypes.QueryResult{
+			Data: &transaction,
+		})
+	default:
+		ctx.ExecCtx.SendRpcResponse("query type not found", &mtypes.QueryResult{
+			Data: nil,
+		})
 	}
 	return nil
 }

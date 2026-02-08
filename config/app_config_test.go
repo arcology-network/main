@@ -18,131 +18,125 @@
 package config
 
 import (
+	"fmt"
 	"testing"
 
-	"github.com/arcology-network/streamer/actor"
-	brokerpk "github.com/arcology-network/streamer/broker"
-	intf "github.com/arcology-network/streamer/interface"
-	"github.com/arcology-network/streamer/mock/kafka"
-	"github.com/arcology-network/streamer/mock/rpc"
+	"github.com/spf13/viper"
 )
 
-func TestPrintWorkers(t *testing.T) {
-	workers := make(map[string]actor.IWorkerEx)
-	for name, creator := range actor.Factory.Registry() {
-		workers[name] = creator(1, "unittester")
-	}
-	PrintWorkers(workers)
-}
+func TestActorNode(t *testing.T) {
+	appConfigFile := "../modules/pool/pool.yaml"
+	appConfig, _ := LoadAppConfig(appConfigFile)
 
-// func TestPrintAllWorkers(t *testing.T) {
-// 	loadConfig(t, "./global.json", "./kafka.json", "./allapp.json")
-// }
+	// rawActors := appConfig.Actors
 
-// func TestPrintAllWorkersWithoutKafka(t *testing.T) {
-// 	loadConfig(t, "./global.json", "./kafka-empty.json", "./allapp.json")
-// }
+	// normalized := make(map[string]map[string]interface{})
 
-func TestLoadAppConfig(t *testing.T) {
-	config := LoadAppConfig("../modules/exec/exec.json")
-	t.Log(config)
-}
+	// for name, v := range rawActors {
+	// 	normalized[name] = normalizeMap(v).(map[string]interface{})
+	// }
 
-func TestLoadExecSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/exec/exec.json")
-}
+	// actorTree := ParseActors(normalized)
 
-func TestLoadArbitratorSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/arbitrator/arbitrator.json")
-}
-
-func TestLoadTppSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/tpp/tpp.json")
-}
-
-func TestLoadPoolSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/pool/pool.json")
-}
-
-func TestLoadCoreSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/core/core.json")
-}
-
-func TestLoadSchedulingSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/scheduler/scheduler.json")
-}
-
-// func TestLoadConsensusSvcConfig(t *testing.T) {
-// 	viper.Set("home", "./tmroot")
-// 	loadConfig(t, "./global.json", "./kafka.json", "../modules/consensus/consensus.json")
-// }
-
-func TestGatewaySvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/gateway/gateway.json")
-}
-
-func TestEthApiSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/eth-api/eth-api.json")
-}
-
-// func TestLoadNewStorageSvcConfig(t *testing.T) {
-// 	loadConfig(t, "./global.json", "./kafka.json", "../modules/storage/storage.json")
-// 	// writeArch("../modules/storage/storage.json", "storage.dot")
-// }
-
-func TestLoadNewReceiptHashingSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/receipt-hashing/receipt-hashing.json")
-	// writeArch("../modules/receipt-hashing/receipt-hashing.json", "receipt-hashing.dot")
-}
-
-func TestP2pGatewaySvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/p2p/p2p-gateway.json")
-}
-
-func TestP2pConnSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/p2p/p2p-conn.json")
-}
-
-func TestStateSyncSvcConfig(t *testing.T) {
-	loadConfig(t, "./global.json", "./kafka.json", "../modules/state-sync/state-sync.json")
-}
-
-func loadConfig(t *testing.T, globalConfigFile, kafkaConfigFile, appConfigFile string) {
-	DownloaderCreator = kafka.NewDownloaderCreator(t)
-	UploaderCreator = kafka.NewUploaderCreator(t)
-	intf.RPCCreator = rpc.NewRPCServerInitializer(t)
-
-	globalConfig := LoadGlobalConfig(globalConfigFile)
-	appConfig := LoadAppConfig(appConfigFile)
-	broker := brokerpk.NewStatefulStreamer()
-	workers := appConfig.InitApp(broker, globalConfig)
-	t.Log(workers)
-	PrintWorkers(workers)
-
-	var inputs []string
-	outputs := make(map[string]int)
-	for _, w := range workers {
-		in, _ := w.Inputs()
-		inputs = actor.MergeInputs(inputs, in)
-		outputs = actor.MergeOutputs(outputs, w.Outputs())
-	}
-	t.Log(inputs)
-	t.Log(outputs)
-
-	kafkaConfig := LoadKafkaConfig(kafkaConfigFile)
-	// GenerateDot(workers, kafkaConfig, "./arch.dot")
-	downloaders, uploaders := kafkaConfig.InitKafka(broker, workers, globalConfig, appConfig)
-	t.Log(downloaders)
-	t.Log(uploaders)
-
-	var msgs []*actor.Message
-	for _, worker := range workers {
-		if _, ok := worker.(actor.Initializer); ok {
-			msgs = append(msgs, worker.(actor.Initializer).InitMsgs()...)
+	actorTree := ParseActors(appConfig.Actors)
+	for name, actor := range actorTree {
+		fmt.Println(name)
+		fmt.Println(actor.Name)
+		fmt.Println("params:", actor.Params)
+		fmt.Println("subs:", len(actor.Subs))
+		for _, actorSub := range actor.Subs {
+			fmt.Println(actorSub.Name)
+			fmt.Println("params:", actorSub.Params)
+			fmt.Println("subs:", len(actorSub.Subs))
 		}
 	}
-	t.Log(msgs)
 }
+
+func TestLoadArbitrator(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/arbitrator/arbitrator.yaml")
+}
+
+func TestLoadConsensus(t *testing.T) {
+	viper.Set("home", "./tmroot")
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/consensus/consensus.yaml")
+}
+
+func TestLoadCoordinator(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/coordinator/coordinator.yaml")
+}
+
+func TestLoadCore(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/core/core.yaml")
+}
+
+func TestLoadEthApi(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/eth-api/eth-api.yaml")
+}
+
+func TestLoadExec(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/exec/exec.yaml")
+}
+
+func TestLoadGateway(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/gateway/gateway.yaml")
+}
+
+func TestLoadPool(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/pool/pool.yaml")
+}
+
+func TestLoadReceiptHashing(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/receipt-hashing/receipt-hashing.yaml")
+}
+
+func TestLoadScheduler(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/scheduler/scheduler.yaml")
+}
+
+func TestLoadStorage(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/storage/storage.yaml")
+}
+
+func TestLoadTpp(t *testing.T) {
+	LoadConf("./global.yaml", "./jet.yaml", "../modules/tpp/tpp.yaml")
+}
+
+// func loadConfig(t *testing.T, globalConfigFile, kafkaConfigFile, appConfigFile string) {
+// 	DownloaderCreator = kafka.NewDownloaderCreator(t)
+// 	UploaderCreator = kafka.NewUploaderCreator(t)
+// 	intf.RPCCreator = rpc.NewRPCServerInitializer(t)
+
+// 	globalConfig := LoadGlobalConfig(globalConfigFile)
+// 	appConfig := LoadAppConfig(appConfigFile)
+// 	broker := brokerpk.NewStatefulStreamer()
+// 	workers := appConfig.InitApp(broker, globalConfig)
+// 	t.Log(workers)
+// 	PrintWorkers(workers)
+
+// 	var inputs []string
+// 	outputs := make(map[string]int)
+// 	for _, w := range workers {
+// 		in, _ := w.Inputs()
+// 		inputs = actor.MergeInputs(inputs, in)
+// 		outputs = actor.MergeOutputs(outputs, w.Outputs())
+// 	}
+// 	t.Log(inputs)
+// 	t.Log(outputs)
+
+// 	kafkaConfig := LoadKafkaConfig(kafkaConfigFile)
+// 	// GenerateDot(workers, kafkaConfig, "./arch.dot")
+// 	downloaders, uploaders := kafkaConfig.InitKafka(broker, workers, globalConfig, appConfig)
+// 	t.Log(downloaders)
+// 	t.Log(uploaders)
+
+// 	var msgs []*actor.Message
+// 	for _, worker := range workers {
+// 		if _, ok := worker.(actor.Initializer); ok {
+// 			msgs = append(msgs, worker.(actor.Initializer).InitMsgs()...)
+// 		}
+// 	}
+// 	t.Log(msgs)
+// }
 
 // func TestGenerateArch(t *testing.T) {
 // 	DownloaderCreator = kafka.NewDownloaderCreator(t)
@@ -256,12 +250,12 @@ func loadConfig(t *testing.T, globalConfigFile, kafkaConfigFile, appConfigFile s
 // 	writeDot(g, "arch.dot")
 // }
 
-func writeArch(app string, file string) map[string]actor.IWorkerEx {
-	globalConfig := LoadGlobalConfig("./global.json")
-	appConfig := LoadAppConfig(app)
-	broker := brokerpk.NewStatefulStreamer()
-	workers := appConfig.InitApp(broker, globalConfig)
-	kafkaConfig := LoadKafkaConfig("./kafka.json")
-	GenerateDot(workers, kafkaConfig, file)
-	return workers
-}
+// func writeArch(app string, file string) map[string]actor.IWorkerEx {
+// 	globalConfig := LoadGlobalConfig("./global.json")
+// 	appConfig := LoadAppConfig(app)
+// 	broker := brokerpk.NewStatefulStreamer()
+// 	workers := appConfig.InitApp(broker, globalConfig)
+// 	kafkaConfig := LoadKafkaConfig("./kafka.json")
+// 	GenerateDot(workers, kafkaConfig, file)
+// 	return workers
+// }

@@ -19,20 +19,20 @@ package storage
 
 import (
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
+	scommon "github.com/arcology-network/streamer/common"
 )
 
 func init() {
 	actor.Factory.Register("gc", NewGc)
-	actor.Factory.Register("general_url", func(concurrency int, groupId string) actor.IWorkerEx {
-		return NewDBHandler(concurrency, groupId, actor.MsgEuResults, actor.MsgExecuted, actor.MsgGenerationReapingCompleted, actor.MsgBlockEnd,
-			NewGeneralUrl(actor.MsgApcHandle, actor.MsgGeneralDB, actor.MsgGeneralCompleted, actor.MsgGeneralPrecommit, actor.MsgGeneralCommit))
+	actor.Factory.Register("general_url", func() actor.Business {
+		return NewDBHandler(scommon.MsgEuResults, scommon.MsgExecuted, scommon.MsgGenerationReapingCompleted, scommon.MsgBlockEnd,
+			NewGeneralUrl(scommon.MsgApcHandle, scommon.MsgGeneralDB, scommon.MsgGeneralCompleted, scommon.MsgGeneralPrecommit, scommon.MsgGeneralCommit))
 	})
-	actor.Factory.Register("general_url_async", func(concurrency int, groupId string) actor.IWorkerEx {
-		return NewDBHandlerAsync(concurrency, groupId, actor.MsgGeneralDB, actor.MsgGeneralPrecommit, actor.MsgGeneralCommit, actor.MsgGeneralCompleted)
+	actor.Factory.Register("general_url_async", func() actor.Business {
+		return NewDBHandlerAsync(scommon.MsgGeneralDB, scommon.MsgGeneralPrecommit, scommon.MsgGeneralCommit, scommon.MsgGeneralCompleted)
 	})
 
-	intf.Factory.Register("global_lock", func(int, string) interface{} {
-		return NewModulesGuard()
-	})
+	// intf.Factory.Register("global_lock", func(int, string) interface{} {
+	// 	return NewModulesGuard()
+	// })
 }

@@ -27,55 +27,69 @@ import (
 	types "github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
-	"go.uber.org/zap"
 )
 
 type MakeBlock struct {
-	actor.WorkerThread
-	ParentTime uint64
-	// ParentHeader *evmTypes.Header
+	ParentTime  uint64
+	currentinfo *mtypes.ParentInfo
+	block       *mtypes.MonacoBlock
+	header      *evmTypes.Header
 }
 
 // return a Subscriber struct
-func NewMakeBlock(concurrency int, groupid string) actor.IWorkerEx {
+func NewMakeBlock() actor.Business {
 	in := MakeBlock{}
-	in.Set(concurrency, groupid)
 	return &in
 }
 
 func (m *MakeBlock) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgBlockStart,
-		actor.MsgSelectedTxInfo,
-		actor.MsgAcctHash,
-		actor.MsgReceiptInfo,
-		actor.MsgLocalParentInfo,
-		actor.MsgBlockParams,
-		actor.MsgWithDrawHash,
-		actor.MsgSignerType,
-		actor.MsgGenerationReapingCompleted,
-		actor.MsgInclusive,
+		scommon.MsgBlockStart,
+		scommon.MsgSelectedTxInfo,
+		scommon.MsgAcctHash,
+		scommon.MsgReceiptInfo,
+		scommon.MsgLocalParentInfo,
+		scommon.MsgBlockParams,
+		scommon.MsgWithDrawHash,
+		scommon.MsgSignerType,
+		scommon.MsgGenerationReapingCompleted,
+		scommon.MsgInclusive,
 	}, true
 }
 
 func (m *MakeBlock) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgAppHash:         1,
-		actor.MsgParentInfo:      1,
-		actor.MsgLocalParentInfo: 1,
-		actor.MsgPendingBlock:    1,
+		scommon.MsgAppHash:         1,
+		scommon.MsgParentInfo:      1,
+		scommon.MsgLocalParentInfo: 1,
+		scommon.MsgPendingBlock:    1,
 	}
 }
 
-func (m *MakeBlock) OnStart() {
+func (m *MakeBlock) PrimaryMsg() string {
+	return scommon.MsgInclusive
 }
 
-func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
+func (m *MakeBlock) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgBlockStart, m.makeBlock)
+	reg.Register(scommon.MsgSelectedTxInfo, m.makeBlock)
+	reg.Register(scommon.MsgAcctHash, m.makeBlock)
+	reg.Register(scommon.MsgReceiptInfo, m.makeBlock)
+	reg.Register(scommon.MsgLocalParentInfo, m.makeBlock)
+	reg.Register(scommon.MsgBlockParams, m.makeBlock)
+	reg.Register(scommon.MsgWithDrawHash, m.makeBlock)
+	reg.Register(scommon.MsgSignerType, m.makeBlock)
+	reg.Register(scommon.MsgGenerationReapingCompleted, m.makeBlock)
+	reg.Register(scommon.MsgInclusive, m.makeBlock)
+	reg.Register("sendResult", m.sendResult)
+}
+
+func (m *MakeBlock) makeBlock(ctx *actor.ActionContext) error {
 	txhash := evmCommon.Hash{}
 	accthash := evmCommon.Hash{}
 	rcpthash := evmCommon.Hash{}
@@ -91,99 +105,75 @@ func (m *MakeBlock) OnMessageArrived(msgs []*actor.Message) error {
 	var bloom evmTypes.Bloom
 	var withDrawHash *evmCommon.Hash
 	var SignerType uint8
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgSignerType:
-			SignerType = v.Data.(uint8)
-		case actor.MsgBlockStart:
-			blockStart = v.Data.(*actor.BlockStart)
 
+	for _, v := range ctx.Messages {
+		switch v.Name {
+		case scommon.MsgSignerType:
+			SignerType = v.Data.(uint8)
+		case scommon.MsgBlockStart:
+			blockStart = v.Data.(*actor.BlockStart)
 			height = blockStart.Height
-		case actor.MsgSelectedTxInfo:
+		case scommon.MsgSelectedTxInfo:
 			selectedInfo = v.Data.(*mtypes.SelectedTxsInfo)
-			isnil, err := m.IsNil(selectedInfo, "txSelected")
-			if isnil {
-				return err
-			}
 			txhash = selectedInfo.Txhash
-			// txSelected = info.Txs
-		case actor.MsgAcctHash:
-			// hash := v.Data.(*evmCommon.Hash)
+		case scommon.MsgAcctHash:
 			hash := v.Data.([32]byte)
-			isnil, err := m.IsNil(hash, "accthash")
-			if isnil {
-				return err
-			}
 			accthash = evmCommon.BytesToHash([]byte(hash[:]))
-			m.AddLog(log.LogLevel_Info, "received accthash", zap.String("accthash", fmt.Sprintf("%x", accthash)))
-		case actor.MsgReceiptInfo:
+			ctx.ExecCtx.LogInfo("received accthash", logger.F("accthash", fmt.Sprintf("%x", accthash)))
+		case scommon.MsgReceiptInfo:
 			info := v.Data.(*mtypes.ReceiptInfo)
-			isnil, err := m.IsNil(info, "receipt information")
-			if isnil {
-				return err
-			}
 			rcpthash = info.RcptHash
 			gasused = info.Gasused
 			bloom = info.BloomInfo
-		case actor.MsgLocalParentInfo:
+		case scommon.MsgLocalParentInfo:
 			parentinfo = v.Data.(*mtypes.ParentInfo)
-			isnil, err := m.IsNil(parentinfo, "parentinfo")
-			if isnil {
-				return err
-			}
-		case actor.MsgBlockParams:
+		case scommon.MsgBlockParams:
 			blockParams = v.Data.(*mtypes.BlockParams)
-			isnil, err := m.IsNil(blockParams, "blockParams")
-			if isnil {
-				return err
-			}
-		case actor.MsgWithDrawHash:
+		case scommon.MsgWithDrawHash:
 			withDrawHash = v.Data.(*evmCommon.Hash)
-		case actor.MsgGenerationReapingCompleted:
-		case actor.MsgInclusive:
+		case scommon.MsgGenerationReapingCompleted:
+		case scommon.MsgInclusive:
 			inclusivelist = v.Data.(*types.InclusiveList).HashList
 		}
 	}
 
-	m.CheckPoint("start makeBlock")
-	m.AddLog(log.LogLevel_Info, "hashes", zap.Uint64("gasused", gasused), zap.String("Root", fmt.Sprintf("%x", accthash.Bytes())), zap.String("rcpthash", fmt.Sprintf("%x", rcpthash.Bytes())), zap.String("txhash", fmt.Sprintf("%x", txhash.Bytes())))
+	ctx.ExecCtx.LogInfo("start makeBlock", logger.F("gasused", gasused), logger.F("Root", fmt.Sprintf("%x", accthash.Bytes())), logger.F("txhash", fmt.Sprintf("%x", txhash.Bytes())))
 
-	// if len(txSelected) == 0 {
-	// 	txhash = evmTypes.EmptyTxsHash
-	// 	rcpthash = evmTypes.EmptyReceiptsHash
-	// }
 	txSelected = OrderTxs(selectedInfo, inclusivelist)
 
 	header := m.CreateHerder(parentinfo, height, blockStart, accthash, gasused, txhash, rcpthash, blockParams, bloom, withDrawHash)
-	block, err := CreateBlock(header, txSelected, SignerType)
+	var err error
+	m.block, err = CreateBlock(header, txSelected, SignerType)
 	if err != nil {
-		m.AddLog(log.LogLevel_Error, "block header eccode err", zap.String("err", err.Error()))
+		ctx.ExecCtx.LogErr("block header eccode err", logger.F("err", err.Error()))
 		return err
 	}
 
 	// save cache root and header hash
-	currentinfo := &mtypes.ParentInfo{
+	m.currentinfo = &mtypes.ParentInfo{
 		ParentHash:    header.Hash(),
 		ParentRoot:    accthash,
 		ExcessBlobGas: *header.ExcessBlobGas,
 		BlobGasUsed:   *header.BlobGasUsed,
 	}
-	// m.ParentHeader = header
 
-	var na int
-	intf.Router.Call("transactionalstore", "AddData", &transactional.AddDataRequest{
-		Data:        currentinfo,
+	m.header = header
+	ctx.ExecCtx.InvokeRPC("transactionalstore", "AddData", &transactional.AddDataRequest{
+		Data:        m.currentinfo,
 		RecoverFunc: "parentinfo",
-	}, &na)
+	}, "sendResult")
 
-	m.MsgBroker.Send(actor.MsgAppHash, block.Hash())
-	m.MsgBroker.Send(actor.MsgPendingBlock, block)
-	m.MsgBroker.Send(actor.MsgParentInfo, currentinfo)
-	m.MsgBroker.Send(actor.MsgLocalParentInfo, currentinfo)
-	m.CheckPoint("send appHash")
+	return nil
+}
 
-	m.ParentTime = header.Time
+func (m *MakeBlock) sendResult(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.Send(scommon.MsgAppHash, m.block.Hash())
+	ctx.ExecCtx.Send(scommon.MsgPendingBlock, m.block)
+	ctx.ExecCtx.Send(scommon.MsgParentInfo, m.currentinfo)
+	ctx.ExecCtx.Send(scommon.MsgLocalParentInfo, m.currentinfo)
 
+	ctx.ExecCtx.LogInfo("send appHash")
+	m.ParentTime = m.header.Time
 	return nil
 }
 
@@ -200,12 +190,7 @@ func OrderTxs(selectedInfo *mtypes.SelectedTxsInfo, inclusivelist []evmCommon.Ha
 }
 
 func (m *MakeBlock) CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, blockstart *actor.BlockStart, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, blockParams *mtypes.BlockParams, bloom evmTypes.Bloom, withdrawhash *evmCommon.Hash) *evmTypes.Header {
-	// var excessBlobGas uint64
-	// if m.ParentHeader == nil {
-	// 	excessBlobGas = eip4844.CalcExcessBlobGas(0, 0)
-	// } else {
 	excessBlobGas := eip4844.CalcExcessBlobGas(parentinfo.ExcessBlobGas, parentinfo.BlobGasUsed)
-	// }
 
 	headtime := blockstart.Timestamp.Uint64()
 	if blockParams.Times > 0 {
@@ -251,7 +236,6 @@ func (m *MakeBlock) CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, b
 }
 
 func CreateBlock(header *evmTypes.Header, txSelected [][]byte, SignerType uint8) (*mtypes.MonacoBlock, error) {
-	// ethHeader, err := evmRlp.EncodeToBytes(&header)
 	ethHeader, err := header.MarshalJSON()
 	if err != nil {
 		return nil, err

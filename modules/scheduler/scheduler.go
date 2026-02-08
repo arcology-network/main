@@ -18,40 +18,41 @@
 package scheduler
 
 import (
-	"context"
-	"sync"
+	"encoding/json"
 
 	"github.com/arcology-network/common-lib/common"
 	types "github.com/arcology-network/common-lib/types"
 
 	// engine "github.com/arcology-network/main/modules/scheduler/lib"
 
-	"github.com/arcology-network/main/modules/storage"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
-	"github.com/arcology-network/streamer/log"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
-	"go.uber.org/zap"
 
 	eucommon "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	scheduler "github.com/arcology-network/scheduler"
 	"github.com/arcology-network/storage-committer/type/univalue"
+
+	scommon "github.com/arcology-network/streamer/common"
 )
 
 const (
 	MaxBlockSize = 50000
 )
 
-type Scheduler struct {
-	actor.WorkerThread
+const (
+	scheduleStateInit = iota
+	scheduleStateReady
+	scheduleStateExec
+	scheduleStateApc
+	scheduleStateFeedback
+)
 
-	schdEngine    *scheduler.Scheduler
-	initOnce      sync.Once
-	parallelism   int
-	conflictFile  string
-	execBatchSize int
+type Scheduler struct {
+	schdEngine   *scheduler.Scheduler
+	conflictFile string
 
 	// Data structures used in one block.
 	context       *processContext
@@ -61,159 +62,193 @@ type Scheduler struct {
 	// Data structures used all the time.
 	contractDict map[evmCommon.Address]struct{}
 
-	generationApcHandlerCh chan int
+	state int
+
+	schdState *mtypes.SchdState
 }
 
-var (
-	schdInstance actor.IWorkerEx
-	initSchdOnce sync.Once
-)
-
-func NewScheduler(concurrency int, groupId string) actor.IWorkerEx {
-	initSchdOnce.Do(func() {
-		schdEngine, _ := scheduler.NewScheduler("", false)
-		schd := &Scheduler{
-			schdEngine:             schdEngine,
-			context:                createProcessContext(),
-			transfers:              make([]*eucommon.StandardMessage, 0, MaxBlockSize),
-			contractCalls:          make([]*eucommon.StandardMessage, 0, MaxBlockSize),
-			contractDict:           make(map[evmCommon.Address]struct{}),
-			generationApcHandlerCh: make(chan int),
-		}
-		schd.Set(concurrency, groupId)
-		schdInstance = schd
-	})
-	return schdInstance
+func NewScheduler() actor.Business {
+	schdEngine, _ := scheduler.NewScheduler("", false)
+	return &Scheduler{
+		schdEngine:    schdEngine,
+		context:       createProcessContext(),
+		transfers:     make([]*eucommon.StandardMessage, 0, MaxBlockSize),
+		contractCalls: make([]*eucommon.StandardMessage, 0, MaxBlockSize),
+		contractDict:  make(map[evmCommon.Address]struct{}),
+		state:         scheduleStateInit,
+	}
 }
 
 func (schd *Scheduler) Inputs() ([]string, bool) {
 	return []string{
-		actor.CombinedName(actor.MsgMessagersReaped, actor.MsgBlockStart),
-		// actor.MsgApcHandle,
-		actor.MsgFeedBacks,
+		scommon.MsgInitScheduletate,
+		actor.CombinedName(scommon.MsgMessagersReaped, scommon.MsgBlockStart),
+		scommon.MsgFeedBacks,
+		scommon.MsgExecGeneration,
+		scommon.MsgApcHandle,
 	}, false
 }
 
 func (schd *Scheduler) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgInclusive:                  1,
-		actor.MsgExecTime:                   1,
-		actor.MsgSpawnedRelations:           1,
-		actor.MsgSchdState:                  1,
-		actor.MsgGenerationReapingList:      1,
-		actor.MsgGenerationReapingCompleted: 1,
+		scommon.MsgInclusive:                  1,
+		scommon.MsgSchdState:                  1,
+		scommon.MsgGenerationReapingList:      1,
+		scommon.MsgGenerationReapingCompleted: 1,
+		scommon.MsgExecGeneration:             1,
 	}
 }
 
 func (schd *Scheduler) Config(params map[string]interface{}) {
-	schd.execBatchSize = int(params["batch_size"].(float64))
-	schd.parallelism = int(params["parallelism"].(float64))
+	execBatchSize := params["batch_size"].(int)
 	schd.conflictFile = params["conflict_file"].(string)
+	jsonStr, _ := json.Marshal(params["executors"])
+	confs := []*mtypes.ExecutorConf{}
+	json.Unmarshal(jsonStr, &confs)
+
+	schd.context.init(execBatchSize, confs)
 }
 
-func (schd *Scheduler) OnStart() {}
+func (schd *Scheduler) GetFSMRules() map[int]actor.FSMRule {
+	return map[int]actor.FSMRule{
+		scheduleStateInit: {Accept: []string{scommon.MsgInitScheduletate}},
+		scheduleStateReady: {Accept: []string{
+			actor.CombinedName(scommon.MsgMessagersReaped, scommon.MsgBlockStart),
+		}},
+		scheduleStateExec:     {Accept: []string{scommon.MsgExecGeneration}},
+		scheduleStateApc:      {Accept: []string{scommon.MsgApcHandle}},
+		scheduleStateFeedback: {Accept: []string{scommon.MsgFeedBacks}},
+	}
+}
 
-func (schd *Scheduler) OnMessageArrived(msgs []*actor.Message) error {
-	schd.initOnce.Do(func() {
-		schd.context.init(schd.execBatchSize)
-		schtyp.NewScheduleLoader(schd.schdEngine).Init(schd.conflictFile)
+func (schd *Scheduler) GetCurrentState() int {
+	return schd.state
+}
 
-		var states []storage.SchdState
-		var na int
-		intf.Router.Call("schdstore", "Load", &na, &states)
-		previous := uint64(0)
-		for _, state := range states {
-			if state.Height == previous {
-				continue
-			}
+func (schd *Scheduler) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgInitScheduletate, schd.InitSchedule)
+	reg.Register(actor.CombinedName(scommon.MsgMessagersReaped, scommon.MsgBlockStart), schd.startCreateGenerations)
+	reg.Register(scommon.MsgExecGeneration, schd.startGenerationExec)
+	reg.Register("onExecResult", schd.onExecResult)
+	reg.Register("onArbResult", schd.onArbResult)
+	reg.Register(scommon.MsgApcHandle, schd.waitingApc)
+	reg.Register("afterSaveSchedule", schd.afterSaveSchedule)
+	reg.Register(scommon.MsgFeedBacks, schd.feedback)
+}
 
-			previous = state.Height
-			common.MergeMaps(schd.contractDict, common.SliceToDict(state.NewContracts))
-
-			for i := range state.ConflictionLefts {
-				schd.schdEngine.Add(state.ConflictionLefts[i], state.ConflictionLeftSigns[i], state.ConflictionRights[i], state.ConflictionRightSigns[i])
-			}
+func (schd *Scheduler) InitSchedule(ctx *actor.ActionContext) error {
+	schtyp.NewScheduleLoader(schd.schdEngine).Init(schd.conflictFile)
+	states := ctx.Messages[0].Data.([]mtypes.SchdState)
+	previous := uint64(0)
+	for _, state := range states {
+		if state.Height == previous {
+			continue
 		}
-	})
 
-	var stdMsgs []*eucommon.StandardMessage
-	for _, msg := range msgs {
-		switch msg.Name {
-		case actor.CombinedName(actor.MsgMessagersReaped, actor.MsgBlockStart):
-			combined := msg.Data.(*actor.CombinerElements)
-			schd.context.timestamp = combined.Get(actor.MsgBlockStart).Data.(*actor.BlockStart).Timestamp
-			schd.CheckPoint("received messagersReaped")
-			stdMsgs = combined.Get(actor.MsgMessagersReaped).Data.([]*eucommon.StandardMessage)
-			schd.ProcessMsgs(msgs[0], stdMsgs, msg.Height)
-		case actor.MsgFeedBacks:
-			univalues := msg.Data.([]*univalue.Univalue)
-			schd.schdEngine.Import(univalues)
+		previous = state.Height
+		common.MergeMaps(schd.contractDict, common.SliceToDict(state.NewContracts))
+
+		for i := range state.ConflictionLefts {
+			schd.schdEngine.Add(state.ConflictionLefts[i], state.ConflictionLeftSigns[i], state.ConflictionRights[i], state.ConflictionRightSigns[i])
 		}
 	}
+
+	schd.ChangeState(ctx, scheduleStateReady, "scheduleStateReady")
 	return nil
 }
 
-func (schd *Scheduler) waitingApcHandler() {
-	schd.CheckPoint("Waiting apchandler .......")
-	<-schd.generationApcHandlerCh
-	schd.CheckPoint("Got apchandler")
-}
+func (schd *Scheduler) startCreateGenerations(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	combined := msg.Data.(*actor.CombinerElements)
+	schd.context.timestamp = combined.Get(scommon.MsgBlockStart).Data.(*actor.BlockStart).Timestamp
+	ctx.ExecCtx.LogInfo("received messagersReaped")
+	stdMsgs := combined.Get(scommon.MsgMessagersReaped).Data.([]*eucommon.StandardMessage)
 
-func (schd *Scheduler) ProcessMsgs(msg *actor.Message, stdMsgs []*eucommon.StandardMessage, height uint64) error {
-	schd.CheckPoint("start new schedule", zap.Int("messages", len(stdMsgs)))
+	schd.context.onNewBlock(msg.Height)
+
+	ctx.ExecCtx.LogInfo("start new schedule", logger.F("messages", len(stdMsgs)))
 	schd.splitMessagesByType(stdMsgs)
 
-	schd.context.onNewBlock(height)
-	schd.context.msgTemplate = msg
-	schd.context.logger = schd.GetLogger(schd.AddLog(log.LogLevel_Info, "Before first generation"))
-	schd.context.parallelism = schd.parallelism
-	gens := schd.createGenerations()
+	schd.context.onStartBlock(schd.createGenerations())
 
-	// for i := range gens {
-	// 	for j := range gens[i].sequences {
-	// 		fmt.Printf("------------main/modules/scheduler/scheduler.go-------i:%v,j:%v,size:%v,parallel:%v\n", i, j, len(gens[i].sequences[j].Msgs), gens[i].sequences[j].Parallel)
-	// 		if i == 1 && len(gens[i].sequences[j].Msgs) == 1 {
-	// 			fmt.Printf("------------main/modules/scheduler/scheduler.go-------def hash:%x\n", gens[i].sequences[j].Msgs[0].TxHash)
-	// 		}
-	// 	}
-	// }
-	for i, gen := range gens {
-		schd.context.onNewGeneration()
-		generationList := gen.process()
-		generationIdx := i + 1 //for next generation execute
-		if generationIdx == len(gens) {
-			generationIdx = 0 //for next height
-		}
-		generationList.GenerationIdx = uint32(generationIdx)
-		schd.MsgBroker.Send(actor.MsgGenerationReapingList, generationList)
-		schd.waitingApcHandler()
-	}
-	if len(gens) == 0 {
-		//this is a empty block
-		schd.MsgBroker.Send(actor.MsgGenerationReapingList, &types.InclusiveList{
-			HashList:      []evmCommon.Hash{},
-			Successful:    []bool{},
-			GenerationIdx: 0,
+	ctx.ExecCtx.Send(scommon.MsgExecGeneration, "")
+
+	schd.ChangeState(ctx, scheduleStateExec, "scheduleStateExec")
+	return nil
+}
+
+func (schd *Scheduler) startGenerationExec(ctx *actor.ActionContext) error {
+	if schd.context.generationCount == 0 {
+		ctx.ExecCtx.Send(scommon.MsgGenerationReapingList, &types.InclusiveList{
+			HashList:          []evmCommon.Hash{},
+			Successful:        []bool{},
+			NextGenerationIdx: 0,
 		})
-		schd.waitingApcHandler()
+
+		schd.ChangeState(ctx, scheduleStateApc, "scheduleStateApc")
+	} else {
+		schd.context.onNewGeneration()
+		schd.context.GetCurrentGeneration().startProcess(ctx.ExecCtx)
+	}
+	return nil
+}
+func (schd *Scheduler) onExecResult(ctx *actor.ActionContext) error {
+	resp := ctx.Messages[0].Data.(*mtypes.ExecutorResponses)
+	currentGeneration := schd.context.GetCurrentGeneration()
+	if !currentGeneration.OnExecResult(resp) {
+		ctx.ExecCtx.LogDebug("OnExecResult next", logger.F("list", schd.context.executed))
+		currentGeneration.NextProcess(ctx.ExecCtx, int(resp.ExecId))
+		return nil
+	} else {
+		ctx.ExecCtx.LogDebug("OnExecResult end", logger.F("list", schd.context.executed))
 	}
 
-	schd.MsgBroker.Send(actor.MsgGenerationReapingCompleted, 1)
+	//start arbitrate
+	currentGeneration.StartArbitrate(ctx.ExecCtx)
+	return nil
+}
+
+func (schd *Scheduler) onArbResult(ctx *actor.ActionContext) error {
+	resp := ctx.Messages[0].Data.(*mtypes.ArbitratorResponse)
+	currentGen := schd.context.GetCurrentGeneration()
+
+	currentGen.onArbitrateResult(ctx.ExecCtx, resp)
+	list := currentGen.CollectGenerationResult()
+	ctx.ExecCtx.LogDebug("onArbResult", logger.F("list", schd.context.executed))
+	ctx.ExecCtx.LogDebug("MsgGenerationReapingList", logger.F("list", list))
+	ctx.ExecCtx.Send(scommon.MsgGenerationReapingList, list, schd.context.height)
+
+	schd.ChangeState(ctx, scheduleStateApc, "scheduleStateApc")
+	return nil
+}
+
+func (schd *Scheduler) waitingApc(ctx *actor.ActionContext) error {
+	if schd.context.generationCount > 0 && schd.context.currentGenerationID+1 < schd.context.generationCount {
+		//next generation
+		ctx.ExecCtx.Send(scommon.MsgExecGeneration, "")
+		return nil
+	}
+
+	ctx.ExecCtx.Send(scommon.MsgGenerationReapingCompleted, 1)
 
 	// Send summarized results.
 	// State changes of Scheduler.
 	conflictL, conflictR, conflictSL, conflictSR := schd.context.conflicts.Format()
-	schdState := &storage.SchdState{
-		Height:                height,
+	schd.schdState = &mtypes.SchdState{
+		Height:                ctx.Messages[0].Height,
 		NewContracts:          schd.context.newContracts,
 		ConflictionLefts:      conflictL,
 		ConflictionRights:     conflictR,
 		ConflictionLeftSigns:  conflictSL,
 		ConflictionRightSigns: conflictSR,
 	}
-	var na int
-	intf.Router.Call("schdstore", "Save", schdState, &na)
-	schd.MsgBroker.Send(actor.MsgSchdState, schdState)
+
+	ctx.ExecCtx.InvokeRPC("schdstore", "Save", schd.schdState, "afterSaveSchedule")
+	return nil
+}
+
+func (schd *Scheduler) afterSaveSchedule(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.Send(scommon.MsgSchdState, schd.schdState)
 	// Inclusive list.
 	flags := make([]bool, len(schd.context.executed))
 	for i, hash := range schd.context.executed {
@@ -221,46 +256,42 @@ func (schd *Scheduler) ProcessMsgs(msg *actor.Message, stdMsgs []*eucommon.Stand
 			flags[i] = true
 		}
 	}
-	schd.MsgBroker.Send(actor.MsgInclusive, &types.InclusiveList{
-		HashList:      schd.context.executed,
-		Successful:    flags,
-		GenerationIdx: 0,
+	ctx.ExecCtx.Send(scommon.MsgInclusive, &types.InclusiveList{
+		HashList:          schd.context.executed,
+		Successful:        flags,
+		NextGenerationIdx: 0,
 	})
-	schd.CheckPoint("send inclusive")
+
+	ctx.ExecCtx.LogInfo("send inclusive", logger.F("count", len(flags)))
 
 	// Update states of scheduler.
 	common.MergeMaps(schd.contractDict, common.SliceToDict(schd.context.newContracts))
-	if len(conflictL) > 0 {
+	if len(schd.schdState.ConflictionLefts) > 0 {
 
 		// Add all the conflicted addresses into contractDict,
 		// since we may miss some contract deployments.
-		common.MergeMaps(schd.contractDict, common.SliceToDict(conflictL))
-		common.MergeMaps(schd.contractDict, common.SliceToDict(conflictR))
+		common.MergeMaps(schd.contractDict, common.SliceToDict(schd.schdState.ConflictionLefts))
+		common.MergeMaps(schd.contractDict, common.SliceToDict(schd.schdState.ConflictionRights))
 	}
 	for _, ci := range schd.context.conflicts.Conflicts {
 		schd.schdEngine.Add(ci.LeftAddress, ci.LeftSign, ci.RightAddress, ci.RightSign)
 	}
+
+	schd.ChangeState(ctx, scheduleStateFeedback, "scheduleStateFeedback")
 	return nil
 }
 
-func (schd *Scheduler) SetParallelism(
-	ctx context.Context,
-	request *mtypes.ClusterConfig,
-	response *mtypes.SetReply,
-) error {
-	schd.parallelism = request.Parallelism
+func (schd *Scheduler) ChangeState(ctx *actor.ActionContext, state int, stateName string) error {
+	schd.state = state
+	ctx.ExecCtx.LogDebug("******business state change into " + stateName)
 	return nil
 }
 
-func (schd *Scheduler) NotifyApchandler(
-	ctx context.Context,
-	request uint64,
-	response *int,
-) error {
-	if request == 0 {
-		return nil
-	}
-	schd.generationApcHandlerCh <- 1
+func (schd *Scheduler) feedback(ctx *actor.ActionContext) error {
+	univalues := ctx.Messages[0].Data.([]*univalue.Univalue)
+	schd.schdEngine.Import(univalues)
+
+	schd.ChangeState(ctx, scheduleStateReady, "scheduleStateReady")
 	return nil
 }
 

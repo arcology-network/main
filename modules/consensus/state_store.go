@@ -22,7 +22,7 @@ import (
 	tmproto "github.com/arcology-network/consensus-engine/proto/tendermint/types"
 	"github.com/arcology-network/consensus-engine/state"
 	contyp "github.com/arcology-network/consensus-engine/types"
-	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/actor"
 )
 
 type SaveABCIResponsesRequest struct {
@@ -37,10 +37,16 @@ type PruneStatesRequest struct {
 
 type stateStore struct {
 	service string
+	sender  actor.OutboundSender
+	from    string
 }
 
-func newStateStore(service string) state.Store {
-	return &stateStore{service: service}
+func newStateStore(service string, sender actor.OutboundSender) state.Store {
+	return &stateStore{
+		service: service,
+		sender:  sender,
+		from:    "consensus",
+	}
 }
 
 func (ss *stateStore) LoadFromDBOrGenesisFile(string) (state.State, error) {
@@ -48,58 +54,68 @@ func (ss *stateStore) LoadFromDBOrGenesisFile(string) (state.State, error) {
 }
 
 func (ss *stateStore) LoadFromDBOrGenesisDoc(genesisDoc *contyp.GenesisDoc) (state.State, error) {
-	var state state.State
-	err := intf.Router.Call(ss.service, "LoadFromDBOrGenesisDoc", genesisDoc, &state)
-	return state, err
+	state1, err := ss.sender.SendSync(ss.service, "LoadFromDBOrGenesisDoc", genesisDoc, 0, ss.from)
+	if err != nil {
+		return state.State{}, err
+	}
+	return state1.(state.State), nil
 }
 
 func (ss *stateStore) Load() (state.State, error) {
-	var na int
-	var state state.State
-	err := intf.Router.Call(ss.service, "Load", &na, &state)
-	return state, err
+	state1, err := ss.sender.SendSync(ss.service, "Load", "", 0, ss.from)
+	if err != nil {
+		return state.State{}, err
+	}
+	return state1.(state.State), nil
 }
 
 func (ss *stateStore) LoadValidators(height int64) (*contyp.ValidatorSet, error) {
-	var vs *contyp.ValidatorSet
-	err := intf.Router.Call(ss.service, "LoadValidators", &height, &vs)
-	return vs, err
+	vs, err := ss.sender.SendSync(ss.service, "LoadValidators", height, 0, ss.from)
+	if err != nil {
+		return nil, err
+	}
+	return vs.(*contyp.ValidatorSet), nil
 }
 
 func (ss *stateStore) LoadABCIResponses(height int64) (*tmstate.ABCIResponses, error) {
-	var responses *tmstate.ABCIResponses
-	err := intf.Router.Call(ss.service, "LoadABCIResponses", &height, &responses)
-	return responses, err
+	responses, err := ss.sender.SendSync(ss.service, "LoadABCIResponses", height, 0, ss.from)
+	if err != nil {
+		return nil, err
+	}
+	return responses.(*tmstate.ABCIResponses), nil
 }
 
 func (ss *stateStore) LoadConsensusParams(height int64) (tmproto.ConsensusParams, error) {
-	var params tmproto.ConsensusParams
-	err := intf.Router.Call(ss.service, "LoadConsensusParams", &height, &params)
-	return params, err
+	params, err := ss.sender.SendSync(ss.service, "LoadConsensusParams", height, 0, ss.from)
+	if err != nil {
+		return tmproto.ConsensusParams{}, err
+	}
+	return params.(tmproto.ConsensusParams), nil
 }
 
 func (ss *stateStore) Save(state state.State) error {
-	var na int
-	return intf.Router.Call(ss.service, "Save", &state, &na)
+	_, err := ss.sender.SendSync(ss.service, "Save", &state, 0, ss.from)
+	return err
 }
 
 func (ss *stateStore) SaveABCIResponses(height int64, responses *tmstate.ABCIResponses) error {
-	var na int
-	return intf.Router.Call(ss.service, "SaveABCIResponses", &SaveABCIResponsesRequest{
+	_, err := ss.sender.SendSync(ss.service, "SaveABCIResponses", &SaveABCIResponsesRequest{
 		Height:        height,
 		ABCIResponses: responses,
-	}, &na)
+	}, 0, ss.from)
+	return err
 }
 
 func (ss *stateStore) Bootstrap(state state.State) error {
-	var na int
-	return intf.Router.Call(ss.service, "Bootstrap", &state, &na)
+	_, err := ss.sender.SendSync(ss.service, "Bootstrap", &state, 0, ss.from)
+	return err
 }
 
 func (ss *stateStore) PruneStates(from int64, to int64) error {
-	var na int
-	return intf.Router.Call(ss.service, "PruneStates", &PruneStatesRequest{
+	_, err := ss.sender.SendSync(ss.service, "PruneStates", &PruneStatesRequest{
 		From: from,
 		To:   to,
-	}, &na)
+	}, 0, ss.from)
+	return err
+
 }

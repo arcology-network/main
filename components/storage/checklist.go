@@ -18,14 +18,13 @@
 package storage
 
 import (
+	"context"
 	"crypto/sha256"
 	"sync"
 	"time"
 
-	"github.com/arcology-network/streamer/actor"
 	kafkalib "github.com/arcology-network/streamer/kafka/lib"
-	"github.com/arcology-network/streamer/log"
-	"go.uber.org/zap"
+	"github.com/arcology-network/streamer/logger"
 )
 
 type CheckedListItem struct {
@@ -66,10 +65,10 @@ func (t *CheckedList) timerClear() {
 			clearCounter++
 		}
 	}
-	log.Logger.AddLog(log.Logger.GetLogId(), log.LogLevel_Debug, "checklist", "unsigner", "checklist hit rate", log.LogType_Inlog, 0, 0, 0, 0, zap.Uint64("checked", t.totals), zap.Uint64("hit", t.hits))
+	logger.Log.Debug(context.Background(), "CheckedList", "checklist hit rate", logger.F("checked", t.totals), logger.F("hit", t.hits))
 }
 
-func (t *CheckedList) ExistTx(tx []byte, from byte, inlog *actor.WorkerThreadLogger) bool {
+func (t *CheckedList) ExistTx(tx []byte, from byte) bool {
 	t.lock.Lock()
 	defer t.lock.Unlock()
 	t.totals = t.totals + 1
@@ -84,6 +83,5 @@ func (t *CheckedList) ExistTx(tx []byte, from byte, inlog *actor.WorkerThreadLog
 		return false
 	}
 	t.hits = t.hits + 1
-	//inlog.Log(log.LogLevel_Debug, "checkingTxs repeated", zap.Uint64("hit", t.hits), zap.Time("firstTime", first.createTime), zap.Int8("firstFrom", int8(first.from)), zap.Int8("txFrom", int8(from)), zap.String("tx", fmt.Sprintf("%x", tx)))
 	return true
 }

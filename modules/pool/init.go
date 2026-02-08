@@ -21,32 +21,31 @@ import (
 	"github.com/arcology-network/main/components/storage"
 	"github.com/arcology-network/streamer/actor"
 	aggr "github.com/arcology-network/streamer/aggregator/v3"
-	intf "github.com/arcology-network/streamer/interface"
+	scommon "github.com/arcology-network/streamer/common"
 )
 
 func init() {
 	actor.Factory.Register("pool_aggr_selector", NewAggrSelector)
-	actor.Factory.Register("nonce_url", func(concurrency int, groupId string) actor.IWorkerEx {
-		return storage.NewDBHandler(concurrency, groupId, actor.MsgNonceEuResults, actor.MsgCommitNonceUrl, actor.MsgGenerationReapingCompleted, actor.MsgBlockEnd,
-			storage.NewGeneralUrl(actor.MsgNonceReady, actor.MsgNonceDB, actor.MsgNonceCompleted, actor.MsgNoncePrecommit, actor.MsgNonceCommit))
+	actor.Factory.Register("nonce_url", func() actor.Business {
+		return storage.NewDBHandler(scommon.MsgNonceEuResults, scommon.MsgCommitNonceUrl, scommon.MsgGenerationReapingCompleted, scommon.MsgBlockEnd,
+			storage.NewGeneralUrl(scommon.MsgNonceReady, scommon.MsgNonceDB, scommon.MsgNonceCompleted, scommon.MsgNoncePrecommit, scommon.MsgNonceCommit))
 	})
 
-	actor.Factory.Register("nonce_url_async", func(concurrency int, groupId string) actor.IWorkerEx {
-		return storage.NewDBHandlerAsync(concurrency, groupId, actor.MsgNonceDB, actor.MsgNoncePrecommit, actor.MsgNonceCommit, actor.MsgNonceCompleted)
+	actor.Factory.Register("nonce_url_async", func() actor.Business {
+		return storage.NewDBHandlerAsync(scommon.MsgNonceDB, scommon.MsgNoncePrecommit, scommon.MsgNonceCommit, scommon.MsgNonceCompleted)
 	})
 
-	actor.Factory.Register("stateless_euresult_aggr_selector4pool", func(concurrency int, groupId string) actor.IWorkerEx {
+	actor.Factory.Register("stateless_euresult_aggr_selector4pool", func() actor.Business {
 		return aggr.NewAggrSelector(
-			concurrency,
-			groupId,
-			actor.MsgNonceEuResults,
-			actor.MsgGenerationReapingList,
-			actor.MsgBlockEnd,
+			"stateless_euresult_aggr_selector4pool",
+			scommon.MsgNonceEuResults,
+			scommon.MsgGenerationReapingList,
+			scommon.MsgBlockEnd,
 			&aggr.EuResultOperation{},
 		)
 	})
 
-	intf.Factory.Register("pool", func(concurrency int, groupId string) interface{} {
-		return NewAggrSelector(concurrency, groupId)
-	})
+	// intf.Factory.Register("pool", func(concurrency int, groupId string) interface{} {
+	// 	return NewAggrSelector(concurrency, groupId)
+	// })
 }

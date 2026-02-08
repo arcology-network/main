@@ -18,9 +18,8 @@
 package storage
 
 import (
-	"context"
-
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	"github.com/arcology-network/streamer/actor"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -33,26 +32,47 @@ type ReceiptStore struct {
 	db *mstypes.ReceiptCaches
 }
 
-func NewReceiptStore() *ReceiptStore {
-	return &ReceiptStore{
-		// TODO
-		//db: NewReceiptCaches("receiptfiles", 100, 8),
-	}
+func NewReceiptStore() actor.Business {
+	return &ReceiptStore{}
 }
+
 func (rs *ReceiptStore) Config(params map[string]interface{}) {
-	rs.db = mstypes.NewReceiptCaches(params["storage_receipt_path"].(string), int(params["cache_receipt_size"].(float64)), int(params["cache_exec_concurrency"].(float64)))
+	rs.db = mstypes.NewReceiptCaches(params["storage_receipt_path"].(string), params["cache_receipt_size"].(int), params["cache_exec_concurrency"].(int))
 }
-func (rs *ReceiptStore) Save(ctx context.Context, request *SaveReceiptsRequest, _ *int) error {
+
+func (rs *ReceiptStore) Inputs() ([]string, bool) {
+	return []string{}, false
+}
+
+func (rs *ReceiptStore) Outputs() map[string]int {
+	return map[string]int{}
+}
+
+func (rs *ReceiptStore) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("Save", rs.Save)
+	reg.Register("Get", rs.Get)
+	reg.Register("GetBlockReceipts", rs.GetBlockReceipts)
+}
+
+func (rs *ReceiptStore) RpcConfig() (string, int) {
+	return "receiptstore", 20
+}
+
+func (rs *ReceiptStore) Save(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*SaveReceiptsRequest)
 	rs.db.Save(request.Height, request.Receipts)
+	ctx.ExecCtx.SendRpcResponse("", nil)
 	return nil
 }
 
-func (rs *ReceiptStore) Get(ctx context.Context, position *mstypes.Position, receipt **evmTypes.Receipt) error {
-	*receipt = rs.db.QueryReceipt(position.Height, position.IdxInBlock)
+func (rs *ReceiptStore) Get(ctx *actor.ActionContext) error {
+	position := ctx.RPC.Request.(*mstypes.Position)
+	ctx.ExecCtx.SendRpcResponse("", rs.db.QueryReceipt(position.Height, position.IdxInBlock))
 	return nil
 }
 
-func (rs *ReceiptStore) GetBlockReceipts(ctx context.Context, height uint64, receipts *[]*evmTypes.Receipt) error {
-	*receipts = rs.db.QueryBlockReceipts(height)
+func (rs *ReceiptStore) GetBlockReceipts(ctx *actor.ActionContext) error {
+	height := ctx.RPC.Request.(uint64)
+	ctx.ExecCtx.SendRpcResponse("", rs.db.QueryBlockReceipts(height))
 	return nil
 }

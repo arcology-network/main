@@ -24,11 +24,10 @@ import (
 	stgcommon "github.com/arcology-network/storage-committer/common"
 	"github.com/arcology-network/storage-committer/type/univalue"
 	"github.com/arcology-network/streamer/actor"
+	scommon "github.com/arcology-network/streamer/common"
 )
 
 type Feedback struct {
-	actor.WorkerThread
-
 	feeds []*univalue.Univalue
 }
 
@@ -37,47 +36,48 @@ const (
 )
 
 // return a Subscriber struct
-func NewFeedback(concurrency int, groupid string) actor.IWorkerEx {
+func NewFeedback() actor.Business {
 	fd := &Feedback{}
-	fd.Set(concurrency, groupid)
 	fd.feeds = make([]*univalue.Univalue, 0, FEEDCOUNTS)
 	return fd
 }
 
 func (fd *Feedback) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgExecuted,
-		actor.MsgBlockEnd,
+		scommon.MsgExecuted,
+		scommon.MsgBlockEnd,
 	}, false
 }
 
 func (fd *Feedback) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgFeedBacks: 1,
+		scommon.MsgFeedBacks: 1,
 	}
 }
 
-func (fd *Feedback) OnStart() {
+func (fd *Feedback) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgExecuted, fd.receivedData)
+	reg.Register(scommon.MsgBlockEnd, fd.receiveBlockEnd)
 }
 
-func (fd *Feedback) OnMessageArrived(msgs []*actor.Message) error {
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgExecuted:
-			var data []*eushared.EuResult
-			if v.Data != nil {
-				for _, item := range v.Data.([]interface{}) {
-					data = append(data, item.(*eushared.EuResult))
-				}
-			}
-			fd.addUnivalues(data)
-		case actor.MsgBlockEnd:
-			fd.MsgBroker.Send(actor.MsgFeedBacks, fd.feeds)
-			fd.feeds = make([]*univalue.Univalue, 0, FEEDCOUNTS)
+func (fd *Feedback) receivedData(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	var data []*eushared.EuResult
+	if msg.Data != nil {
+		for _, item := range msg.Data.([]interface{}) {
+			data = append(data, item.(*eushared.EuResult))
 		}
 	}
+	fd.addUnivalues(data)
 	return nil
 }
+
+func (fd *Feedback) receiveBlockEnd(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.Send(scommon.MsgFeedBacks, fd.feeds)
+	fd.feeds = make([]*univalue.Univalue, 0, FEEDCOUNTS)
+	return nil
+}
+
 func (fd *Feedback) addUnivalues(data []*eushared.EuResult) error {
 	for i := range data {
 		for j := range data[i].Trans {

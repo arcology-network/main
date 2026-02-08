@@ -58,6 +58,8 @@ func init() {
 	gob.Register(&ExecutorRequest{})
 	gob.Register(&ExecutorResponses{})
 
+	gob.Register(&SchdState{})
+	gob.Register([]SchdState{})
 	// arEncoder = newArbReqEncoder()
 	// arDecoder = newArbReqDecoder()
 

@@ -1,0 +1,33 @@
+nats:
+  servers:
+    - "nats://127.0.0.1:4222"
+  name: "node0"      #Ensure global uniqueness
+  reconnect_wait: 2s
+  max_reconnects: 60
+
+stream:
+  name: "TEST_BUCKET"
+  subjects:
+    - "TEST_BUCKET.*"
+  storage: "file"        # memory | file
+  max_bytes: 1073741824  # 1GB
+  replicas: 1            # Change 3 → cluster replica directly in the future
+
+consumer:
+  ack_wait: 30s
+  max_deliver: 5
+  max_ack_pending: 2048
+  pull_batch: 64
+  workers: 8
+
+topics_d:
+  # pendingblock: 
+  #   sub_type: broadcast   # broadcast: Each node independently    Durables the broadcast message
+  #   buf_size: 10  
+  # message: 
+  #   sub_type: loadBalance      # loadBalance Multi-node sharing Durable + Queue Group
+  #   buf_size: 2
+
+topics_u:
+  # - "apphash"
+  # - "tx"

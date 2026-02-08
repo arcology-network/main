@@ -18,16 +18,62 @@
 package scheduler
 
 import (
+	"context"
+
 	"github.com/arcology-network/common-lib/common"
 	types "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/streamer/actor"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type generation struct {
 	context   *processContext
 	sequences []*mtypes.ExecutingSequence
+}
+
+func (g *generation) startProcess(
+	ctx *actor.ExecutionContext,
+) {
+	gc := g.CurrentContext()
+	gc.generation.context.executor.StartIssue(ctx, gc)
+}
+
+func (g *generation) NextProcess(
+	ctx *actor.ExecutionContext,
+	execId int,
+) bool {
+	gc := g.CurrentContext()
+	return gc.generation.context.executor.Issue(ctx, gc, execId)
+}
+
+// func (g *generation) isExecCompleted() bool {
+// 	gc := g.CurrentContext()
+// 	return gc.isExecCompleted()
+// }
+
+func (g *generation) OnExecResult(
+	resp *mtypes.ExecutorResponses,
+) bool {
+	gc := g.CurrentContext()
+	gc.onExecResult(resp)
+	return gc.isExecCompleted()
+}
+
+func (g *generation) StartArbitrate(
+	ctx *actor.ExecutionContext,
+) {
+	gc := g.CurrentContext()
+	gc.CollectExecResults()
+	list := g.makeArbitrateParam(gc.execResponses)
+	g.context.arbitrator.Issue(ctx, list)
+	gc.arbIssued = true
+}
+
+func (g *generation) CurrentContext() *generationContext {
+	return g.context.generationCtx[g.context.currentGenerationID]
 }
 
 func newGeneration(context *processContext, sequences []*mtypes.ExecutingSequence) *generation {
@@ -45,49 +91,15 @@ func newGeneration(context *processContext, sequences []*mtypes.ExecutingSequenc
 	}
 }
 
-func AddGroupId(sequences []*mtypes.ExecutingSequence) []*mtypes.ExecutingSequence {
-	groupId := uint64(0)
-	for i := range sequences {
-		groupids := make([]uint64, 0, len(sequences[i].Msgs))
-		for j := 0; j < len(sequences[i].Msgs); j++ {
-			groupids = append(groupids, groupId)
-			if sequences[i].Parallel {
-				groupId = groupId + 1
-			}
-		}
-		sequences[i].GroupIds = groupids
-		groupId = groupId + 1
-	}
-	return sequences
-}
+func (g *generation) CollectGenerationResult() *types.InclusiveList {
+	gc := g.context.GetCurrentGeneration().CurrentContext()
+	flags := make([]bool, len(gc.executed))
 
-func (g *generation) process() *types.InclusiveList {
-	executed := g.setMsgProperty()
-	flags := make([]bool, len(executed))
+	g.context.executed = append(g.context.executed, gc.executed...)
+	g.context.newContracts = append(g.context.newContracts, gc.newContracts...)
 
-	// Process txs on executors.
-	responses, newContracts := g.context.executor.Run(
-		AddGroupId(g.sequences),
-		g.context.timestamp,
-		g.context.msgTemplate,
-		g.context.logger,
-		g.context.height,
-		g.context.parallelism,
-		g.context.generation,
-	)
-	g.context.executed = append(g.context.executed, executed...)
-	g.context.newContracts = append(g.context.newContracts, newContracts...)
-
-	arbitrateParam := g.makeArbitrateParam(responses)
-
-	cpLeft, cpRight := g.context.arbitrator.Do(
-		arbitrateParam,
-		g.context.logger,
-		g.context.generation,
-	)
-
-	for i := range cpLeft {
-		ltxhash := g.context.txHash2IdBiMap.GetInverse(uint64(cpLeft[i]))
+	for i := range gc.cpLeft {
+		ltxhash := g.context.txHash2IdBiMap.GetInverse(uint64(gc.cpLeft[i]))
 		leftAddr, ok := g.context.txHash2Callee[ltxhash]
 		if !ok {
 			continue
@@ -97,7 +109,7 @@ func (g *generation) process() *types.InclusiveList {
 			continue
 		}
 
-		rtxhash := g.context.txHash2IdBiMap.GetInverse(uint64(cpRight[i]))
+		rtxhash := g.context.txHash2IdBiMap.GetInverse(uint64(gc.cpRight[i]))
 		rightAddr, ok := g.context.txHash2Callee[rtxhash]
 		if !ok {
 			continue
@@ -115,20 +127,20 @@ func (g *generation) process() *types.InclusiveList {
 	}
 
 	deletedDict := make(map[evmCommon.Hash]struct{})
-	for _, rId := range cpRight {
+	for _, rId := range gc.cpRight {
 		deletedDict[g.context.txHash2IdBiMap.GetInverse(rId)] = struct{}{}
 	}
 
-	for i, hash := range executed {
+	for i, hash := range gc.executed {
 		if _, ok := deletedDict[hash]; !ok {
 			flags[i] = true
 		}
 	}
 
 	common.MergeMaps(g.context.deletedDict, deletedDict)
-
+	logger.Log.Debug(context.Background(), "gc.executed", "CollectGenerationResult", logger.F("gc.executed", gc.executed))
 	return &types.InclusiveList{
-		HashList:   executed,
+		HashList:   gc.executed,
 		Successful: flags,
 	}
 }
@@ -159,8 +171,8 @@ func (g *generation) makeArbitrateParam(
 // 1. Update `context.txHash2Callee` for each message;
 // 2. Update `context.txHash2Sign` for each message;
 // 3. Collect parallel messages' hash, put them into `executed` and return.
-func (g *generation) setMsgProperty() []evmCommon.Hash {
-	executed := make([]evmCommon.Hash, 0, 50000)
+func (g *generation) setMsgProperty() {
+	// executed := make([]evmCommon.Hash, 0, 50000)
 
 	for _, seq := range g.sequences {
 		for _, msg := range seq.Msgs {
@@ -176,9 +188,14 @@ func (g *generation) setMsgProperty() []evmCommon.Hash {
 					g.context.txHash2Sign[msg.TxHash] = [4]byte(sign)
 				}
 			}
-			h := evmCommon.BytesToHash(msg.TxHash[:])
-			executed = append(executed, h)
 		}
 	}
-	return executed
+}
+func (g *generation) onArbitrateResult(ctx *actor.ExecutionContext, resp *mtypes.ArbitratorResponse) {
+	gc := g.CurrentContext()
+	gc.onArbitrateResult(resp)
+
+	// logger.Log.Debug(context.Background(), "gc.executed 1", "generation.onArbitrateResult", logger.F("gc.executed", g.context.executed))
+	// g.CollectGenerationResult()
+	// logger.Log.Debug(context.Background(), "gc.executed 2", "generation.onArbitrateResult", logger.F("gc.executed", g.context.executed))
 }

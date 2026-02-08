@@ -28,13 +28,24 @@ import (
 )
 
 const (
-	QueryType_Receipt      = "receipt"
-	QueryType_Balance      = "balance"
-	QueryType_Container    = "container"
-	QueryType_Block        = "block"
-	QueryType_RawBlock     = "rawblock"
-	QueryType_Nonce        = "nonce"
-	QueryType_LatestHeight = "latestheight"
+	// QueryType_Receipt = "receipt"
+	// QueryType_Balance      = "balance"
+	QueryType_Container = "container"
+	// QueryType_Block     = "block"
+	QueryType_RawBlock = "rawblock"
+	// QueryType_Nonce        = "nonce"
+	// QueryType_LatestHeight = "latestheight"
+
+	QueryType_TestBlockByHeight            = "testBlockByHeight"
+	QueryType_TestTxByPosition             = "testTxByPosition"
+	QueryType_TestHashesByHeight           = "testHashesByHeight"
+	QueryType_TestPositionByHash           = "testPositionByHash"
+	QueryType_TestHeightByHash             = "testHeightByHash"
+	QueryType_TestReceiptsByHeight         = "testReceiptsByHeight"
+	QueryType_TestReceiptByPosition        = "testReceiptByPosition"
+	QueryType_TestHeightByHashOrNumber     = "testHeightByHashOrNumber"
+	QueryType_TestGetTransactionByPosition = "testGetTransactionByPosition"
+	QueryType_TestRpcBlockSubPlan          = "testRpcBlockSubPlan"
 
 	QueryType_BlockNumber      = "blocknumber"
 	QueryType_Code             = "code"
@@ -157,9 +168,9 @@ type QueryReceipt struct {
 	Height          int      `json:"height"`
 }
 
-type ClusterConfig struct {
-	Parallelism int
-}
+// type ClusterConfig struct {
+// 	Parallelism int
+// }
 
 type SetReply struct {
 	Status int

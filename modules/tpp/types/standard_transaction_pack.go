@@ -18,23 +18,15 @@
 package types
 
 import (
+	"context"
 	"errors"
 	"fmt"
 
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
-	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/arcology-network/streamer/logger"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
-	"go.uber.org/zap"
 )
-
-// type StdTransactionPack struct {
-// 	Txs        []*types.StandardTransaction
-// 	Src        types.TxSource
-// 	TxHashChan chan evmCommon.Hash
-// }
 
 func ToStdTransaction(tx []byte, txfrom byte) (*types.StandardTransaction, error) {
 	txType := tx[0]
@@ -63,30 +55,28 @@ func ToStdTransaction(tx []byte, txfrom byte) (*types.StandardTransaction, error
 func ToStdTransactionWorker(start, end, idx int, args ...interface{}) {
 	txs := args[0].([]interface{})[0].([][]byte)
 	transactions := args[0].([]interface{})[1].(*[]*types.StandardTransaction)
-	logg := args[0].([]interface{})[2].(*actor.WorkerThreadLogger)
 
 	for i, tx := range txs[start:end] {
 		transaction, err := ToStdTransaction(tx[1:], tx[0])
 		if err != nil {
-			logg.Log(log.LogLevel_Error, "received block tx ", zap.Int("idx", i+start), zap.String("err", err.Error()), zap.String("tx", fmt.Sprintf("%x", tx)), zap.String("from", fmt.Sprintf("%x", tx[0])))
+			logger.Log.Error(context.Background(), "ToStdTransactionWorker", "received block tx ", logger.F("idx", i+start), logger.F("err", err.Error()), logger.F("tx", fmt.Sprintf("%x", tx)), logger.F("from", fmt.Sprintf("%x", tx[0])))
 			continue
 		}
 		(*transactions)[i+start] = transaction
 	}
 }
 
-func NewPack(txs [][]byte, src types.TxSource, hasChan bool, concurrency int, interLog *actor.WorkerThreadLogger) *types.StdTransactionPack {
+func NewPack(incomingTxs *types.IncomingTxs, concurrency int) *types.StdTransactionPack {
+	txs := incomingTxs.Txs
 	txLen := len(txs)
 	stdTransactions := make([]*types.StandardTransaction, txLen)
-	common.ParallelWorker(txLen, concurrency, ToStdTransactionWorker, txs, &stdTransactions, interLog)
+	common.ParallelWorker(txLen, concurrency, ToStdTransactionWorker, txs, &stdTransactions)
 
 	pack := types.StdTransactionPack{
-		Txs: stdTransactions,
-		Src: src,
+		Txs:       stdTransactions,
+		Src:       incomingTxs.Src,
+		RequestID: incomingTxs.RequestID,
 	}
 
-	if hasChan {
-		pack.TxHashChan = make(chan evmCommon.Hash, 1)
-	}
 	return &pack
 }

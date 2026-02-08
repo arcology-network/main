@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/arcology-network/streamer/actor"
+	scommon "github.com/arcology-network/streamer/common"
 	"github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
 )
@@ -49,43 +50,45 @@ var (
 )
 
 type Metrics struct {
-	actor.WorkerThread
-
 	collectStart time.Time
 	calcStart    time.Time
 }
 
-func NewMetrics(concurrency int, groupId string) actor.IWorkerEx {
+func NewMetrics() actor.Business {
 	metrics := &Metrics{
 		collectStart: time.Now(),
 		calcStart:    time.Now(),
 	}
-	metrics.Set(concurrency, groupId)
 	return metrics
 }
 
 func (m *Metrics) Inputs() ([]string, bool) {
-	return []string{actor.MsgInclusive, actor.MsgExecuted, actor.MsgAcctHash}, false
+	return []string{scommon.MsgInclusive, scommon.MsgExecuted, scommon.MsgAcctHash}, false
 }
 
 func (m *Metrics) Outputs() map[string]int {
 	return map[string]int{}
 }
 
-func (m *Metrics) OnStart() {}
+func (m *Metrics) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgInclusive, m.receivedList)
+	reg.Register(scommon.MsgExecuted, m.receivedExecuted)
+	reg.Register(scommon.MsgAcctHash, m.receivedAcctHash)
+}
 
-func (m *Metrics) OnMessageArrived(msgs []*actor.Message) error {
-	msg := msgs[0]
-	switch msg.Name {
-	case actor.MsgInclusive:
-		m.collectStart = time.Now()
-	case actor.MsgExecuted:
-		m.calcStart = time.Now()
-		CollectTime.Observe(m.calcStart.Sub(m.collectStart).Seconds())
-		CollectTimeGauge.Set(m.calcStart.Sub(m.collectStart).Seconds())
-	case actor.MsgAcctHash:
-		CalcTime.Observe(time.Since(m.calcStart).Seconds())
-		CalcTimeGauge.Set(time.Since(m.calcStart).Seconds())
-	}
+func (m *Metrics) receivedList(ctx *actor.ActionContext) error {
+	m.collectStart = time.Now()
+	return nil
+}
+func (m *Metrics) receivedExecuted(ctx *actor.ActionContext) error {
+	m.calcStart = time.Now()
+	CollectTime.Observe(m.calcStart.Sub(m.collectStart).Seconds())
+	CollectTimeGauge.Set(m.calcStart.Sub(m.collectStart).Seconds())
+	return nil
+}
+
+func (m *Metrics) receivedAcctHash(ctx *actor.ActionContext) error {
+	CalcTime.Observe(time.Since(m.calcStart).Seconds())
+	CalcTimeGauge.Set(time.Since(m.calcStart).Seconds())
 	return nil
 }

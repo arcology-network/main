@@ -23,61 +23,54 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/trie"
-	"go.uber.org/zap"
 )
 
 type CalculateRoothash struct {
-	actor.WorkerThread
 }
 
 // return a Subscriber struct
-func NewCalculateRoothash(concurrency int, groupid string) actor.IWorkerEx {
-	cr := CalculateRoothash{}
-	cr.Set(concurrency, groupid)
-	return &cr
+func NewCalculateRoothash() actor.Business {
+	return &CalculateRoothash{}
 }
 
 func (cr *CalculateRoothash) Inputs() ([]string, bool) {
-	return []string{actor.MsgSelectedReceipts, actor.MsgInclusive}, true
+	return []string{scommon.MsgSelectedReceipts, scommon.MsgInclusive}, true
 }
 
 func (cr *CalculateRoothash) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgReceiptInfo: 1,
+		scommon.MsgReceiptInfo: 1,
 	}
 }
 
-func (cr *CalculateRoothash) OnStart() {
+func (cr *CalculateRoothash) PrimaryMsg() string {
+	return scommon.MsgInclusive
 }
 
-func (cr *CalculateRoothash) Stop() {
-
+func (cr *CalculateRoothash) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgSelectedReceipts, cr.startCalculateHash)
+	reg.Register(scommon.MsgInclusive, cr.startCalculateHash)
 }
 
-func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
+func (cr *CalculateRoothash) startCalculateHash(ctx *actor.ActionContext) error {
 	var inclusiveList *types.InclusiveList
 	var selectedReceipts []*evmTypes.Receipt
-	for _, v := range msgs {
+	for _, v := range ctx.Messages {
 		switch v.Name {
-		case actor.MsgInclusive:
+		case scommon.MsgInclusive:
 			inclusiveList = v.Data.(*types.InclusiveList)
-			isnil, err := cr.IsNil(inclusiveList, "inclusiveList")
-			if isnil {
-				return err
-			}
-		case actor.MsgSelectedReceipts:
-			// for _, item := range v.Data.([]interface{}) {
-			// 	selectedReceipts = append(selectedReceipts, item.(*evmTypes.Receipt))
-			// }
+		case scommon.MsgSelectedReceipts:
 			selectedReceipts = v.Data.([]*evmTypes.Receipt)
 		}
 	}
-	cr.CheckPoint("start calculate rcpthash")
+	ctx.ExecCtx.LogInfo("start calculate rcpthash", logger.F("inclusiveList", len(inclusiveList.HashList)), logger.F("selectedReceipts", len(selectedReceipts)))
 	hash, bloom, gas, successfulTxs := cr.gatherReceipts(inclusiveList, selectedReceipts)
-	cr.MsgBroker.Send(actor.MsgReceiptInfo, &mtypes.ReceiptInfo{
+	ctx.ExecCtx.Send(scommon.MsgReceiptInfo, &mtypes.ReceiptInfo{
 		RcptHash:  hash,
 		BloomInfo: bloom,
 		Gasused:   gas,
@@ -88,7 +81,7 @@ func (cr *CalculateRoothash) OnMessageArrived(msgs []*actor.Message) error {
 			Timestamp:     time.Now().UnixMilli(),
 		},
 	})
-	cr.CheckPoint("rcpthash calculate completed", zap.Uint64("gas", gas))
+	ctx.ExecCtx.LogInfo("rcpthash calculate completed", logger.F("gas", gas))
 	return nil
 }
 

@@ -18,15 +18,12 @@
 package exec
 
 import (
-	"context"
 	"math"
 	"math/big"
-	"sync"
 
-	"github.com/arcology-network/main/components/storage"
 	exetyp "github.com/arcology-network/main/modules/exec/types"
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 
 	eupk "github.com/arcology-network/eu/common"
@@ -38,7 +35,6 @@ import (
 	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
 
-	cmncmn "github.com/arcology-network/common-lib/common"
 	statestore "github.com/arcology-network/storage-committer"
 	evmCore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth/tracers"
@@ -50,14 +46,7 @@ const (
 	estmigateExecStateReady
 )
 
-var (
-	execInstance actor.IWorkerEx
-	initExecOnce sync.Once
-)
-
 type EstimateExecutor struct {
-	actor.WorkerThread
-
 	state  int
 	height uint64
 
@@ -71,29 +60,24 @@ type EstimateExecutor struct {
 
 	timestamp *big.Int
 
-	pendingTxs      map[uint64]chan *evmCore.ExecutionResult
-	pendingTxsGuard sync.Mutex
+	euCount int
 }
 
-func NewEstimateExecutor(concurrency int, groupId string) actor.IWorkerEx {
-	initExecOnce.Do(func() {
-		exec := &EstimateExecutor{
-			state:      estmigateExecStateInit,
-			height:     math.MaxUint64,
-			taskCh:     make(chan *exetyp.ExecMessagers, concurrency),
-			pendingTxs: make(map[uint64]chan *evmCore.ExecutionResult),
-		}
-		exec.Set(concurrency, groupId)
-		execInstance = exec
-	})
-	return execInstance
+func NewEstimateExecutor() actor.Business {
+	exec := &EstimateExecutor{
+		state:  estmigateExecStateInit,
+		height: math.MaxUint64,
+	}
+
+	return exec
+
 }
 
 func (exec *EstimateExecutor) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgApcHandle,
-		actor.CombinedName(actor.MsgBlockStart, actor.MsgParentInfo),
-		actor.MsgInitialization,
+		scommon.MsgApcHandle,
+		actor.CombinedName(scommon.MsgBlockStart, scommon.MsgParentInfo),
+		scommon.MsgInitialization,
 	}, false
 }
 
@@ -103,106 +87,108 @@ func (exec *EstimateExecutor) Outputs() map[string]int {
 
 func (exec *EstimateExecutor) Config(params map[string]interface{}) {
 	exec.chainId = params["chain_id"].(*big.Int)
+	exec.euCount = params["eus"].(int)
+}
+func (exec *EstimateExecutor) RpcConfig() (string, int) {
+	return "estimate-executor", 20
 }
 
-func (exec *EstimateExecutor) OnStart() {
-	exec.startExec()
-}
-
-func (exec *EstimateExecutor) OnMessageArrived(msgs []*actor.Message) error {
-	msg := msgs[0]
-	switch exec.state {
-	case estmigateExecStateInit:
-		initialization := msg.Data.(*mtypes.Initialization)
-		exec.store = initialization.Store
-		exec.height = msg.Height
-
-		addr := evmCommon.BytesToAddress(initialization.BlockStart.Coinbase.Bytes())
-		exec.execParams = &exetyp.ExecutorParameter{
-			ParentInfo: initialization.ParentInformation,
-			Coinbase:   &addr,
-			Height:     exec.height,
-		}
-		exec.timestamp = initialization.BlockStart.Timestamp
-		exec.state = estmigateExecStateReady
-		exec.AddLog(log.LogLevel_Debug, ">>>>>>>>>>>>state change into estmigateExecStateReady")
-	case estmigateExecStateReady:
-		switch msg.Name {
-		case actor.CombinedName(actor.MsgBlockStart, actor.MsgParentInfo):
-			combined := msg.Data.(*actor.CombinerElements)
-			coinbase := evmCommon.BytesToAddress(combined.Get(actor.MsgBlockStart).Data.(*actor.BlockStart).Coinbase.Bytes())
-			exec.height = msg.Height
-			exec.execParams = &exetyp.ExecutorParameter{
-				ParentInfo: combined.Get(actor.MsgParentInfo).Data.(*mtypes.ParentInfo),
-				Coinbase:   &coinbase,
-				Height:     exec.height,
-			}
-			exec.timestamp = combined.Get(actor.MsgBlockStart).Data.(*actor.BlockStart).Timestamp
-		case actor.MsgApcHandle:
-			exec.store = msg.Data.(*statestore.StateStore)
-		}
-	}
-	return nil
-}
-
-func (exec *EstimateExecutor) GetStateDefinitions() map[int][]string {
-	return map[int][]string{
-		estmigateExecStateReady: {
-			actor.CombinedName(actor.MsgBlockStart, actor.MsgParentInfo),
-			actor.MsgApcHandle,
-		},
-		estmigateExecStateInit: {
-			actor.MsgInitialization,
-		},
+func (exec *EstimateExecutor) GetFSMRules() map[int]actor.FSMRule {
+	return map[int]actor.FSMRule{
+		estmigateExecStateReady: {Accept: []string{
+			actor.CombinedName(scommon.MsgBlockStart, scommon.MsgParentInfo),
+			scommon.MsgApcHandle,
+		}},
+		estmigateExecStateInit: {Accept: []string{scommon.MsgInitialization}},
 	}
 }
-
 func (exec *EstimateExecutor) GetCurrentState() int {
 	return exec.state
 }
 
-func (exec *EstimateExecutor) ExecTxs(ctx context.Context, request *mtypes.ExecutorRequest, response *evmCore.ExecutionResult) error {
-	chResults := make(chan *evmCore.ExecutionResult)
-	exec.pendingTxsGuard.Lock()
-	msgId := cmncmn.GenerateUUID()
-	exec.pendingTxs[msgId] = chResults
-	exec.pendingTxsGuard.Unlock()
+func (exec *EstimateExecutor) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgInitialization, exec.stateInit)
+	reg.Register(actor.CombinedName(scommon.MsgBlockStart, scommon.MsgParentInfo), exec.stateReady)
+	reg.Register(scommon.MsgApcHandle, exec.updateApc)
+	reg.Register("ExecTxs", exec.ExecTxs)
+	reg.Register("ExecTxsWithTrace", exec.ExecTxsWithTrace)
+}
+func (exec *EstimateExecutor) stateInit(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	initialization := msg.Data.(*mtypes.Initialization)
+	exec.store = initialization.Store
+	exec.height = msg.Height
 
-	exec.sendNewTask(request.Sequences[0], msgId)
-	results := <-chResults
-
-	response.UsedGas = results.UsedGas
-	response.ReturnData = results.ReturnData
-	response.Err = results.Err
+	addr := evmCommon.BytesToAddress(initialization.BlockStart.Coinbase.Bytes())
+	exec.execParams = &exetyp.ExecutorParameter{
+		ParentInfo: initialization.ParentInformation,
+		Coinbase:   &addr,
+		Height:     exec.height,
+	}
+	exec.timestamp = initialization.BlockStart.Timestamp
+	exec.state = estmigateExecStateReady
+	ctx.ExecCtx.LogDebug("state change into estmigateExecStateReady")
 	return nil
 }
-func (exec *EstimateExecutor) ExecTxsWithTrace(ctx context.Context, request *mtypes.ExecutorRequest, response *mtypes.QueryResult) error {
-	chResults := make(chan *evmCore.ExecutionResult)
-	exec.pendingTxsGuard.Lock()
-	msgId := cmncmn.GenerateUUID()
-	exec.pendingTxs[msgId] = chResults
-	exec.pendingTxsGuard.Unlock()
+func (exec *EstimateExecutor) stateReady(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	combined := msg.Data.(*actor.CombinerElements)
+	coinbase := evmCommon.BytesToAddress(combined.Get(scommon.MsgBlockStart).Data.(*actor.BlockStart).Coinbase.Bytes())
+	exec.height = msg.Height
+	exec.execParams = &exetyp.ExecutorParameter{
+		ParentInfo: combined.Get(scommon.MsgParentInfo).Data.(*mtypes.ParentInfo),
+		Coinbase:   &coinbase,
+		Height:     exec.height,
+	}
+	exec.timestamp = combined.Get(scommon.MsgBlockStart).Data.(*actor.BlockStart).Timestamp
+	return nil
+}
+func (exec *EstimateExecutor) updateApc(ctx *actor.ActionContext) error {
+	exec.store = ctx.Messages[0].Data.(*statestore.StateStore)
+	return nil
+}
+func (exec *EstimateExecutor) ExecTxs(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*mtypes.ExecutorRequest)
+	task, _, err := exec.newTask(request.Sequences[0])
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+		return nil
+	}
+
+	results := exec.execute(task)
+
+	ctx.ExecCtx.SendRpcResponse("", &evmCore.ExecutionResult{
+		UsedGas:    results.UsedGas,
+		ReturnData: results.ReturnData,
+		Err:        results.Err,
+	})
+	return nil
+}
+func (exec *EstimateExecutor) ExecTxsWithTrace(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*mtypes.ExecutorRequest)
 	for i := range request.Sequences[0].Msgs {
 		request.Sequences[0].Msgs[i].Native.SkipAccountChecks = true
 	}
-	tracer, err := exec.sendNewTask(request.Sequences[0], msgId)
+	task, tracer, err := exec.newTask(request.Sequences[0])
 	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 		return err
 	}
-	<-chResults
+	exec.execute(task)
 
 	if request.Sequences[0].Config != nil {
 		result, err := tracer.GetResult()
-		response.Data = result
+		ctx.ExecCtx.SendRpcResponse("", &mtypes.QueryResult{
+			Data: result,
+		})
 		return err
 	}
 	return nil
 }
 
-func (exec *EstimateExecutor) sendNewTask(
+func (exec *EstimateExecutor) newTask(
 	sequence *mtypes.ExecutingSequence,
-	msgid uint64,
-) (tracers.Tracer, error) {
+) (*exetyp.ExecMessagers, tracers.Tracer, error) {
 	config := exetyp.MainConfig(exec.chainId)
 	config.Coinbase = exec.execParams.Coinbase
 	config.BlockNumber = new(big.Int).SetUint64(exec.height)
@@ -216,7 +202,7 @@ func (exec *EstimateExecutor) sendNewTask(
 		if sequence.Config.Tracer != nil {
 			tracer, err = tracers.DefaultDirectory.New(*sequence.Config.Tracer, sequence.Ctx, sequence.Config.TracerConfig)
 			if err != nil {
-				return nil, err
+				return nil, nil, err
 			}
 		}
 		config.VMConfig.Tracer = tracer
@@ -225,17 +211,12 @@ func (exec *EstimateExecutor) sendNewTask(
 	task := &exetyp.ExecMessagers{
 		Sequence: sequence,
 		Config:   config,
-		Debug:    true,
-		Msgid:    msgid,
 	}
-	exec.taskCh <- task
-	return tracer, nil
+
+	return task, tracer, nil
 }
 
-func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) {
-	storage.RequestLock("exec", "estimateExecutor")
-	defer storage.ReleaseLock("exec", "estimateExecutor")
-
+func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) *evmCore.ExecutionResult {
 	if task.Sequence.Parallel {
 		results := make([]*eucommon.Result, 0, len(task.Sequence.Msgs))
 
@@ -254,7 +235,8 @@ func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) {
 			results = append(results, jobsequence.Jobs[0].Results)
 			results[0].EvmResult.UsedGas += jobsequence.Jobs[0].PrepaidGas
 		}
-		exec.sendResults(task.Msgid, results[0].EvmResult)
+
+		return results[0].EvmResult
 	} else {
 		api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 			return exec.store.WriteCache
@@ -273,27 +255,7 @@ func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) {
 		for i := range task.Sequence.Msgs {
 			results[i] = jobsequence.Jobs[i].Results
 		}
-		exec.sendResults(task.Msgid, jobsequence.Jobs[0].Results.EvmResult)
-	}
-}
 
-func (exec *EstimateExecutor) startExec() {
-	go func() {
-		for {
-			task := <-exec.taskCh
-			exec.execute(task)
-		}
-	}()
-}
-
-func (exec *EstimateExecutor) sendResults(msgid uint64, results *evmCore.ExecutionResult) {
-	exec.pendingTxsGuard.Lock()
-	defer exec.pendingTxsGuard.Unlock()
-
-	if ch, ok := exec.pendingTxs[msgid]; ok {
-		ch <- results
-		delete(exec.pendingTxs, msgid)
-	} else {
-		panic("unexpected result got")
+		return jobsequence.Jobs[0].Results.EvmResult
 	}
 }

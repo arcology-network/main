@@ -28,7 +28,7 @@ import (
 	"github.com/arcology-network/storage-committer/type/commutative"
 	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
+	scommon "github.com/arcology-network/streamer/common"
 )
 
 type GeneralUrl struct {
@@ -37,9 +37,9 @@ type GeneralUrl struct {
 	generateApcHandle string
 	generateUrlUpdate bool
 	// generateAcctRoot  bool
-	inited        bool
-	cached        bool
-	transactional bool
+	inited bool
+	// cached        bool
+	// transactional bool
 	objectCached  bool
 	apcHandleName string
 
@@ -47,6 +47,12 @@ type GeneralUrl struct {
 	outGenerationCompletedMsg string
 	outPrecommitMsg           string
 	outCommitMsg              string
+
+	keys          []string
+	encodedValues [][]byte
+
+	metaKeys     []string
+	encodedMetas [][]byte
 }
 
 type UrlUpdate struct {
@@ -64,14 +70,13 @@ func NewGeneralUrl(apcHandleName, outDBMsg, outGenerationCompletedMsg, outPrecom
 	}
 }
 
-func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) {
-	if url.generateApcHandle == "generation" {
-		RequestLock("exec", "GeneralUrl")
-		defer ReleaseLock("exec", "GeneralUrl")
-	}
-
+func (url *GeneralUrl) PreCommit(ctx *actor.ActionContext, euResults []*eushared.EuResult, height uint64) {
 	url.BasicDBOperation.PreCommit(euResults, height)
-	url.MsgBroker.Send(url.outPrecommitMsg, "")
+	ctx.ExecCtx.Send(url.outPrecommitMsg, "")
+
+	if url.generateApcHandle == "generation" {
+		ctx.ExecCtx.Send(url.apcHandleName, url.StateStore)
+	}
 
 	if url.generateUrlUpdate {
 		keys, values := url.BasicDBOperation.Keys, url.BasicDBOperation.Values
@@ -104,59 +109,65 @@ func (url *GeneralUrl) PreCommit(euResults []*eushared.EuResult, height uint64) 
 		slice.Remove(&metaKeys, "")
 		slice.RemoveIf(&encodedMetas, filter)
 
-		var na int
+		url.keys = keys
+		url.encodedValues = encodedValues
+		url.metaKeys = metaKeys
+		url.encodedMetas = encodedMetas
+
+		// var na int
 		if len(keys) > 0 {
-			intf.Router.Call("transactionalstore", "AddData", &transactional.AddDataRequest{
+			ctx.ExecCtx.InvokeRPC("transactionalstore", "AddData", &transactional.AddDataRequest{
 				Data: &UrlUpdate{
 					Keys:          keys,
 					EncodedValues: encodedValues,
 				},
 				RecoverFunc: "urlupdate",
-			}, &na)
+			}, "AddMetas")
+		} else {
+			url.AddMetas(ctx)
 		}
-		if len(metaKeys) > 0 {
-			intf.Router.Call("transactionalstore", "AddData", &transactional.AddDataRequest{
-				Data: &UrlUpdate{
-					Keys:          metaKeys,
-					EncodedValues: encodedMetas,
-				},
-				RecoverFunc: "urlupdate",
-			}, &na)
-		}
-
-		url.MsgBroker.Send(actor.MsgUrlUpdate, &UrlUpdate{
-			Keys:          keys,
-			EncodedValues: encodedValues,
-		})
-	}
-
-	// if url.transactional {
-	// 	fmt.Printf("======components/storage/general_url.go  PreCommit url.transactional:%v\n", url.transactional)
-	// 	url.MsgBroker.Send(actor.MsgTransactionalAddCompleted, "ok")
-	// }
-	if url.generateApcHandle == "generation" {
-		url.MsgBroker.Send(url.apcHandleName, url.StateStore)
 	}
 }
 
-func (url *GeneralUrl) PreCommitCompleted() {
+func (url *GeneralUrl) AddMetas(ctx *actor.ActionContext) {
+	if len(url.metaKeys) > 0 {
+		ctx.ExecCtx.InvokeRPC("transactionalstore", "AddData", &transactional.AddDataRequest{
+			Data: &UrlUpdate{
+				Keys:          url.metaKeys,
+				EncodedValues: url.encodedMetas,
+			},
+			RecoverFunc: "urlupdate",
+		}, "sendAsyncUrlUpdate")
+	} else {
+		url.sendAsyncUrlUpdate(ctx)
+	}
+}
+
+func (url *GeneralUrl) sendAsyncUrlUpdate(ctx *actor.ActionContext) {
+	ctx.ExecCtx.Send(scommon.MsgUrlUpdate, &UrlUpdate{
+		Keys:          url.keys,
+		EncodedValues: url.encodedValues,
+	})
+}
+
+func (url *GeneralUrl) PreCommitCompleted(ctx *actor.ActionContext) {
 	url.BasicDBOperation.PreCommitCompleted()
-	url.MsgBroker.Send(url.outGenerationCompletedMsg, "")
+	ctx.ExecCtx.Send(url.outGenerationCompletedMsg, "")
 }
 
-func (url *GeneralUrl) InitAsync() {
-	url.MsgBroker.Send(url.outDBMsg, url.BasicDBOperation.StateStore)
+func (url *GeneralUrl) InitAsync(ctx *actor.ActionContext) {
+	ctx.ExecCtx.Send(url.outDBMsg, url.BasicDBOperation.StateStore)
 }
 
-func (url *GeneralUrl) Commit(height uint64) {
+func (url *GeneralUrl) Commit(ctx *actor.ActionContext, height uint64) {
 	url.BasicDBOperation.Commit(height)
-	url.MsgBroker.Send(url.outCommitMsg, "")
+	ctx.ExecCtx.Send(url.outCommitMsg, "")
 	if url.objectCached {
-		url.MsgBroker.Send(actor.MsgObjectCached, "")
+		ctx.ExecCtx.Send(scommon.MsgObjectCached, "")
 	}
 
 	if url.generateApcHandle == "block" {
-		url.MsgBroker.Send(url.apcHandleName, url.StateStore)
+		ctx.ExecCtx.Send(url.apcHandleName, url.StateStore)
 	}
 
 }
@@ -165,23 +176,23 @@ func (url *GeneralUrl) Outputs() map[string]int {
 	outputs := make(map[string]int)
 	if url.generateApcHandle != "" {
 		outputs[url.apcHandleName] = 1
-		outputs[actor.MsgApcHandleInit] = 1
+		// outputs[scommon.MsgApcHandleInit] = 1
 	}
 	if url.generateUrlUpdate {
-		outputs[actor.MsgUrlUpdate] = 1
+		outputs[scommon.MsgUrlUpdate] = 1
 	}
 	// if url.generateAcctRoot {
 	// 	outputs[actor.MsgAcctHash] = 1
 	// }
-	if url.cached {
-		outputs[actor.MsgCached] = 1
-	}
+	// if url.cached {
+	// 	outputs[scommon.MsgCached] = 1
+	// }
 	if url.objectCached {
-		outputs[actor.MsgObjectCached] = 1
+		outputs[scommon.MsgObjectCached] = 1
 	}
-	if url.transactional {
-		outputs[actor.MsgTransactionalAddCompleted] = 1
-	}
+	// if url.transactional {
+	// 	outputs[scommon.MsgTransactionalAddCompleted] = 1
+	// }
 
 	outputs[url.outDBMsg] = 1
 	outputs[url.outGenerationCompletedMsg] = 1
@@ -209,20 +220,20 @@ func (url *GeneralUrl) Config(params map[string]interface{}) {
 	// 	url.generateAcctRoot = v.(bool)
 	// }
 
-	if v, ok := params["cached"]; !ok {
-		panic("parameter not found: cached")
-	} else {
-		url.cached = v.(bool)
-	}
+	// if v, ok := params["cached"]; !ok {
+	// 	panic("parameter not found: cached")
+	// } else {
+	// 	url.cached = v.(bool)
+	// }
 	if v, ok := params["object_cached"]; !ok {
 		panic("parameter not found: object_cached")
 	} else {
 		url.objectCached = v.(bool)
 	}
 
-	if v, ok := params["transactional"]; !ok {
-		panic("parameter not found: transactional")
-	} else {
-		url.transactional = v.(bool)
-	}
+	// if v, ok := params["transactional"]; !ok {
+	// 	panic("parameter not found: transactional")
+	// } else {
+	// 	url.transactional = v.(bool)
+	// }
 }

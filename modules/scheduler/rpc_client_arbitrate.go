@@ -18,18 +18,13 @@
 package scheduler
 
 import (
-	"fmt"
 	"time"
 
-	"github.com/arcology-network/common-lib/common"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
-	"github.com/arcology-network/streamer/log"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 )
 
 var (
@@ -52,47 +47,40 @@ func NewRpcClientArbitrate() *RpcClientArbitrate {
 	return &RpcClientArbitrate{}
 }
 
-func (rca *RpcClientArbitrate) Start() {
+// func (rca *RpcClientArbitrate) Do(ctx *actor.ExecutionContext, arbitrateList [][]evmCommon.Hash, generationIdx int) ([]uint64, []uint64) {
+// 	cpairLeft := make([]uint64, 0, len(arbitrateList))
+// 	cpairRight := make([]uint64, 0, len(arbitrateList))
 
-}
+// 	ctx.LogInfo("start arbitrate", logger.F("txs", len(arbitrateList)), logger.F("generationIdx", generationIdx))
+// 	arbBegin = time.Now()
 
-func (rca *RpcClientArbitrate) Stop() {
+// 	resp, err := ctx.SendSync("arbitrator", "Arbitrate", &mtypes.ArbitratorRequest{
+// 		TxsListGroup: arbitrateList,
+// 	})
+// 	if err != nil {
+// 		ctx.LogErr("arbitrate err", logger.F("err", err))
+// 		return nil, nil
+// 	} else {
+// 		ctx.LogInfo("return arbitrate", logger.F("generationIdx", generationIdx))
+// 		ArbTime.Observe(time.Since(arbBegin).Seconds())
+// 		ArbTimeGauge.Set(time.Since(arbBegin).Seconds())
+// 		response := resp.(*mtypes.ArbitratorResponse)
+// 		if response.CPairLeft != nil {
+// 			cpairLeft = response.CPairLeft
+// 		}
+// 		if response.CPairRight != nil {
+// 			cpairRight = response.CPairRight
+// 		}
+// 	}
+// 	return cpairLeft, cpairRight
+// }
 
-}
-
-func (rca *RpcClientArbitrate) Do(arbitrateList [][]evmCommon.Hash, inlog *actor.WorkerThreadLogger, generationIdx int) ([]uint64, []uint64) {
-	// results := make([]evmCommon.Hash, 0, len(arbitrateList))
-	cpairLeft := make([]uint64, 0, len(arbitrateList))
-	cpairRight := make([]uint64, 0, len(arbitrateList))
-
-	request := actor.Message{
-		Msgid: common.GenerateUUID(),
-		Name:  actor.MsgArbitrateList,
-		Data: &mtypes.ArbitratorRequest{
-			TxsListGroup: arbitrateList,
-		},
-		Height: inlog.LatestMessage.Height,
-		Round:  inlog.LatestMessage.Round,
-	}
-	response := mtypes.ArbitratorResponse{}
-
-	inlog.CheckPoint("start arbitrate >>>>>>>>>>>>>>>>>>>", zap.Int("txs", len(arbitrateList)), zap.Int("generationIdx", generationIdx))
-	arbBegin = time.Now()
-	err := intf.Router.Call("arbitrator", "Arbitrate", &request, &response)
-	if err != nil {
-		inlog.Log(log.LogLevel_Error, "arbitrate err", zap.String("err", fmt.Sprintf("%v", err.Error())))
-		return nil, nil
-	} else {
-		inlog.CheckPoint("return arbitrate <<<<<<<<<<<<<<<<<<<<", zap.Int("generationIdx", generationIdx))
-		ArbTime.Observe(time.Since(arbBegin).Seconds())
-		ArbTimeGauge.Set(time.Since(arbBegin).Seconds())
-
-		if response.CPairLeft != nil {
-			cpairLeft = response.CPairLeft
-		}
-		if response.CPairRight != nil {
-			cpairRight = response.CPairRight
-		}
-	}
-	return cpairLeft, cpairRight
+// ----------------------------------
+func (rca *RpcClientArbitrate) Issue(
+	ctx *actor.ExecutionContext,
+	arbitrateList [][]evmCommon.Hash,
+) {
+	ctx.InvokeRPC("arbitrator", "startArbitrate", &mtypes.ArbitratorRequest{
+		TxsListGroup: arbitrateList,
+	}, "onArbResult")
 }

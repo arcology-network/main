@@ -1,0 +1,20 @@
+chain_id: 118
+
+concurrency: 4
+
+executors:
+  - name: executor
+    eus: 16
+
+cluster_name: node1
+cluster_id: 1
+
+log_config_file: ./log.toml
+
+coinbase: "0x1a4c154c778e8f234d6dff415b6359c423f2f428"
+
+persistent_peers: ""
+
+rpcConcurrent: 10
+
+rpcTimeoutSeconds: 60

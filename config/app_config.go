@@ -18,7 +18,6 @@
 package config
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -28,9 +27,13 @@ import (
 	_ "github.com/arcology-network/main/components/storage"
 	_ "github.com/arcology-network/main/modules"
 	"github.com/arcology-network/streamer/actor"
+	"github.com/arcology-network/streamer/actor/rpc"
 	_ "github.com/arcology-network/streamer/aggregator/v3"
 	brokerpk "github.com/arcology-network/streamer/broker"
-	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/jet"
+	jetlib "github.com/arcology-network/streamer/jet/lib"
+	"github.com/arcology-network/streamer/logger"
+	"gopkg.in/yaml.v2"
 )
 
 type Settings struct {
@@ -55,129 +58,90 @@ type Interface struct {
 }
 
 type AppConfig struct {
-	Settings   Settings                          `json:"settings"`
-	Actors     map[string]map[string]interface{} `json:"actors"`
-	MsgOps     []MsgOperation                    `json:"msg_ops"`
-	Interfaces []Interface                       `json:"interfaces"`
-	StartMsgs  []actor.Message                   `json:"start_msgs"`
+	Settings   Settings                          `yaml:"settings"`
+	Actors     map[string]map[string]interface{} `yaml:"actors"`
+	MsgOps     []MsgOperation                    `yaml:"msg_ops"`
+	Interfaces []Interface                       `yaml:"interfaces"`
+	StartMsgs  []actor.Message                   `yaml:"start_msgs"`
 
-	workersDict map[string]actor.IWorkerEx
+	WorkersDict map[string]actor.Business
+	actorDict   map[string]*actor.Actor
 }
 
-func LoadAppConfig(file string) AppConfig {
-	jsonFile, err := os.Open(file)
+func LoadAppConfig(file string) (*AppConfig, error) {
+	data, err := ioutil.ReadFile(file)
 	if err != nil {
-		panic(err)
+		return nil, err
 	}
-	defer jsonFile.Close()
-
-	bytes, err := ioutil.ReadAll(jsonFile)
-	if err != nil {
-		panic(err)
+	cfg := &AppConfig{}
+	if err := yaml.Unmarshal(data, cfg); err != nil {
+		return nil, err
 	}
 
-	var config AppConfig
-	err = json.Unmarshal(bytes, &config)
-	if err != nil {
-		panic(err)
-	}
+	cfg.Settings.ServiceName = strings.Split(filepath.Base(file), ".")[0]
+	cfg.WorkersDict = make(map[string]actor.Business)
 
-	config.Settings.ServiceName = strings.Split(filepath.Base(file), ".")[0]
-	config.workersDict = make(map[string]actor.IWorkerEx)
-	return config
+	cfg.actorDict = make(map[string]*actor.Actor)
+
+	return cfg, nil
 }
 
-func (config *AppConfig) InitApp(broker *brokerpk.StatefulStreamer, globalConfig GlobalConfig) map[string]actor.IWorkerEx {
-	intf.Router.SetZkServers([]string{globalConfig.Zookeeper})
-	var rpcs []string
-	for rpc := range globalConfig.Rpc {
-		rpcs = append(rpcs, rpc)
-	}
-	intf.Router.SetAvailableServices(rpcs)
+func (config *AppConfig) InitApp(broker *brokerpk.StatefulStreamer, globalConfig *GlobalConfig, jetConfig *jetlib.JetStreamConfig) map[string]actor.Business {
+	// inputs := make([][]string, 0, 2*len(config.Actors))
+	outputs := make([]map[string]int, 0, 2*len(config.Actors))
+	nameDic := map[string][]string{}
+	actorTree := ParseActors(config.Actors)
 
-	for name, params := range config.Actors {
-		if _, ok := config.workersDict[name]; ok {
+	sender := actor.NewSendAdaptor(broker, rpc.GlobalRPCClient)
+
+	for name, actorNode := range actorTree {
+		params := actorNode.Params
+		if _, ok := config.WorkersDict[name]; ok {
 			continue
 		}
 
+		nameDic[name] = []string{}
+
 		if name[0] == '-' {
-			actors := strings.Split(name[1:], "-")
-			if len(actors) < 2 {
-				panic("one actor cannot form a chain")
-			}
-
-			var subWorkers []actor.IWorkerEx
-			needHeightController := false
-			for _, name := range actors {
-				params := params[name]
-				if params == nil {
-					params = make(map[string]interface{})
-				}
-				worker := config.createWorker(name, params.(map[string]interface{}), globalConfig)
-				if _, ok := worker.(actor.HeightSensitive); ok {
-					needHeightController = true
-				}
-				subWorkers = append(subWorkers, worker)
-			}
-
-			var baseWorker actor.LinkedActor
-			var previous actor.LinkedActor
-			if needHeightController {
-				baseWorker = actor.NewHeightController()
-				if _, ok := subWorkers[0].(actor.FSMCompatible); ok {
-					previous = baseWorker.Next(actor.NewFSMController()).Next(getLinkedActor(subWorkers[0]))
+			businessList := make([]actor.Business, len(actorNode.Subs))
+			rpcSrvList := make([]string, len(actorNode.Subs))
+			idx := 0
+			for subname, actorNode := range actorNode.Subs {
+				nameDic[name] = append(nameDic[name], subname)
+				subparams := actorNode.Params
+				if subname == "executor" {
+					idx := subparams["idx"].(int)
+					subparams = MergeMap(subparams, globalConfig.Executors[idx])
+					rpcSrvList[idx] = subparams["name"].(string)
 				} else {
-					previous = baseWorker.Next(getLinkedActor(subWorkers[0]))
+					rpcSrvList[idx] = ""
 				}
-			} else {
-				if _, ok := subWorkers[0].(actor.FSMCompatible); ok {
-					baseWorker = actor.NewFSMController()
-					previous = baseWorker.Next(getLinkedActor(subWorkers[0]))
-				} else {
-					baseWorker = getLinkedActor(subWorkers[0])
-					previous = baseWorker
-				}
+
+				businessList[idx] = config.createWorker(subname, subparams, globalConfig, sender)
+				config.WorkersDict[subname] = businessList[idx]
+				outputs = append(outputs, businessList[idx].Outputs())
+
+				config.createMsgOps(businessList[idx], broker)
+
+				idx++
 			}
 
-			for i := 1; i < len(subWorkers)-1; i++ {
-				if _, ok := subWorkers[i].(actor.FSMCompatible); ok {
-					previous = previous.Next(actor.NewFSMController()).Next(getLinkedActor(subWorkers[i]))
-				} else {
-					previous = previous.Next(getLinkedActor(subWorkers[i]))
-				}
-			}
+			config.actorDict[name] = actor.CreateActor(name, broker, businessList, nameDic[name], globalConfig.Concurrency, rpcSrvList)
 
-			if _, ok := subWorkers[len(subWorkers)-1].(actor.FSMCompatible); ok {
-				previous.Next(actor.NewFSMController()).EndWith(subWorkers[len(subWorkers)-1])
-			} else {
-				previous.EndWith(subWorkers[len(subWorkers)-1])
-			}
-			// config.createActor(name, baseWorker, broker)
-			config.workersDict[name] = baseWorker
-			config.createMsgOps(baseWorker, broker)
 		} else {
-			worker := config.createWorker(name, params, globalConfig)
-			var baseWorker actor.LinkedActor
-			if _, ok := worker.(actor.HeightSensitive); ok {
-				baseWorker = actor.NewHeightController()
-				if _, ok := worker.(actor.FSMCompatible); ok {
-					baseWorker.Next(actor.NewFSMController()).EndWith(worker)
-				} else {
-					baseWorker.EndWith(worker)
-				}
-			} else {
-				if _, ok := worker.(actor.FSMCompatible); ok {
-					baseWorker = actor.NewFSMController()
-					baseWorker.EndWith(worker)
-				}
-			}
+			rpcSrvList := []string{""}
+			if name == "executor" {
+				idx := params["idx"].(int)
+				params = MergeMap(params, globalConfig.Executors[idx])
+				rpcSrvList[0] = params["name"].(string)
 
-			if baseWorker != nil {
-				worker = baseWorker
 			}
-			// config.createActor(name, worker, broker)
-			config.workersDict[name] = worker
+			nameDic[name] = []string{name}
+			worker := config.createWorker(name, params, globalConfig, sender)
+			config.WorkersDict[name] = worker
+			outputs = append(outputs, worker.Outputs())
 			config.createMsgOps(worker, broker)
+			config.actorDict[name] = actor.CreateActor(name, broker, []actor.Business{worker}, []string{name}, globalConfig.Concurrency, rpcSrvList)
 		}
 	}
 
@@ -188,69 +152,125 @@ func (config *AppConfig) InitApp(broker *brokerpk.StatefulStreamer, globalConfig
 			for _, p := range op.Params.([]interface{}) {
 				inputs = append(inputs, p.(string))
 			}
-			config.workersDict[actor.CombinedName(inputs...)] = actor.Combine(inputs...)
+			busi, act := actor.Combine(inputs...).On(broker)
+			config.WorkersDict[actor.CombinedName(inputs...)] = busi
+			config.actorDict[actor.CombinedName(inputs...)] = act
 		case "rename":
 			from := op.Params.([]interface{})[0].(string)
 			to := op.Params.([]interface{})[1].(string)
-			config.workersDict[actor.RenamerName(from, to)] = actor.Rename(from).To(to)
+			busi, act := actor.Rename(from).To(to).On(broker)
+			config.WorkersDict[actor.RenamerName(from, to)] = busi
+			config.actorDict[actor.RenamerName(from, to)] = act
 		default:
 			panic("unknown operation type " + op.Type)
 		}
 	}
 
-	for _, i := range config.Interfaces {
-		srv := intf.Factory.Create(
-			i.Service,
-			globalConfig.GetConcurrency(config.Settings.ServiceName),
-			config.Settings.ServiceName,
-			i.Params,
-		)
-		intf.Router.Register(i.Name, srv, globalConfig.Rpc[i.Name], globalConfig.Zookeeper)
+	// inputsAll := actor.DeduplicationInputs(inputs)
+	outputsALl := actor.DeduplicationOutputs(outputs)
+
+	for actname, act := range config.actorDict {
+		needCleaner := make(map[string]struct{})
+		businessNames := nameDic[actname]
+		haveConjunction := false
+		for _, businessName := range businessNames {
+			business := config.WorkersDict[businessName]
+			ins, isConjunction := business.Inputs()
+			if isConjunction {
+				haveConjunction = true
+			}
+			for _, input := range ins {
+				if !jetConfig.Contain(input) {
+					continue
+				}
+				if _, ok := outputsALl[input]; ok {
+					needCleaner[input] = struct{}{}
+				}
+			}
+
+		}
+		if len(needCleaner) != 0 {
+			if haveConjunction {
+				panic("Conjunction not supported.")
+			}
+
+			var msgs []string
+			for msg := range needCleaner {
+				msgs = append(msgs, msg)
+			}
+
+			filter := actor.NewOriginFilter(
+				"origin-filter",
+				actor.MsgsOnlyFrom(msgs, "downloader"),
+			)
+			act.SetFilters([]*actor.Filter{filter})
+		}
 	}
-	return config.workersDict
+
+	jsm, err := jetlib.NewJetKVStreamerFromConfig(jetConfig)
+	if err != nil {
+		panic("create Jet Stream Err:" + err.Error())
+	}
+
+	if len(jetConfig.TopicsD) > 0 {
+		downloader := jet.NewJetDownloader(jsm)
+		config.SetSender(downloader, sender)
+		actor.CreateActor("downloader", broker, []actor.Business{downloader}, []string{"downloader"}, globalConfig.Concurrency, []string{""})
+		config.WorkersDict["downloader"] = downloader
+	}
+
+	if len(jetConfig.TopicsU) > 0 {
+		uploader := jet.NewKafkaUploader(jsm)
+		act := actor.CreateActor("uploader", broker, []actor.Business{uploader}, []string{"uploader"}, globalConfig.Concurrency, []string{""})
+		filter := actor.NewOriginFilter(
+			"origin-filter",
+			actor.NotFrom("downloader"),
+		)
+		act.SetFilters([]*actor.Filter{filter})
+		config.WorkersDict["uploader"] = uploader
+	}
+
+	return config.WorkersDict
 }
 
-func (config *AppConfig) createMsgOps(worker actor.IWorkerEx, broker *brokerpk.StatefulStreamer) {
+func MergeMap(first, second map[string]interface{}) map[string]interface{} {
+	for k, v := range second {
+		first[k] = v
+	}
+	return first
+}
+
+func (config *AppConfig) createMsgOps(worker actor.Business, broker *brokerpk.StatefulStreamer) {
 	inputs, _ := worker.Inputs()
 	for _, input := range inputs {
 		if strings.HasPrefix(input, actor.CombinerPrefix) {
-			if _, ok := config.workersDict[input]; ok {
+			if _, ok := config.WorkersDict[input]; ok {
 				continue
 			}
 
-			config.workersDict[input] = actor.Combine(strings.Split(input[len(actor.CombinerPrefix):], "-")...)
+			busi, act := actor.Combine(strings.Split(input[len(actor.CombinerPrefix):], "-")...).On(broker)
+			config.WorkersDict[input] = busi
+			config.actorDict[input] = act
 		}
 	}
 }
-
-func (config *AppConfig) createActor(name string, worker actor.IWorkerEx, broker *brokerpk.StatefulStreamer) {
-	config.workersDict[name] = worker
-	workerActor := actor.NewActorEx(name, broker, worker)
-	_, isConjunction := worker.Inputs()
-	if isConjunction {
-		workerActor.Connect(brokerpk.NewConjunctions(workerActor))
-	} else {
-		workerActor.Connect(brokerpk.NewDisjunctions(workerActor, 1))
+func (config *AppConfig) SetSender(worker actor.Business, sender actor.OutboundSender) {
+	if _, ok := worker.(actor.Sendable); ok {
+		worker.(actor.Sendable).SetSender(sender)
 	}
 }
-
-func (config *AppConfig) createWorker(name string, params map[string]interface{}, globalConfig GlobalConfig) actor.IWorkerEx {
-	return actor.Factory.Create(
+func (config *AppConfig) createWorker(name string, params map[string]interface{}, globalConfig *GlobalConfig, sender actor.OutboundSender) actor.Business {
+	worker := actor.Factory.Create(
 		name,
-		globalConfig.GetConcurrency(config.Settings.ServiceName),
+		globalConfig.Concurrency,
 		config.Settings.ServiceName,
 		config.replaceEnv(params, globalConfig),
+		sender,
 	)
+	return worker
 }
 
-func getLinkedActor(worker actor.IWorkerEx) actor.LinkedActor {
-	if _, ok := worker.(actor.LinkedActor); !ok {
-		return actor.MakeLinkable(worker)
-	}
-	return worker.(actor.LinkedActor)
-}
-
-func (config *AppConfig) replaceEnv(params map[string]interface{}, globalConfig GlobalConfig) map[string]interface{} {
+func (config *AppConfig) replaceEnv(params map[string]interface{}, globalConfig *GlobalConfig) map[string]interface{} {
 	for k, v := range params {
 		if value, ok := v.(string); ok && value == "__env__" {
 			params[k] = config.Settings.Env(k)
@@ -258,24 +278,14 @@ func (config *AppConfig) replaceEnv(params map[string]interface{}, globalConfig 
 			switch k {
 			case "chain_id":
 				params[k] = globalConfig.ChainId
-			case "zookeeper":
-				params[k] = globalConfig.Zookeeper
-			// case "coinbase":
-			// 	params[k] = globalConfig.Coinbase
-			case "persistent_peers":
-				params[k] = globalConfig.PersistentPeers
-			case "remote_caches":
-				params[k] = globalConfig.RemoteCaches
 			case "cluster_name":
 				params[k] = globalConfig.ClusterName
-			case "p2p_peers":
-				params[k] = globalConfig.P2pPeers
-			case "p2p_gateway":
-				params[k] = globalConfig.P2pGateway
-			case "p2p_conn":
-				params[k] = globalConfig.P2pConn
+			case "executors":
+				params[k] = globalConfig.Executors
+			case "persistent_peers":
+				params[k] = globalConfig.PersistentPeers
 			default:
-				panic("unsupport global variable")
+				panic("unsupport global variable:" + k)
 			}
 		}
 	}
@@ -318,66 +328,100 @@ func PrintWorkers(workers map[string]actor.IWorkerEx) {
 	}
 }
 
-func GenerateDot(workers map[string]actor.IWorkerEx, kafkaConfig KafkaConfig, output string) {
-	var g graph
-	// Write header.
-	index := 1
-	port := 1
-	inputPorts := make(map[string][]string)
-	outputPorts := make(map[string][]string)
-	// Write nodes.
-	for name, worker := range workers {
-		var n node
-		// Write node header.
-		inputs, isConjunction := worker.Inputs()
-		var attr string
-		if isConjunction {
-			attr = "[AND]"
-		} else {
-			attr = "[OR]"
-		}
-		n.name = fmt.Sprintf("%s %s", name, attr)
-		// Write inputs.
-		for _, in := range inputs {
-			_, topic := kafkaConfig.getServerTopic(in)
-			if topic == "" {
-				n.inputs = append(n.inputs, fmt.Sprintf("<TD PORT=\"p%d\">%s</TD>", port, in))
-				inputPorts[in] = append(inputPorts[in], fmt.Sprintf("thread%d:p%d", index, port))
-				port++
-			} else {
-				n.inputs = append(n.inputs, fmt.Sprintf("<TD BGCOLOR=\"green\">%s</TD>", in))
-			}
-		}
-		// Write outputs.
-		outputs := worker.Outputs()
-		for out := range outputs {
-			_, topic := kafkaConfig.getServerTopic(out)
-			if topic == "" {
-				n.outputs = append(n.outputs, fmt.Sprintf("<TD PORT=\"p%d\">%s</TD>", port, out))
-				outputPorts[out] = append(outputPorts[out], fmt.Sprintf("thread%d:p%d", index, port))
-				port++
-			} else {
-				n.outputs = append(n.outputs, fmt.Sprintf("<TD BGCOLOR=\"yellow\">%s</TD>", out))
-			}
-		}
+func LoadConf(globalConfigFile, jetConfigFile, appConfigFile string) {
+	ss := jetlib.RunJetTestServer()
 
-		g.nodes = append(g.nodes, n)
-		index++
-	}
-	// Write edges.
-	for out, ports := range outputPorts {
-		for _, port := range ports {
-			for _, inPort := range inputPorts[out] {
-				g.edges = append(g.edges, edge{
-					from: port,
-					to:   inPort,
-				})
+	globalConfig, _ := LoadGlobalConfig(globalConfigFile)
+	jetConfig, _ := jetlib.LoadConfig(jetConfigFile)
+	appConfig, _ := LoadAppConfig(appConfigFile)
+
+	jetConfig.Nats.Servers[0] = ss.ClientURL()
+
+	logger.InitLog(globalConfig.LogConfigFile, "")
+
+	broker := brokerpk.NewStatefulStreamer()
+	rpc.InitGlobalRPCFactory()
+	rpc.InitGlobalRPCClient(broker, globalConfig.RpcConcurrent, globalConfig.RpcTimeoutSeconds)
+
+	workers := appConfig.InitApp(broker, globalConfig, jetConfig)
+
+	broker.Serve()
+
+	for _, worker := range workers {
+		if _, ok := worker.(actor.Initializer); ok {
+			msgs := worker.(actor.Initializer).InitMsgs()
+			for _, msg := range msgs {
+				broker.Send(msg.Name, msg)
 			}
 		}
 	}
 
-	writeDot(g, output)
+	for _, msg := range appConfig.StartMsgs {
+		broker.Send(msg.Name, &msg)
+	}
+
 }
+
+// func GenerateDot(workers map[string]actor.IWorkerEx, kafkaConfig KafkaConfig, output string) {
+// 	var g graph
+// 	// Write header.
+// 	index := 1
+// 	port := 1
+// 	inputPorts := make(map[string][]string)
+// 	outputPorts := make(map[string][]string)
+// 	// Write nodes.
+// 	for name, worker := range workers {
+// 		var n node
+// 		// Write node header.
+// 		inputs, isConjunction := worker.Inputs()
+// 		var attr string
+// 		if isConjunction {
+// 			attr = "[AND]"
+// 		} else {
+// 			attr = "[OR]"
+// 		}
+// 		n.name = fmt.Sprintf("%s %s", name, attr)
+// 		// Write inputs.
+// 		for _, in := range inputs {
+// 			_, topic := kafkaConfig.getServerTopic(in)
+// 			if topic == "" {
+// 				n.inputs = append(n.inputs, fmt.Sprintf("<TD PORT=\"p%d\">%s</TD>", port, in))
+// 				inputPorts[in] = append(inputPorts[in], fmt.Sprintf("thread%d:p%d", index, port))
+// 				port++
+// 			} else {
+// 				n.inputs = append(n.inputs, fmt.Sprintf("<TD BGCOLOR=\"green\">%s</TD>", in))
+// 			}
+// 		}
+// 		// Write outputs.
+// 		outputs := worker.Outputs()
+// 		for out := range outputs {
+// 			_, topic := kafkaConfig.getServerTopic(out)
+// 			if topic == "" {
+// 				n.outputs = append(n.outputs, fmt.Sprintf("<TD PORT=\"p%d\">%s</TD>", port, out))
+// 				outputPorts[out] = append(outputPorts[out], fmt.Sprintf("thread%d:p%d", index, port))
+// 				port++
+// 			} else {
+// 				n.outputs = append(n.outputs, fmt.Sprintf("<TD BGCOLOR=\"yellow\">%s</TD>", out))
+// 			}
+// 		}
+
+// 		g.nodes = append(g.nodes, n)
+// 		index++
+// 	}
+// 	// Write edges.
+// 	for out, ports := range outputPorts {
+// 		for _, port := range ports {
+// 			for _, inPort := range inputPorts[out] {
+// 				g.edges = append(g.edges, edge{
+// 					from: port,
+// 					to:   inPort,
+// 				})
+// 			}
+// 		}
+// 	}
+
+// 	writeDot(g, output)
+// }
 
 type node struct {
 	name    string

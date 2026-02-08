@@ -18,99 +18,75 @@
 package exec
 
 import (
-	"context"
 	"sync"
 
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
-	"go.uber.org/zap"
 )
 
 type RpcService struct {
-	actor.WorkerThread
-
 	pendingTxs      map[uint64]chan []*ExecutorResponse
 	pendingTxsGuard sync.Mutex
+	totalGroups     int
 }
 
-var (
-	rpcInstance actor.IWorkerEx
-	initRpcOnce sync.Once
-)
-
-func NewRpcService(concurrency int, groupId string) actor.IWorkerEx {
-	initRpcOnce.Do(func() {
-		rpc := &RpcService{
-			pendingTxs: make(map[uint64]chan []*ExecutorResponse),
-		}
-		rpc.Set(concurrency, groupId)
-
-		rpcInstance = rpc
-	})
-	return rpcInstance
+func NewRpcService() actor.Business {
+	rpc := &RpcService{
+		pendingTxs: make(map[uint64]chan []*ExecutorResponse),
+	}
+	return rpc
 }
 
 func (rpc *RpcService) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgTxsExecuteResults,
+		scommon.MsgTxsExecuteResults,
 	}, false
 }
 
 func (rpc *RpcService) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgTxsToExecute: 1,
+		scommon.MsgTxsToExecute: 1,
 	}
 }
 
-func (rpc *RpcService) OnStart() {}
-
-func (rpc *RpcService) OnMessageArrived(msgs []*actor.Message) error {
-	msg := msgs[0]
-	rpc.pendingTxsGuard.Lock()
-	defer rpc.pendingTxsGuard.Unlock()
-
-	if ch, ok := rpc.pendingTxs[msg.Msgid]; ok {
-		ch <- msg.Data.([]*ExecutorResponse)
-		delete(rpc.pendingTxs, msg.Msgid)
-	} else {
-		panic("unexpected msg got")
-	}
-	return nil
+func (rpc *RpcService) RpcConfig() (string, int) {
+	return "executor", 20
 }
 
-func (rpc *RpcService) GetConfig(ctx context.Context, _ *int, config *mtypes.ExecutorConfig) error {
-	config.Concurrency = rpc.Concurrency
-	return nil
+func (rs *RpcService) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("startExecute", rs.startExecute)
+	reg.Register("GetConfig", rs.GetConfig)
+	reg.Register(scommon.MsgTxsExecuteResults, rs.receivedExecuteResults)
 }
 
-func (rpc *RpcService) ExecTxs(ctx context.Context, request *actor.Message, response *mtypes.ExecutorResponses) error {
-	chResults := make(chan []*ExecutorResponse)
-	rpc.pendingTxsGuard.Lock()
-	rpc.pendingTxs[request.Msgid] = chResults
-	rpc.pendingTxsGuard.Unlock()
+func (rs *RpcService) startExecute(ctx *actor.ActionContext) error {
+	// ctx.ExecCtx.LogDebug("startExecute", logger.F("data", ctx.Messages[0].Data), logger.F("reqID", ctx.Messages[0].ReqID))
 
-	rpc.MsgBroker.Send(actor.MsgTxsToExecute, request.Data, request.Height, request.Msgid)
-	results := <-chResults
-
-	// The following code were copied from exec v1.
-	args := request.Data.(*mtypes.ExecutorRequest)
+	params := ctx.RPC.Request.(*mtypes.ExecutorRequest)
 	total := 0
-	for _, sequence := range args.Sequences {
+	for _, sequence := range params.Sequences {
 		total = total + len(sequence.Msgs)
 	}
+	rs.totalGroups = total
+	ctx.ExecCtx.Send(scommon.MsgTxsToExecute, params, params.Height)
+	return nil
+}
 
+func (rs *RpcService) receivedExecuteResults(ctx *actor.ActionContext) error {
+	resp := ctx.Messages[0].Data.([]*ExecutorResponse)
 	resultLength := 0
 
-	HashList := make([]evmCommon.Hash, 0, total)
-	StatusList := make([]uint64, 0, total)
-	GasUsedList := make([]uint64, 0, total)
+	HashList := make([]evmCommon.Hash, 0, rs.totalGroups)
+	StatusList := make([]uint64, 0, rs.totalGroups)
+	GasUsedList := make([]uint64, 0, rs.totalGroups)
 	contractAddress := []evmCommon.Address{}
 
-	callResults := make([][]byte, 0, total)
+	callResults := make([][]byte, 0, rs.totalGroups)
 
-	for _, exectorResponse := range results {
+	for _, exectorResponse := range resp {
 
 		contractAddress = append(contractAddress, exectorResponse.ContractAddress...)
 
@@ -125,14 +101,20 @@ func (rpc *RpcService) ExecTxs(ctx context.Context, request *actor.Message, resp
 		callResults = append(callResults, exectorResponse.CallResults...)
 	}
 
-	rpc.AddLog(log.LogLevel_Debug, "Exec return results***********", zap.Int("txResults", resultLength))
+	ctx.ExecCtx.LogDebug("Exec return results", logger.F("txResults", resultLength))
 
-	response.HashList = HashList
-	response.StatusList = StatusList
-	response.GasUsedList = GasUsedList
+	ctx.ExecCtx.SendRpcResponse("", &mtypes.ExecutorResponses{
+		HashList:          HashList,
+		StatusList:        StatusList,
+		GasUsedList:       GasUsedList,
+		ContractAddresses: contractAddress,
+		CallResults:       callResults,
+	})
 
-	response.ContractAddresses = contractAddress
+	return nil
+}
 
-	response.CallResults = callResults
+func (rs *RpcService) GetConfig(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.SendRpcResponse("", &mtypes.ExecutorConfig{Concurrency: ctx.ExecCtx.Concurrency()})
 	return nil
 }

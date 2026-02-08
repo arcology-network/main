@@ -1,0 +1,5 @@
+settings:
+  prometheus_listen_addr: ":19003"
+
+actors:
+  make_block: {}

@@ -31,8 +31,9 @@ type ExecMessagers struct {
 	Snapshot *interfaces.ReadOnlyStore
 	Config   *evmAdaptorCommon.Config
 	Sequence *mtypes.ExecutingSequence
-	Debug    bool
-	Msgid    uint64
+	// Debug    bool
+	Msgid uint64
+	// ExecCtx *actor.ExecutionContext
 }
 
 type ExecutionResponse struct {

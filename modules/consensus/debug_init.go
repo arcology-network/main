@@ -40,19 +40,8 @@ import (
 )
 
 var (
-	logger = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
-	// af     = ""
-	//aft         = ""
-	// addressfile = ""
+	loggerTm = log.NewTMLogger(log.NewSyncWriter(os.Stdout))
 )
-
-// func init() {
-// 	flags := InitCmd.Flags()
-
-// 	// flags.String("af", "", "address file for create genesis")
-// 	//flags.String("aft", "", "address templete file ")
-// 	// flags.String("addressfile", "", "address  file ")
-// }
 
 var InitCmd = &cobra.Command{
 	Use:   "init",
@@ -61,9 +50,6 @@ var InitCmd = &cobra.Command{
 }
 
 func initCmd(cmd *cobra.Command, args []string) error {
-	// af = viper.GetString("af")
-	//aft = viper.GetString("aft")
-	// addressfile = viper.GetString("addressfile")
 	initCfg()
 	return nil
 }
@@ -112,16 +98,6 @@ func initCfg() {
 		return
 	}
 
-	// if len(af) > 0 {
-
-	// 	err := AddToAF(addressfile, af, userAddr)
-	// 	if err != nil {
-	// 		fmt.Printf("AddToAF  err=%v\n", err)
-	// 		return
-	// 	}
-
-	// }
-
 	var DEFAULT_DENOM = "mycoin"
 
 	// Now, we want to add the custom app_state
@@ -145,12 +121,12 @@ func GetAddress(config *cfg.Config) (*privval.FilePV, string, error) {
 	var pv *privval.FilePV
 	if tmos.FileExists(privValKeyFile) {
 		pv = privval.LoadFilePV(privValKeyFile, privValStateFile)
-		logger.Info("Found private validator", "keyFile", privValKeyFile,
+		loggerTm.Info("Found private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	} else {
 		pv = privval.GenFilePV(privValKeyFile, privValStateFile)
 		pv.Save()
-		logger.Info("Generated private validator", "keyFile", privValKeyFile,
+		loggerTm.Info("Generated private validator", "keyFile", privValKeyFile,
 			"stateFile", privValStateFile)
 	}
 	pk, err := pv.GetPubKey()
@@ -165,18 +141,18 @@ func initFilesWithConfig(config *cfg.Config, addr string, pv *privval.FilePV, ap
 
 	nodeKeyFile := config.NodeKeyFile()
 	if tmos.FileExists(nodeKeyFile) {
-		logger.Info("Found node key", "path", nodeKeyFile)
+		loggerTm.Info("Found node key", "path", nodeKeyFile)
 	} else {
 		if _, err := p2p.LoadOrGenNodeKey(nodeKeyFile); err != nil {
 			return err
 		}
-		logger.Info("Generated node key", "path", nodeKeyFile)
+		loggerTm.Info("Generated node key", "path", nodeKeyFile)
 	}
 
 	// genesis file
 	genFile := config.GenesisFile()
 	if tmos.FileExists(genFile) {
-		logger.Info("Found genesis file", "path", genFile)
+		loggerTm.Info("Found genesis file", "path", genFile)
 	} else {
 		genDoc := types.GenesisDoc{
 			ChainID:         fmt.Sprintf("test-chain-%v", tmrand.Str(6)),
@@ -196,7 +172,7 @@ func initFilesWithConfig(config *cfg.Config, addr string, pv *privval.FilePV, ap
 		if err := genDoc.SaveAs(genFile); err != nil {
 			return err
 		}
-		logger.Info("Generated genesis file", "path", genFile)
+		loggerTm.Info("Generated genesis file", "path", genFile)
 	}
 
 	return nil

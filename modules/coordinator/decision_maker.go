@@ -18,11 +18,10 @@
 package coordinator
 
 import (
-	"fmt"
-
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -34,8 +33,6 @@ const (
 )
 
 type DecisionMaker struct {
-	actor.WorkerThread
-
 	state                int
 	fastSyncUntil        uint64
 	fastSyncMessageTypes map[string]struct{}
@@ -48,186 +45,241 @@ type DecisionMaker struct {
 	genesisData *actor.BlockStart
 }
 
-func NewDecisionMaker(concurrency int, groupId string) actor.IWorkerEx {
+func NewDecisionMaker() actor.Business {
 	dm := &DecisionMaker{
 		state: dmStateUninit,
 		fastSyncMessageTypes: map[string]struct{}{
-			actor.MsgConsensusMaxPeerHeight: {},
-			actor.MsgConsensusUp:            {},
-			actor.MsgExtBlockStart:          {},
-			actor.MsgExtBlockEnd:            {},
-			actor.MsgExtReapCommand:         {},
-			actor.MsgExtTxBlocks:            {},
-			actor.MsgExtReapingList:         {},
-			actor.MsgExtBlockCompleted:      {},
+			scommon.MsgConsensusMaxPeerHeight: {},
+			scommon.MsgConsensusUp:            {},
+			scommon.MsgExtBlockStart:          {},
+			scommon.MsgExtBlockEnd:            {},
+			scommon.MsgExtReapCommand:         {},
+			scommon.MsgExtTxBlocks:            {},
+			scommon.MsgExtReapingList:         {},
+			scommon.MsgExtBlockCompleted:      {},
 		},
 	}
-	dm.Set(concurrency, groupId)
 	return dm
 }
 
 func (dm *DecisionMaker) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgInitialization,
-		actor.MsgConsensusMaxPeerHeight,
-		actor.MsgConsensusUp,
-		actor.MsgExtBlockStart,
-		actor.MsgExtBlockEnd,
-		actor.MsgExtReapCommand,
-		actor.MsgExtTxBlocks,
-		actor.MsgExtBlockCompleted,
-		actor.MsgExtReapingList,
-		actor.MsgAppHash,
-		actor.MsgStateSyncDone,
+		scommon.MsgInitialization,
+		scommon.MsgConsensusMaxPeerHeight,
+		scommon.MsgConsensusUp,
+		scommon.MsgExtBlockStart,
+		scommon.MsgExtBlockEnd,
+		scommon.MsgExtReapCommand,
+		scommon.MsgExtTxBlocks,
+		scommon.MsgExtBlockCompleted,
+		scommon.MsgExtReapingList,
+		scommon.MsgAppHash,
+		scommon.MsgStateSyncDone,
 	}, false
 }
 
 func (dm *DecisionMaker) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgBlockStart:     1,
-		actor.MsgBlockEnd:       1,
-		actor.MsgReapCommand:    1,
-		actor.MsgTxBlocks:       1,
-		actor.MsgBlockCompleted: 1,
-		actor.MsgReapinglist:    1,
-		actor.MsgMetaBlock:      1,
-		actor.MsgExtAppHash:     1,
-		actor.MsgStateSyncStart: 1,
+		scommon.MsgBlockStart:     1,
+		scommon.MsgBlockEnd:       1,
+		scommon.MsgReapCommand:    1,
+		scommon.MsgTxBlocks:       1,
+		scommon.MsgBlockCompleted: 1,
+		scommon.MsgReapinglist:    1,
+		scommon.MsgMetaBlock:      1,
+		scommon.MsgExtAppHash:     1,
+		scommon.MsgStateSyncStart: 1,
 	}
 }
 
-func (dm *DecisionMaker) OnStart() {}
+func (dm *DecisionMaker) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgInitialization, dm.receivedInitialization)
+	reg.Register(scommon.MsgConsensusMaxPeerHeight, dm.receivedConsensusMaxPeerHeight)
+	reg.Register(scommon.MsgConsensusUp, dm.receivedConsensusUp)
+	reg.Register(scommon.MsgExtBlockStart, dm.receivedExtBlockStart)
+	reg.Register(scommon.MsgExtReapCommand, dm.receivedExtReapCommand)
+	reg.Register(scommon.MsgExtReapingList, dm.receivedExtReapingList)
+	reg.Register(scommon.MsgExtBlockEnd, dm.receivedExtBlockEnd)
+	reg.Register(scommon.MsgExtBlockCompleted, dm.receivedExtBlockCompleted)
+	reg.Register(scommon.MsgStateSyncDone, dm.receivedStateSyncDone)
+	reg.Register(scommon.MsgExtTxBlocks, dm.receivedExtTxBlocks)
+	reg.Register(scommon.MsgAppHash, dm.receivedAppHash)
 
-func (dm *DecisionMaker) OnMessageArrived(msgs []*actor.Message) error {
-	msg := msgs[0]
-	switch dm.state {
-	case dmStateUninit:
-		switch msg.Name {
-		case actor.MsgInitialization:
-			dm.storageUp = true
-			dm.initHeight = msg.Height
-			initialization := msg.Data.(*mtypes.Initialization)
-			dm.genesisData = initialization.BlockStart
-		case actor.MsgConsensusMaxPeerHeight:
-			dm.maxPeerHeights = append(dm.maxPeerHeights, msg.Data.(uint64))
-		case actor.MsgConsensusUp:
-			dm.consensusUp = true
-		}
-		// if dm.readyToSync() {
-		// 	if ok, until := dm.startWithFastSync(); ok {
-		// 		fmt.Printf("[DecisionMaker.OnMessageArrived] switch to dmStateFastSync, fast sync until %d\n", until)
-		// 		dm.fastSyncUntil = until
-		// 		dm.MsgBroker.Send(actor.MsgReapCommand, nil)
-		// 		dm.MsgBroker.Send(actor.MsgStateSyncStart, until)
-		// 		dm.state = dmStateFastSync
-		// 	} else {
-		// 		fmt.Printf("[DecisionMaker.OnMessageArrived] switch to dmStateBlockSync\n")
-		// 		if dm.initHeight == 0 {
-		// 			dm.MsgBroker.Send(actor.MsgBlockEnd, "")
-		// 			dm.MsgBroker.Send(actor.MsgBlockCompleted, actor.MsgBlockCompleted_Success)
-		// 		}
-		// 		dm.MsgBroker.Send(actor.MsgReapCommand, nil)
-		// 		dm.state = dmStateBlockSync
-		// 	}
-		// }
+}
 
-		if dm.storageUp && dm.consensusUp {
-			dm.MsgBroker.Send(actor.MsgReapCommand, nil)
-			dm.state = dmStateBlockSync
-			dm.AddLog(log.LogLevel_Debug, ">>>>>change into dmStateBlockSync,ready ************************")
-		}
-	case dmStateFastSync:
-		switch msg.Name {
-		case actor.MsgExtBlockStart, actor.MsgExtReapCommand, actor.MsgExtReapingList:
-			if msg.Height >= dm.fastSyncUntil {
-				fmt.Printf("[DecisionMaker.OnMessageArrived] fast sync done countdown, msg name = %s, height = %d\n", msg.Name, msg.Height)
-				delete(dm.fastSyncMessageTypes, msg.Name)
-				dm.updateFSM = true
-			}
-		case actor.MsgExtBlockEnd, actor.MsgExtBlockCompleted:
-			if msg.Height+1 >= dm.fastSyncUntil {
-				fmt.Printf("[DecisionMaker.OnMessageArrived] fast sync done countdown, msg name = %s, height = %d\n", msg.Name, msg.Height)
-				delete(dm.fastSyncMessageTypes, msg.Name)
-				dm.updateFSM = true
-			}
-		}
-
-		switch msg.Name {
-		case actor.MsgExtBlockStart:
-			fmt.Printf("[DecisionMaker.OnMessageArrived] in dmStateFastSync, on MsgExtBlockStart, height = %v\n", msg.Data.(*actor.BlockStart).Height)
-			dm.MsgBroker.Send(actor.MsgExtAppHash, evmCommon.Hash{}.Bytes())
-		case actor.MsgExtReapingList:
-			fmt.Printf("[DecisionMaker.OnMessageArrived] in dmStateFastSync, on MsgExtReapingList\n")
-			dm.MsgBroker.Send(actor.MsgMetaBlock, &mtypes.MetaBlock{
-				Txs:      [][]byte{},
-				Hashlist: []evmCommon.Hash{},
-			})
-		}
-
-		// FIXME
-		if len(dm.fastSyncMessageTypes) == 3 {
-			fmt.Printf("[DecisionMaker.OnMessageArrived] switch to dmStateBlockSyncWaiting\n")
-			dm.state = dmStateBlockSyncWaiting
-		}
-	case dmStateBlockSyncWaiting:
-		switch msg.Name {
-		case actor.MsgStateSyncDone:
-			fmt.Printf("[SyncClient.OnMessageArrived] on MsgStateSyncDone, switch to dmStateBlockSync\n")
-			dm.state = dmStateBlockSync
-		}
-	case dmStateBlockSync:
-		switch msg.Name {
-		case actor.MsgExtBlockStart:
-			blockStart := msg.Data.(*actor.BlockStart)
-			blockStart.Coinbase = dm.genesisData.Coinbase //fix coinbase
-			blockStart.Extra = dm.genesisData.Extra
-			dm.MsgBroker.Send(actor.MsgBlockStart, blockStart)
-		case actor.MsgExtBlockEnd:
-			dm.MsgBroker.Send(actor.MsgBlockEnd, msg.Data)
-		case actor.MsgExtReapCommand:
-			dm.MsgBroker.Send(actor.MsgReapCommand, msg.Data)
-		case actor.MsgExtTxBlocks:
-			dm.MsgBroker.Send(actor.MsgTxBlocks, msg.Data)
-		case actor.MsgExtBlockCompleted:
-			dm.MsgBroker.Send(actor.MsgBlockCompleted, msg.Data)
-		case actor.MsgExtReapingList:
-			dm.MsgBroker.Send(actor.MsgReapinglist, msg.Data)
-		case actor.MsgAppHash:
-			dm.MsgBroker.Send(actor.MsgExtAppHash, msg.Data)
-		}
-	}
-
+func (dm *DecisionMaker) receivedInitialization(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	dm.storageUp = true
+	dm.initHeight = msg.Height
+	initialization := msg.Data.(*mtypes.Initialization)
+	dm.genesisData = initialization.BlockStart
+	dm.changeStateFromInit(ctx)
 	return nil
 }
 
-func (dm *DecisionMaker) GetStateDefinitions() map[int][]string {
+func (dm *DecisionMaker) changeStateFromInit(ctx *actor.ActionContext) {
+	if dm.storageUp && dm.consensusUp {
+		ctx.ExecCtx.Send(scommon.MsgReapCommand, "")
+		dm.state = dmStateBlockSync
+		ctx.ExecCtx.LogDebug("change into dmStateBlockSync,ready")
+	}
+}
+
+func (dm *DecisionMaker) receivedConsensusMaxPeerHeight(ctx *actor.ActionContext) error {
+	dm.maxPeerHeights = append(dm.maxPeerHeights, ctx.Messages[0].Data.(uint64))
+	return nil
+}
+
+func (dm *DecisionMaker) receivedConsensusUp(ctx *actor.ActionContext) error {
+	dm.consensusUp = true
+	dm.changeStateFromInit(ctx)
+	return nil
+}
+
+func (dm *DecisionMaker) receivedExtBlockStart(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	switch dm.state {
+	case dmStateFastSync:
+		if msg.Height >= dm.fastSyncUntil {
+			dm.fastSyncCountdown(ctx)
+		}
+
+		ctx.ExecCtx.LogDebug("[DecisionMaker.OnMessageArrived] in dmStateFastSync, on MsgExtBlockStart", logger.F("height", msg.Data.(*actor.BlockStart).Height))
+		ctx.ExecCtx.Send(scommon.MsgExtAppHash, evmCommon.Hash{}.Bytes())
+
+		dm.changeStateFromFastSync(ctx)
+	case dmStateBlockSync:
+		blockStart := msg.Data.(*actor.BlockStart)
+		blockStart.Coinbase = dm.genesisData.Coinbase //fix coinbase
+		blockStart.Extra = dm.genesisData.Extra
+		ctx.ExecCtx.Send(scommon.MsgBlockStart, blockStart)
+	}
+	return nil
+}
+
+func (dm *DecisionMaker) receivedExtReapCommand(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	switch dm.state {
+	case dmStateFastSync:
+		if msg.Height >= dm.fastSyncUntil {
+			dm.fastSyncCountdown(ctx)
+		}
+
+		dm.changeStateFromFastSync(ctx)
+	case dmStateBlockSync:
+		ctx.ExecCtx.Send(scommon.MsgReapCommand, msg.Data)
+	}
+	return nil
+}
+
+func (dm *DecisionMaker) receivedExtReapingList(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	switch dm.state {
+	case dmStateFastSync:
+		if msg.Height >= dm.fastSyncUntil {
+			dm.fastSyncCountdown(ctx)
+		}
+
+		ctx.ExecCtx.LogDebug("[DecisionMaker.OnMessageArrived] in dmStateFastSync, on MsgExtReapingList")
+		ctx.ExecCtx.Send(scommon.MsgMetaBlock, &mtypes.MetaBlock{
+			Txs:      [][]byte{},
+			Hashlist: []evmCommon.Hash{},
+		})
+
+		dm.changeStateFromFastSync(ctx)
+	case dmStateBlockSync:
+		ctx.ExecCtx.Send(scommon.MsgReapinglist, msg.Data)
+	}
+	return nil
+}
+
+func (dm *DecisionMaker) fastSyncCountdown(ctx *actor.ActionContext) {
+	msg := ctx.Messages[0]
+	ctx.ExecCtx.LogDebug("[DecisionMaker.OnMessageArrived] fast sync done countdown", logger.F("name", msg.Name), logger.F("height", msg.Height))
+	delete(dm.fastSyncMessageTypes, msg.Name)
+	dm.updateFSM = true
+}
+func (dm *DecisionMaker) changeStateFromFastSync(ctx *actor.ActionContext) {
+	// FIXME
+	if len(dm.fastSyncMessageTypes) == 3 {
+		ctx.ExecCtx.LogDebug("[DecisionMaker.OnMessageArrived] switch to dmStateBlockSyncWaiting")
+		dm.state = dmStateBlockSyncWaiting
+	}
+}
+func (dm *DecisionMaker) receivedExtBlockEnd(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	switch dm.state {
+	case dmStateFastSync:
+		if msg.Height+1 >= dm.fastSyncUntil {
+			dm.fastSyncCountdown(ctx)
+		}
+
+		dm.changeStateFromFastSync(ctx)
+	case dmStateBlockSync:
+		ctx.ExecCtx.Send(scommon.MsgBlockEnd, msg.Data)
+	}
+	return nil
+}
+
+func (dm *DecisionMaker) receivedExtBlockCompleted(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	switch dm.state {
+	case dmStateFastSync:
+		if msg.Height+1 >= dm.fastSyncUntil {
+			dm.fastSyncCountdown(ctx)
+		}
+
+		dm.changeStateFromFastSync(ctx)
+	case dmStateBlockSync:
+		ctx.ExecCtx.Send(scommon.MsgBlockCompleted, msg.Data)
+	}
+	return nil
+}
+
+func (dm *DecisionMaker) receivedStateSyncDone(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.LogDebug("[SyncClient.OnMessageArrived] on MsgStateSyncDone, switch to dmStateBlockSync")
+	dm.state = dmStateBlockSync
+	return nil
+}
+func (dm *DecisionMaker) receivedExtTxBlocks(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.Send(scommon.MsgTxBlocks, ctx.Messages[0].Data)
+	return nil
+}
+func (dm *DecisionMaker) receivedAppHash(ctx *actor.ActionContext) error {
+	ctx.ExecCtx.LogDebug("**************start send MsgExtAppHash")
+	ctx.ExecCtx.Send(scommon.MsgExtAppHash, ctx.Messages[0].Data)
+	return nil
+}
+
+func (dm *DecisionMaker) GetFSMRules() map[int]actor.FSMRule {
 	var fastSyncMsgs []string
 	for typ := range dm.fastSyncMessageTypes {
 		fastSyncMsgs = append(fastSyncMsgs, typ)
 	}
-	return map[int][]string{
-		dmStateUninit: {
-			actor.MsgInitialization,
-			actor.MsgConsensusMaxPeerHeight,
-			actor.MsgConsensusUp,
-		},
-		dmStateFastSync: fastSyncMsgs,
-		dmStateBlockSyncWaiting: {
-			actor.MsgConsensusMaxPeerHeight,
-			actor.MsgConsensusUp,
-			actor.MsgStateSyncDone,
-		},
-		dmStateBlockSync: {
-			actor.MsgConsensusMaxPeerHeight,
-			actor.MsgConsensusUp,
-			actor.MsgExtBlockStart,
-			actor.MsgExtBlockEnd,
-			actor.MsgExtReapCommand,
-			actor.MsgExtTxBlocks,
-			actor.MsgExtBlockCompleted,
-			actor.MsgExtReapingList,
-			actor.MsgAppHash,
-		},
+
+	return map[int]actor.FSMRule{
+		dmStateUninit: {Accept: []string{
+			scommon.MsgInitialization,
+			scommon.MsgConsensusMaxPeerHeight,
+			scommon.MsgConsensusUp,
+		}},
+		dmStateFastSync: {Accept: fastSyncMsgs},
+		dmStateBlockSyncWaiting: {Accept: []string{
+			scommon.MsgConsensusMaxPeerHeight,
+			scommon.MsgConsensusUp,
+			scommon.MsgStateSyncDone,
+		}},
+		dmStateBlockSync: {Accept: []string{
+			scommon.MsgConsensusMaxPeerHeight,
+			scommon.MsgConsensusUp,
+			scommon.MsgExtBlockStart,
+			scommon.MsgExtBlockEnd,
+			scommon.MsgExtReapCommand,
+			scommon.MsgExtTxBlocks,
+			scommon.MsgExtBlockCompleted,
+			scommon.MsgExtReapingList,
+			scommon.MsgAppHash,
+		}},
 	}
 }
 

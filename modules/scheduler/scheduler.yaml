@@ -1,0 +1,9 @@
+settings:
+  prometheus_listen_addr: ":19008"
+actors:
+  scheduler:
+    batch_size: 500
+    conflict_file: "conflictlist"
+    executors: "__global__"
+    
+  feedback: {}

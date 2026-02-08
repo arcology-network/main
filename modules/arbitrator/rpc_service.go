@@ -18,10 +18,7 @@
 package arbitrator
 
 import (
-	"context"
-	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/arcology-network/common-lib/exp/slice"
 	ctypes "github.com/arcology-network/common-lib/types"
@@ -29,132 +26,98 @@ import (
 	mtypes "github.com/arcology-network/main/types"
 	arbitratorn "github.com/arcology-network/scheduler/arbitrator"
 	"github.com/arcology-network/storage-committer/type/univalue"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 	"github.com/arcology-network/streamer/actor"
-	kafkalib "github.com/arcology-network/streamer/kafka/lib"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
-	"go.uber.org/zap"
 )
 
 type RpcService struct {
-	actor.WorkerThread
-	wbs        *kafkalib.Waitobjs
-	msgid      int64
 	arbitrator *arbitratorn.Arbitrator
 }
 
-var (
-	rpcServiceSingleton actor.IWorkerEx
-	initOnce            sync.Once
-)
-
-// return a Subscriber struct
-func NewRpcService(lanes int, groupid string) actor.IWorkerEx {
-	initOnce.Do(func() {
-		rs := RpcService{}
-		rs.Set(lanes, groupid)
-		rs.msgid = 0
-		rpcServiceSingleton = &rs
-		rs.arbitrator = arbitratorn.NewArbitrator()
-	})
-	return rpcServiceSingleton
+func NewRpcService() actor.Business {
+	rs := RpcService{}
+	rs.arbitrator = arbitratorn.NewArbitrator()
+	return &rs
 }
-
+func (rs *RpcService) RpcConfig() (string, int) {
+	return "arbitrator", 20
+}
 func (rs *RpcService) Inputs() ([]string, bool) {
-	return []string{actor.MsgEuResultSelected, actor.MsgPreProcessedImportEuResults}, false
+	return []string{scommon.MsgEuResultSelected, scommon.MsgPreProcessedImportEuResults}, false
 }
 
 func (rs *RpcService) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgArbitrateReapinglist:  1,
-		actor.MsgPreProcessedEuResults: 1,
+		scommon.MsgArbitrateReapinglist:  1,
+		scommon.MsgPreProcessedEuResults: 1,
 	}
 }
 
-func (rs *RpcService) OnStart() {
-	rs.wbs = kafkalib.StartWaitObjects()
+func (rs *RpcService) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("startArbitrate", rs.startArbitrate)
+	reg.Register(scommon.MsgEuResultSelected, rs.receivedEuResultSelected)
+	reg.Register(scommon.MsgPreProcessedImportEuResults, rs.receivedPreProcessedEuResults)
 }
 
-func (rs *RpcService) OnMessageArrived(msgs []*actor.Message) error {
-
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgEuResultSelected:
-			euResults := v.Data.(*[]*types.AccessRecord)
-			rs.AddLog(log.LogLevel_Debug, "received selectedEuresult***********", zap.Int64("msgid", rs.msgid))
-			rs.wbs.Update(rs.msgid, euResults)
-
-			fmt.Printf("height=%v\n", v.Height)
-		case actor.MsgPreProcessedImportEuResults:
-			ars := v.Data.([]*types.AccessRecord)
-			newTrans := make([]*univalue.Univalue, 0, len(ars)*50)
-			for i := range ars {
-				newTrans = append(newTrans, ars[i].Accesses...)
-			}
-			rs.arbitrator.Insert(newTrans)
-
-			rs.MsgBroker.Send(actor.MsgPreProcessedEuResults, ars)
-		}
-	}
-
-	return nil
-}
-
-func (rs *RpcService) Arbitrate(ctx context.Context, request *actor.Message, response *mtypes.ArbitratorResponse) error {
-	lstMessage := request.CopyHeader()
-	rs.ChangeEnvironment(lstMessage)
-	params := request.Data.(*mtypes.ArbitratorRequest)
-
+func (rs *RpcService) startArbitrate(ctx *actor.ActionContext) error {
+	params := ctx.RPC.Request.(*mtypes.ArbitratorRequest)
 	reapinglist := ctypes.ReapingList{
 		List: slice.Flatten(params.TxsListGroup),
 	}
 
-	rs.msgid = rs.msgid + 1
-	rs.CheckPoint("start arbitrate request***********", zap.Int("txs", len(reapinglist.List)))
-	rs.wbs.AddWaiter(rs.msgid)
-	rs.MsgBroker.Send(actor.MsgArbitrateReapinglist, &reapinglist)
+	ctx.ExecCtx.Send(scommon.MsgArbitrateReapinglist, &reapinglist)
 
-	rs.wbs.Waitforever(rs.msgid)
-	results := rs.wbs.GetData(rs.msgid)
-
-	var resultSelected *[]*types.AccessRecord
-	if results == nil {
-		rs.AddLog(log.LogLevel_Error, "select euresults error")
-		return errors.New("select euresults error")
-	}
-
-	if bValue, ok := results.(*[]*types.AccessRecord); ok {
-		resultSelected = bValue
-	} else {
-		rs.AddLog(log.LogLevel_Error, "select euresults type error")
-		return errors.New("select euresults type error")
-	}
-
-	if len(params.TxsListGroup) > 1 && resultSelected != nil && len(*resultSelected) > 0 {
-		rs.CheckPoint("Before detectConflict", zap.Int("tx nums", len(*resultSelected)))
-
-		conflicts := rs.arbitrator.Detect()
-		fmt.Printf("----------arbitrate result-------conflicts Info------------\n")
-		arbitratorn.Conflicts(conflicts).Print()
-		response.CPairLeft, response.CPairRight = parseResult(conflicts)
-		rs.CheckPoint("arbitrate return results***********", zap.Uint64s("left", response.CPairLeft), zap.Uint64s("right", response.CPairRight))
-		// return nil
-	}
-	rs.arbitrator.Clear()
 	return nil
 }
 
-func parseRequests(txsListGroup [][]evmCommon.Hash, results *[]*types.AccessRecord) ([][]uint64, [][]*univaluepk.Univalue) {
+func (rs *RpcService) receivedEuResultSelected(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	resultSelected := msg.Data.([]*types.AccessRecord)
+
+	if resultSelected != nil && len(resultSelected) > 0 {
+		ctx.ExecCtx.LogInfo("Before detectConflict", logger.F("tx nums", len(resultSelected)))
+		conflicts := rs.arbitrator.Detect()
+		fmt.Printf("----------arbitrate result-------conflicts Info------------\n")
+		arbitratorn.Conflicts(conflicts).Print()
+
+		left, right := parseResult(conflicts)
+
+		ctx.ExecCtx.SendRpcResponse("", &mtypes.ArbitratorResponse{
+			CPairLeft:  left,
+			CPairRight: right,
+		})
+		ctx.ExecCtx.LogInfo("arbitrate return results", logger.F("left", left), logger.F("right", right))
+	}
+	rs.arbitrator.Clear()
+
+	return nil
+}
+
+func (rs *RpcService) receivedPreProcessedEuResults(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	ars := msg.Data.([]*types.AccessRecord)
+	newTrans := make([]*univalue.Univalue, 0, len(ars)*50)
+	for i := range ars {
+		newTrans = append(newTrans, ars[i].Accesses...)
+	}
+	rs.arbitrator.Insert(newTrans)
+
+	ctx.ExecCtx.Send(scommon.MsgPreProcessedEuResults, ars)
+	return nil
+}
+
+func parseRequests(txsListGroup [][]evmCommon.Hash, results *[]*types.AccessRecord) ([][]uint64, [][]*univalue.Univalue) {
 	mp := map[[32]byte]*types.AccessRecord{}
 	for _, result := range *results {
 		mp[result.TxHash] = result
 	}
 	groupIDs := make([][]uint64, len(txsListGroup))
-	records := make([][]*univaluepk.Univalue, len(txsListGroup))
+	records := make([][]*univalue.Univalue, len(txsListGroup))
 	for i, row := range txsListGroup {
 		ids := make([]uint64, 0, len(row))
-		transactations := []*univaluepk.Univalue{}
+		transactations := []*univalue.Univalue{}
 		for _, e := range row {
 			result := mp[[32]byte(e.Bytes())]
 			ids = append(ids, slice.Fill(make([]uint64, len(result.Accesses)), uint64(i))...)

@@ -1,0 +1,8 @@
+settings:
+  prometheus_listen_addr: ":19007"
+
+actors:
+  tx_receiver: {}
+
+  tx_unsigner:
+    chain_id: "__global__"

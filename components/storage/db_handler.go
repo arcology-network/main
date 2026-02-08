@@ -19,7 +19,7 @@ package storage
 
 import (
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
 
 	eushared "github.com/arcology-network/eu/shared"
 	statestore "github.com/arcology-network/storage-committer"
@@ -30,28 +30,31 @@ import (
 )
 
 type DBOperation interface {
-	Init(stateStore *statestore.StateStore, broker *actor.MessageWrapper)
-	InitAsync()
+	Init(stateStore *statestore.StateStore)
+	InitAsync(ctx *actor.ActionContext)
 	Import(transitions []*univaluepk.Univalue)
-	PreCommit(euResults []*eushared.EuResult, height uint64)
-	PreCommitCompleted()
-	Commit(height uint64)
+	PreCommit(ctx *actor.ActionContext, euResults []*eushared.EuResult, height uint64)
+	PreCommitCompleted(ctx *actor.ActionContext)
+	Commit(ctx *actor.ActionContext, height uint64)
 	Outputs() map[string]int
 	Config(params map[string]interface{})
+
+	//for rpc async callback
+	AddMetas(ctx *actor.ActionContext)
+	sendAsyncUrlUpdate(ctx *actor.ActionContext)
 }
 
 type BasicDBOperation struct {
 	StateStore *statestore.StateStore
-	MsgBroker  *actor.MessageWrapper
+	// MsgBroker  *actor.MessageWrapper
 
 	Keys     []string
 	Values   []interface{}
 	AcctRoot [32]byte
 }
 
-func (op *BasicDBOperation) Init(stateStore *statestore.StateStore, broker *actor.MessageWrapper) {
+func (op *BasicDBOperation) Init(stateStore *statestore.StateStore) {
 	op.StateStore = stateStore
-	op.MsgBroker = broker
 	op.Keys = []string{}
 	op.Values = []interface{}{}
 	op.AcctRoot = [32]byte{}
@@ -92,8 +95,6 @@ const (
 )
 
 type DBHandler struct {
-	actor.WorkerThread
-
 	StateStore             *statestore.StateStore
 	state                  int
 	importMsg              string
@@ -105,7 +106,7 @@ type DBHandler struct {
 	initDb bool
 }
 
-func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, generationCompletedMsg, finalizeMsg string, op DBOperation) *DBHandler {
+func NewDBHandler(importMsg, commitMsg, generationCompletedMsg, finalizeMsg string, op DBOperation) *DBHandler {
 	handler := &DBHandler{
 		state:                  dbStateUninit,
 		importMsg:              importMsg,
@@ -115,14 +116,13 @@ func NewDBHandler(concurrency int, groupId string, importMsg, commitMsg, generat
 		op:                     op,
 		initDb:                 false,
 	}
-	handler.Set(concurrency, groupId)
 	return handler
 }
 
 func (handler *DBHandler) Inputs() ([]string, bool) {
 	msgs := []string{handler.importMsg, handler.commitMsg, handler.generationCompletedMsg, handler.finalizeMsg}
 	if handler.state == dbStateUninit {
-		msgs = append(msgs, actor.MsgInitialization)
+		msgs = append(msgs, scommon.MsgInitialization)
 	}
 	return msgs, false
 }
@@ -146,78 +146,107 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 
 			handler.StateStore = statestore.NewStateStore(stgproxy.NewLevelDBStoreProxy(dbpath))
 
-			handler.op.Init(handler.StateStore, handler.MsgBroker)
+			handler.op.Init(handler.StateStore)
 			handler.initDb = true
 		}
 	}
 	handler.op.Config(params)
 }
 
-func (handler *DBHandler) OnStart() {
-	handler.op.Init(handler.StateStore, handler.MsgBroker)
+func (handler *DBHandler) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgInitialization, handler.Initialization)
+	reg.Register(handler.importMsg, handler.importData)
+	reg.Register(handler.commitMsg, handler.startCommit)
+	reg.Register(handler.generationCompletedMsg, handler.generationComplete)
+	reg.Register(handler.finalizeMsg, handler.finalize)
+	reg.Register("AddMetas", handler.AddMetas)
+	reg.Register("sendAsyncUrlUpdate", handler.sendAsyncUrlUpdate)
 }
+func (handler *DBHandler) AddMetas(ctx *actor.ActionContext) error {
+	handler.op.AddMetas(ctx)
+	return nil
+}
+func (handler *DBHandler) sendAsyncUrlUpdate(ctx *actor.ActionContext) error {
+	handler.op.sendAsyncUrlUpdate(ctx)
+	ctx.ExecCtx.LogDebug("After PreCommit.")
+	return nil
+}
+func (handler *DBHandler) Initialization(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	if !handler.initDb {
+		if msg.Name == scommon.MsgInitialization {
+			handler.StateStore = msg.Data.(*mtypes.Initialization).Store
 
-func (handler *DBHandler) OnMessageArrived(msgs []*actor.Message) error {
-	msg := msgs[0]
-	switch handler.state {
-	case dbStateUninit:
-		if !handler.initDb {
-			if msg.Name == actor.MsgInitialization {
-				handler.StateStore = msg.Data.(*mtypes.Initialization).Store
-
-				handler.op.Init(handler.StateStore, handler.MsgBroker)
-				handler.state = dbStateInit
-				handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateInit,ready ************************")
-				handler.op.InitAsync()
-			}
-		} else {
+			handler.op.Init(handler.StateStore)
 			handler.state = dbStateInit
-			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateInit,ready ************************")
-			handler.op.InitAsync()
+			ctx.ExecCtx.LogDebug("change into dbStateInit,ready")
+			handler.op.InitAsync(ctx)
 		}
-
-	case dbStateInit:
-		if msg.Name == handler.importMsg {
-			data := msg.Data.(*eushared.Euresults)
-			_, transitions := GetTransitions(*data)
-			handler.op.Import(transitions)
-		} else if msg.Name == handler.commitMsg {
-			var data []*eushared.EuResult
-			if msg.Data != nil {
-				for _, item := range msg.Data.([]interface{}) {
-					data = append(data, item.(*eushared.EuResult))
-				}
-			}
-			if msg.Height == 0 {
-				_, transitions := GetTransitions(data)
-				handler.op.Import(transitions)
-			}
-			handler.AddLog(log.LogLevel_Info, "Before PreCommit.")
-			handler.op.PreCommit(data, msg.Height)
-			handler.AddLog(log.LogLevel_Info, "After PreCommit.")
-
-		} else if msg.Name == handler.generationCompletedMsg {
-			handler.op.PreCommitCompleted()
-			handler.state = dbStateDone
-			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateDone >>>>>>>>")
-		}
-	case dbStateDone:
-		if msg.Name == handler.finalizeMsg {
-			handler.AddLog(log.LogLevel_Info, "Before Commit.")
-			handler.op.Commit(msg.Height)
-			handler.AddLog(log.LogLevel_Info, "After Commit.")
-			handler.state = dbStateInit
-			handler.AddLog(log.LogLevel_Debug, ">>>>>change into dbStateInit >>>>>>>>")
-		}
+	} else {
+		handler.state = dbStateInit
+		ctx.ExecCtx.LogDebug("change into dbStateInit,ready")
+		handler.op.InitAsync(ctx)
 	}
+
 	return nil
 }
 
-func (handler *DBHandler) GetStateDefinitions() map[int][]string {
-	return map[int][]string{
-		dbStateUninit: {actor.MsgInitialization},
-		dbStateInit:   {actor.MsgEuResults, handler.commitMsg, handler.generationCompletedMsg},
-		dbStateDone:   {actor.MsgEuResults, handler.finalizeMsg},
+func (handler *DBHandler) importData(ctx *actor.ActionContext) error {
+	data := ctx.Messages[0].Data.(*eushared.Euresults)
+	_, transitions := GetTransitions(*data)
+	handler.op.Import(transitions)
+	return nil
+}
+
+func (handler *DBHandler) startCommit(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	var data []*eushared.EuResult
+	if msg.Data != nil {
+		for _, item := range msg.Data.([]interface{}) {
+			data = append(data, item.(*eushared.EuResult))
+		}
+	}
+	if msg.Height == 0 {
+		_, transitions := GetTransitions(data)
+		handler.op.Import(transitions)
+	}
+	ctx.ExecCtx.LogDebug("Before PreCommit.")
+	handler.op.PreCommit(ctx, data, msg.Height)
+
+	return nil
+}
+
+func (handler *DBHandler) generationComplete(ctx *actor.ActionContext) error {
+	handler.op.PreCommitCompleted(ctx)
+	handler.state = dbStateDone
+	ctx.ExecCtx.LogDebug("change into dbStateDone")
+	return nil
+}
+
+func (handler *DBHandler) finalize(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	ctx.ExecCtx.LogDebug("Before Commit.")
+	handler.op.Commit(ctx, msg.Height)
+	ctx.ExecCtx.LogDebug("After Commit.")
+	handler.state = dbStateInit
+	ctx.ExecCtx.LogDebug("change into dbStateInit")
+	return nil
+}
+
+func (handler *DBHandler) GetFSMRules() map[int]actor.FSMRule {
+	return map[int]actor.FSMRule{
+		dbStateUninit: {Accept: []string{
+			scommon.MsgInitialization,
+		}},
+		dbStateInit: {Accept: []string{
+			scommon.MsgEuResults,
+			handler.commitMsg,
+			handler.generationCompletedMsg,
+		}},
+		dbStateDone: {Accept: []string{
+			// actor.MsgEuResults,
+			handler.finalizeMsg,
+		}},
 	}
 }
 

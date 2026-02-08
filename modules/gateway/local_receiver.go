@@ -18,85 +18,86 @@
 package gateway
 
 import (
-	"context"
-	"sync"
+	"log"
 
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
-	gatewayTypes "github.com/arcology-network/main/modules/gateway/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
+	scommon "github.com/arcology-network/streamer/common"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type LocalReceiver struct {
-	actor.WorkerThread
 }
 
-var (
-	lrSingleton actor.IWorkerEx
-	initOnce    sync.Once
-)
-
 // return a Subscriber struct
-func NewLocalReceiver(concurrency int, groupid string) actor.IWorkerEx {
-	initOnce.Do(func() {
-		in := LocalReceiver{}
-		in.Set(concurrency, groupid)
-		lrSingleton = &in
-	})
-	return lrSingleton
+func NewLocalReceiver() actor.Business {
+	in := LocalReceiver{}
+	return &in
 }
 
 func (lr *LocalReceiver) Inputs() ([]string, bool) {
-	return []string{}, false
+	return []string{scommon.MsgRpcHash}, false
 }
 
 func (lr *LocalReceiver) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgTxLocalsUnChecked: 100,
+		scommon.MsgTxLocalsUnChecked: 100,
 	}
 }
 
-func (lr *LocalReceiver) OnStart() {
+func (lr *LocalReceiver) RpcConfig() (string, int) {
+	return "gateway", 20
 }
 
-func (lr *LocalReceiver) OnMessageArrived(msgs []*actor.Message) error {
-	return nil
+func (lr *LocalReceiver) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("ReceivedTransactions", lr.ReceivedTransactions)
+	reg.Register("SendRawTransaction", lr.SendRawTransaction)
+	reg.Register(scommon.MsgRpcHash, lr.ReturnRpcHash)
 }
 
-func (lr *LocalReceiver) ReceivedTransactions(ctx context.Context, args *mtypes.SendTransactionArgs, reply *mtypes.SendTransactionReply) error {
+func (lr *LocalReceiver) ReceivedTransactions(ctx *actor.ActionContext) error {
+	args := ctx.RPC.Request.(*mtypes.SendTransactionArgs)
 	txLen := len(args.Txs)
 	checkingtxs := make([][]byte, txLen)
-	common.ParallelWorker(txLen, lr.Concurrency, lr.txWorker, args.Txs, &checkingtxs)
-	txsPack := gatewayTypes.TxsPack{
-		Txs: &types.IncomingTxs{
-			Txs: checkingtxs,
-			Src: types.NewTxSource(types.TxSourceLocal, "ethapibatch"),
-		},
+	common.ParallelWorker(txLen, ctx.ExecCtx.Concurrency(), lr.txWorker, args.Txs, &checkingtxs)
+	txsPack := types.IncomingTxs{
+		Txs:       checkingtxs,
+		Src:       types.NewTxSource(types.TxSourceLocal, "ethapibatch"),
+		RequestID: "",
 	}
-	lr.MsgBroker.Send(actor.MsgTxLocalsUnChecked, &txsPack)
 
-	reply.Status = 0
+	ctx.ExecCtx.Send(scommon.MsgTxLocalsUnChecked, &txsPack)
+	ctx.ExecCtx.SendRpcResponse("", &mtypes.SendTransactionReply{
+		Status: 0,
+	})
+
 	return nil
 }
 
-func (lr *LocalReceiver) SendRawTransaction(ctx context.Context, args *mtypes.RawTransactionArgs, reply *mtypes.RawTransactionReply) error {
+func (lr *LocalReceiver) SendRawTransaction(ctx *actor.ActionContext) error {
+	args := ctx.RPC.Request.(*mtypes.RawTransactionArgs)
 	txLen := 1
+	ctx.ExecCtx.LogDebug("LocalReceiver.SendRawTransaction")
 	checkingtxs := make([][]byte, txLen)
-	common.ParallelWorker(txLen, lr.Concurrency, lr.txWorker, [][]byte{args.Tx}, &checkingtxs)
-	txsPack := gatewayTypes.TxsPack{
-		Txs: &types.IncomingTxs{
-			Txs: checkingtxs,
-			Src: types.NewTxSource(types.TxSourceLocal, "ethapi"),
-		},
-		TxHashChan: make(chan evmCommon.Hash, 1),
+	common.ParallelWorker(txLen, ctx.ExecCtx.Concurrency(), lr.txWorker, [][]byte{args.Tx}, &checkingtxs)
+	txsPack := types.IncomingTxs{
+		Txs:       checkingtxs,
+		Src:       types.NewTxSource(types.TxSourceLocal, "ethapi"),
+		RequestID: ctx.ExecCtx.Current.ReqID,
 	}
-	lr.MsgBroker.Send(actor.MsgTxLocalsUnChecked, &txsPack)
 
-	hash := <-txsPack.TxHashChan
+	ctx.ExecCtx.Send(scommon.MsgTxLocalsUnChecked, &txsPack)
 
-	reply.TxHash = evmCommon.BytesToHash(hash.Bytes())
+	return nil
+}
+func (lr *LocalReceiver) ReturnRpcHash(ctx *actor.ActionContext) error {
+	hash := ctx.Messages[0].Data.(evmCommon.Hash)
+	log.Printf("[Rpc] LocalReceiver ReturnRpcHash -- hash:%x", hash.Bytes())
+	ctx.ExecCtx.SendRpcResponse("", &mtypes.RawTransactionReply{
+		TxHash: hash,
+	})
 	return nil
 }
 

@@ -1,20 +1,19 @@
 /*
- *   Copyright (c) 2024 Arcology Network
+*   Copyright (c) 2024 Arcology Network
 
- *   This program is free software: you can redistribute it and/or modify
- *   it under the terms of the GNU General Public License as published by
- *   the Free Software Foundation, either version 3 of the License, or
- *   (at your option) any later version.
+*   This program is free software: you can redistribute it and/or modify
+*   it under the terms of the GNU General Public License as published by
+*   the Free Software Foundation, either version 3 of the License, or
+*   (at your option) any later version.
 
- *   This program is distributed in the hope that it will be useful,
- *   but WITHOUT ANY WARRANTY; without even the implied warranty of
- *   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- *   GNU General Public License for more details.
+*   This program is distributed in the hope that it will be useful,
+*   but WITHOUT ANY WARRANTY; without even the implied warranty of
+*   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+*   GNU General Public License for more details.
 
- *   You should have received a copy of the GNU General Public License
- *   along with this program.  If not, see <https://www.gnu.org/licenses/>.
+*   You should have received a copy of the GNU General Public License
+*   along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
-
 package consensus
 
 import (
@@ -24,7 +23,6 @@ import (
 	"math/big"
 	"os"
 	"path"
-	"sync"
 	"time"
 
 	"github.com/arcology-network/common-lib/types"
@@ -39,79 +37,74 @@ import (
 	"github.com/arcology-network/consensus-engine/proxy"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
-	"github.com/arcology-network/streamer/log"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/spf13/viper"
 	"github.com/tendermint/tendermint/libs/cli"
-	"go.uber.org/zap"
 )
 
 type Consensus struct {
-	actor.WorkerThread
-	pendingMsgs     map[string]chan *actor.Message
+	pendingMsgs     map[string]chan *scommon.Message
 	maxTxsNum       int
 	rate            int64
 	starter         int64
 	storageSvcName  string
 	debug           bool
-	cachedMetaBlock *actor.Message
-	GotBlock        bool
-	chanTxs         chan [][]byte
-	isproposer      bool
-	syncing         bool
-	engineCfg       *config.Config
-	isInited        bool
+	cachedMetaBlock *scommon.Message
+	// GotBlock        bool
+	chanTxs    chan [][]byte
+	isproposer bool
+	syncing    bool
+	engineCfg  *config.Config
+	isInited   bool
+	sender     actor.OutboundSender
+	height     uint64
+	from       string
 }
 
-var (
-	consensusSingleton actor.IWorkerEx
-	initOnce           sync.Once
-)
-
 // return a Subscriber struct
-func NewConsensus(concurrency int, groupid string) actor.IWorkerEx {
-	initOnce.Do(func() {
-		c := Consensus{}
-		c.Set(concurrency, groupid)
-		c.pendingMsgs = map[string]chan *actor.Message{
-			actor.MsgAppHash:   make(chan *actor.Message, 10),
-			actor.MsgMetaBlock: make(chan *actor.Message, 10),
-		}
-		c.GotBlock = false
-		c.chanTxs = make(chan [][]byte, 10000)
-		c.isproposer = true
-		c.syncing = false
+func NewConsensus() actor.Business {
 
-		consensusSingleton = &c
-	})
+	c := Consensus{
+		from: "consensus",
+	}
 
-	return consensusSingleton
+	c.pendingMsgs = map[string]chan *scommon.Message{
+		scommon.MsgExtAppHash: make(chan *scommon.Message, 10),
+		scommon.MsgMetaBlock:  make(chan *scommon.Message, 10),
+	}
+	// c.GotBlock = false
+	c.chanTxs = make(chan [][]byte, 10000)
+	c.isproposer = true
+	c.syncing = false
+
+	return &c
 }
 
 func (c *Consensus) Inputs() ([]string, bool) {
-	return []string{actor.MsgExtAppHash, actor.MsgMetaBlock, actor.MsgTxLocals, actor.MsgInitialization}, false
+	return []string{scommon.MsgExtAppHash, scommon.MsgMetaBlock, scommon.MsgTxLocals, scommon.MsgInitialization}, false
 }
 
 func (c *Consensus) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgExtReapCommand:         1,
-		actor.MsgExtTxBlocks:            1,
-		actor.MsgExtBlockCompleted:      1,
-		actor.MsgExtReapingList:         1,
-		actor.MsgExtBlockStart:          1,
-		actor.MsgConsensusMaxPeerHeight: 1,
-		actor.MsgConsensusUp:            1,
-		actor.MsgExtBlockEnd:            1,
+		scommon.MsgExtReapCommand:         1,
+		scommon.MsgExtTxBlocks:            1,
+		scommon.MsgExtBlockCompleted:      1,
+		scommon.MsgExtReapingList:         1,
+		scommon.MsgExtBlockStart:          1,
+		scommon.MsgConsensusMaxPeerHeight: 1,
+		scommon.MsgConsensusUp:            1,
+		scommon.MsgExtBlockEnd:            1,
 	}
 }
 
 func (c *Consensus) Config(params map[string]interface{}) {
-	c.maxTxsNum = int(params["max_tx_num"].(float64))
-	c.rate = int64(params["rate"].(float64))
-	c.starter = int64(params["starter"].(float64))
+	c.maxTxsNum = int(params["max_tx_num"].(int))
+	c.rate = int64(params["rate"].(int))
+	c.starter = int64(params["starter"].(int))
 	c.storageSvcName = params["storage_svc_name"].(string)
-	intf.Router.SetZkServers([]string{params["zookeeper"].(string)})
+	// intf.Router.SetZkServers([]string{params["zookeeper"].(string)})
 	c.debug = params["debug"].(bool)
 
 	cfg, err := commands.ParseConfig()
@@ -128,40 +121,48 @@ func (c *Consensus) Config(params map[string]interface{}) {
 	c.engineCfg.P2P.MaxNumOutboundPeers = 100
 }
 
-func (c *Consensus) OnStart() {
-
+func (c *Consensus) RpcConfig() (string, int) {
+	return "consensus", 20
+}
+func (c *Consensus) SetSender(sender actor.OutboundSender) {
+	c.sender = sender
+}
+func (c *Consensus) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("Query", c.Query)
+	reg.Register(scommon.MsgMetaBlock, c.receivedMetaBlock)
+	reg.Register(scommon.MsgExtAppHash, c.receivedExtAppHash)
+	reg.Register(scommon.MsgTxLocals, c.receivedTxLocals)
+	reg.Register(scommon.MsgInitialization, c.receivedInitialization)
 }
 
-func (c *Consensus) InitMsgs() []*actor.Message {
-
+func (c *Consensus) receivedMetaBlock(ctx *actor.ActionContext) error {
+	c.pendingMsgs[scommon.MsgMetaBlock] <- ctx.Messages[0]
 	return nil
 }
-
-func (c *Consensus) OnMessageArrived(msgs []*actor.Message) error {
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgMetaBlock:
-			c.pendingMsgs[actor.MsgMetaBlock] <- v
-		case actor.MsgExtAppHash:
-			c.pendingMsgs[actor.MsgAppHash] <- v
-		case actor.MsgTxLocals:
-			c.chanTxs <- v.Data.([][]byte)
-		case actor.MsgInitialization:
-			err := c.startConsensus(c, c.engineCfg)
-			if err != nil {
-				panic(err)
-			}
-		}
+func (c *Consensus) receivedExtAppHash(ctx *actor.ActionContext) error {
+	c.pendingMsgs[scommon.MsgExtAppHash] <- ctx.Messages[0]
+	return nil
+}
+func (c *Consensus) receivedTxLocals(ctx *actor.ActionContext) error {
+	c.chanTxs <- ctx.Messages[0].Data.([][]byte)
+	return nil
+}
+func (c *Consensus) receivedInitialization(ctx *actor.ActionContext) error {
+	c.height = ctx.Messages[0].Data.(*mtypes.Initialization).BlockStart.Height
+	err := c.startConsensus(c, c.engineCfg)
+	if err != nil {
+		panic(err)
 	}
 	return nil
 }
 
-func (c *Consensus) Query(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
+func (c *Consensus) Query(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*mtypes.QueryRequest)
 	switch request.QueryType {
 	case mtypes.QueryType_Syncing:
-		response.Data = c.syncing
+		ctx.ExecCtx.SendRpcResponse("", c.syncing)
 	case mtypes.QueryType_Proposer:
-		response.Data = c.isproposer
+		ctx.ExecCtx.SendRpcResponse("", c.isproposer)
 	}
 	return nil
 }
@@ -173,23 +174,21 @@ func (c *Consensus) Syncing(syncing bool) {
 	c.syncing = syncing
 }
 func (c *Consensus) Reap(maxBytes int64, maxGas int64, height int64) (txs [][]byte, hashes [][]byte) {
-	c.AddLog(log.LogLevel_Debug, "enter Reap", zap.Uint64("height", c.LatestMessage.Height))
-	if c.cachedMetaBlock != nil {
-		c.AddLog(log.LogLevel_Debug, "c.cachedMetaBlock.Height", zap.Uint64("cache height", c.cachedMetaBlock.Height))
-	}
-	var msg *actor.Message
+	c.height = uint64(height)
+	logger.Log.Debug(context.Background(), c.from, "enter Reap", logger.F("height", height))
+
+	var msg *scommon.Message
 	if c.cachedMetaBlock != nil && uint64(height) == c.cachedMetaBlock.Height {
 		msg = c.cachedMetaBlock
-		c.AddLog(log.LogLevel_Debug, "got cachedMetaBlock")
+		logger.Log.Debug(context.Background(), c.from, "got from cachedMetaBlock")
 	} else {
-		c.AddLog(log.LogLevel_Debug, "waiting MetaBlock")
-
-		msg = <-c.pendingMsgs[actor.MsgMetaBlock]
-		c.AddLog(log.LogLevel_Debug, "got MetaBlock")
-		c.GotBlock = true
+		logger.Log.Debug(context.Background(), c.from, "waiting MetaBlock")
+		msg = <-c.pendingMsgs[scommon.MsgMetaBlock]
+		logger.Log.Debug(context.Background(), c.from, "got MetaBlock from chan")
+		// c.GotBlock = true
 	}
+
 	c.cachedMetaBlock = msg
-	c.AddLog(log.LogLevel_Debug, "after c.cachedMetaBlock.Height", zap.Uint64("cache height", c.cachedMetaBlock.Height))
 
 	metaBlock := msg.Data.(*mtypes.MetaBlock)
 	txs = [][]byte{}
@@ -201,18 +200,21 @@ func (c *Consensus) Reap(maxBytes int64, maxGas int64, height int64) (txs [][]by
 			hashes[i] = h.Bytes()
 		}
 	}
-	c.AddLog(log.LogLevel_Debug, "return Reap", zap.Int("hashes", len(hashes)))
+	logger.Log.Debug(context.Background(), c.from, "return Reap", logger.F("hashes", len(hashes)))
+
 	return
 }
 func (c *Consensus) AddToMempool(txs [][]byte, src string) {
-	c.AddLog(log.LogLevel_Info, "AddToMempool", zap.Int("txs", len(txs)))
+	logger.Log.Info(context.Background(), c.from, "AddToMempool", logger.F("txs", len(txs)))
 	groups := c.parseGroups(txs)
 	for i := range groups {
 		if len(groups[i]) > 0 {
-			c.MsgBroker.Send(actor.MsgExtTxBlocks, &types.IncomingTxs{
-				Txs: groups[i],
-				Src: types.NewTxSource(types.TxSourceConsensus, src),
-			})
+			c.sender.Send(scommon.MsgExtTxBlocks, &mtypes.IncomingTxs{
+				Txs:       groups[i],
+				Src:       mtypes.NewTxSource(types.TxSourceConsensus, src),
+				RequestID: "",
+			}, c.height, c.from)
+
 		}
 	}
 }
@@ -240,62 +242,56 @@ func (c *Consensus) parseGroups(txs [][]byte) [][][]byte {
 	return groups
 }
 func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.Time, hashes [][]byte) []byte {
-	latestMsg := actor.Message{
-		Msgid:  log.Logger.GetLogId(),
-		Name:   actor.MsgBlockStart,
-		Height: uint64(height - 1),
-		Round:  0,
-	}
+	c.height = uint64(height)
 
-	c.ChangeEnvironment(&latestMsg)
-
-	c.AddLog(log.LogLevel_Info, "ApplyTxsSync")
+	logger.Log.Info(context.Background(), c.from, "ApplyTxsSync")
 
 	if !c.isInited {
 		c.isInited = true
 	} else {
-		c.MsgBroker.Send(actor.MsgExtBlockCompleted, actor.MsgBlockCompleted_Success, uint64(height-1))
+		c.sender.Send(scommon.MsgExtBlockCompleted, scommon.MsgBlockCompleted_Success, uint64(height-1), c.from)
 	}
 
-	latestMsg.Height = uint64(height)
-	c.ChangeEnvironment(&latestMsg)
-
-	var na int
+	// var na int
 	txID := fmt.Sprintf("%d", height)
-	intf.Router.Call("transactionalstore", "BeginTransaction", &txID, &na)
+
+	c.sender.SendSync("transactionalstore", "BeginTransaction", txID, c.height, c.from)
 
 	reapHashlist := make([]evmCommon.Hash, len(hashes))
 	for i, h := range hashes {
 		reapHashlist[i] = evmCommon.BytesToHash(h)
 	}
-	c.AddLog(log.LogLevel_Info, "start send reapinglist", zap.Int("reapinglist hashes length", len(reapHashlist)))
-	c.MsgBroker.Send(actor.MsgExtReapingList, &types.ReapingList{
+	logger.Log.Info(context.Background(), c.from, "start send reapinglist", logger.F("reapinglist hashes length", len(reapHashlist)))
+	c.sender.Send(scommon.MsgExtReapingList, &types.ReapingList{
 		List:      reapHashlist,
 		Timestamp: big.NewInt(0),
-	}, uint64(height))
-	c.CheckPoint("send reapinglist")
+	}, c.height, c.from)
+
+	logger.Log.Info(context.Background(), c.from, "send reapinglist")
 
 	coinbaseAddress := evmCommon.BytesToAddress(coinbase)
 	multiResult := big.NewInt(0).Mul(big.NewInt(timestamp.Unix()), big.NewInt(c.rate))
 	blockstamp := big.NewInt(0).Add(big.NewInt(c.starter), multiResult)
-	c.MsgBroker.Send(actor.MsgExtBlockStart, &actor.BlockStart{
+	c.sender.Send(scommon.MsgExtBlockStart, &actor.BlockStart{
 		Timestamp: blockstamp,
 		Coinbase:  coinbaseAddress,
 		Height:    uint64(height),
-	}, uint64(height))
-	c.CheckPoint("block start")
+	}, c.height, c.from)
+	logger.Log.Info(context.Background(), c.from, "block start")
 
-	c.AddLog(log.LogLevel_Debug, "[ApplyTxsSync] Before got block.")
-	if !c.GotBlock {
-		<-c.pendingMsgs[actor.MsgMetaBlock]
-	}
-	c.AddLog(log.LogLevel_Debug, "[ApplyTxsSync] After got block.")
-	c.GotBlock = false
-	msg := <-c.pendingMsgs[actor.MsgAppHash]
-	intf.Router.Call("transactionalstore", "EndTransaction", &na, &na)
-	c.AddLog(log.LogLevel_Debug, "[ApplyTxsSync] After got apphash.")
-	c.MsgBroker.Send(actor.MsgExtBlockEnd, "", uint64(height))
-	c.MsgBroker.Send(actor.MsgExtReapCommand, "", uint64(height))
+	// c.AddLog(log.LogLevel_Debug, "[ApplyTxsSync] Before got block.")
+	// if !c.GotBlock {
+	// 	<-c.pendingMsgs[actor.MsgMetaBlock]
+	// }
+	// c.AddLog(log.LogLevel_Debug, "[ApplyTxsSync] After got block.")
+	// c.GotBlock = false
+
+	msg := <-c.pendingMsgs[scommon.MsgExtAppHash]
+	c.sender.SendSync("transactionalstore", "EndTransaction", "", c.height, c.from)
+	logger.Log.Debug(context.Background(), c.from, "[ApplyTxsSync] After got apphash.")
+
+	c.sender.Send(scommon.MsgExtBlockEnd, "", c.height, c.from)
+	c.sender.Send(scommon.MsgExtReapCommand, "", c.height, c.from)
 	return msg.Data.([]byte)
 }
 
@@ -308,29 +304,30 @@ func (c *Consensus) GetTxsOnBlock(height uint64) ([][]byte, error) {
 		QueryType: mtypes.QueryType_RawBlock,
 		Data:      height,
 	}
-	response := mtypes.QueryResult{}
-	err := intf.Router.Call(c.storageSvcName, "Query", &request, &response)
+	// response := mtypes.QueryResult{}
+	// err := intf.Router.Call(c.storageSvcName, "Query", &request, &response)
+	response, err := c.sender.SendSync(c.storageSvcName, "Query", &request, c.height, c.from)
 	if err != nil {
 		return nil, err
 	}
 
-	return (*response.Data.(*mtypes.MonacoBlock)).Txs, nil
+	return response.(*mtypes.QueryResult).Data.(*mtypes.MonacoBlock).Txs, nil
 }
 
 func (c *Consensus) CreateBlockStore() monaco.BlockStore {
-	return newBlockStore("tmblockstore")
+	return newBlockStore("tmblockstore", c.sender)
 }
 
 func (c *Consensus) CreateStateStore() interface{} {
-	return newStateStore("tmstatestore")
+	return newStateStore("tmstatestore", c.sender)
 }
 
 func (c *Consensus) UpdateMaxPeerHeight(height uint64) {
-	c.MsgBroker.Send(actor.MsgConsensusMaxPeerHeight, height)
+	c.sender.Send(scommon.MsgConsensusMaxPeerHeight, height, height, c.from)
 }
 
 func (c *Consensus) SwitchToConsensus() {
-	c.MsgBroker.Send(actor.MsgConsensusUp, "")
+	c.sender.Send(scommon.MsgConsensusUp, "", c.height, c.from)
 }
 
 func (c *Consensus) startConsensus(backend monaco.BackendProxy, config *config.Config) error {
@@ -345,16 +342,6 @@ func (c *Consensus) startConsensus(backend monaco.BackendProxy, config *config.C
 	if err != nil {
 		panic(err.Error())
 	}
-
-	// logname := "consensus.log"
-	// //create logger
-	// if err := tmos.EnsureDir(path.Join(c.rootDir, "log"), 0777); err != nil {
-	// 	tmos.PanicSanity(err.Error())
-	// }
-	// logfile, err := os.OpenFile(path.Join(c.rootDir, "log", logname), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
-	// if err != nil {
-	// 	tmos.PanicSanity(err.Error())
-	// }
 
 	logger := tmlog.NewTMLogger(tmlog.NewSyncWriter(logfile))
 	if c.debug {

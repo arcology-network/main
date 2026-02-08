@@ -19,17 +19,13 @@ package scheduler
 
 import (
 	"math/big"
-	"sync"
-	"time"
 
 	cmncmn "github.com/arcology-network/common-lib/common"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
-	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/arcology-network/streamer/logger"
 	prometheus "github.com/go-kit/kit/metrics/prometheus"
 	stdprometheus "github.com/prometheus/client_golang/prometheus"
-	"go.uber.org/zap"
 )
 
 var (
@@ -46,40 +42,153 @@ var (
 )
 
 type ExecClient struct {
-	executors   []string
-	batchSize   int
-	execConfigs []*mtypes.ExecutorConfig
+	batchSize int
+	// parallelism int
+	executors map[int]*mtypes.ExecutorConf
 }
 
-func NewExecClient(executors []string, batchSize int) *ExecClient {
-	execConfigs := make([]*mtypes.ExecutorConfig, len(executors))
-	for i, exec := range executors {
-		var na int
-		execConfigs[i] = &mtypes.ExecutorConfig{}
-		intf.Router.Call(exec, "GetConfig", &na, execConfigs[i])
+func NewExecClient(batchSize int, executors []*mtypes.ExecutorConf) *ExecClient {
+	executor_dic := map[int]*mtypes.ExecutorConf{}
+	for i := range executors {
+		executor_dic[i] = executors[i]
 	}
-
 	return &ExecClient{
-		executors:   executors,
-		batchSize:   batchSize,
-		execConfigs: execConfigs,
+		batchSize: batchSize,
+		executors: executor_dic,
 	}
 }
 
-func (client *ExecClient) Run(
-	// messages map[evmCommon.Hash]*schtyp.Message,
-	sequences []*mtypes.ExecutingSequence,
-	timestamp *big.Int,
-	msgTemplate *actor.Message,
-	inlog *actor.WorkerThreadLogger,
-	height uint64,
-	parallelism int,
-	generationIdx int,
-) (
-	map[evmCommon.Hash]*mtypes.ExecuteResponse,
-	[]evmCommon.Address,
+// type ExecutorResult struct {
+// 	ExecIdx  int
+// 	Response *mtypes.ExecutorResponses
+// }
+
+// func (client *ExecClient) ExecuteDynamically(
+// 	ctx *actor.ExecutionContext,
+// 	requests []*mtypes.ExecutorRequest,
+// 	executors int,
+// ) [][]*mtypes.ExecutorResponses {
+
+// 	taskChan := make(chan *mtypes.ExecutorRequest)
+// 	resultChan := make(chan ExecutorResult, len(requests))
+
+// 	// 启动 executors 个 worker
+// 	var wg sync.WaitGroup
+// 	for execIdx := 0; execIdx < executors; execIdx++ {
+// 		wg.Add(1)
+// 		go func(execIdx int, ctx *actor.ExecutionContext) {
+// 			defer wg.Done()
+
+// 			cap := client.getParallelism(execIdx)
+// 			batch := make([]*mtypes.ExecutorRequest, 0, cap)
+// 			for {
+// 				// 拉取一批任务
+// 				for i := 0; i < cap; i++ {
+// 					req, ok := <-taskChan
+// 					if !ok {
+// 						// 通道关闭，但如果 batch 还有任务，要执行完
+// 						if len(batch) > 0 {
+// 							goto EXEC
+// 						}
+// 						// 没有任务直接退出 worker
+// 						return
+// 					}
+// 					batch = append(batch, req)
+// 				}
+
+// 			EXEC:
+// 				if len(batch) == 0 {
+// 					return
+// 				}
+
+// 				// 执行
+// 				data := mergeRequests(batch)
+
+// 				resp, err := ctx.SendSync("executor", "ExecTxs", data, data.Height)
+// 				if err != nil {
+// 					ctx.LogErr("request executor.ExecTxs error", logger.F("err", err.Error()))
+// 					return
+// 				}
+
+// 				resultChan <- ExecutorResult{execIdx, resp.(*mtypes.ExecutorResponses)}
+// 			}
+// 		}(execIdx, ctx.Copy())
+// 	}
+
+// 	// 投递任务（放入统一任务池）
+// 	go func() {
+// 		for _, req := range requests {
+// 			taskChan <- req
+// 		}
+// 		close(taskChan)
+// 	}()
+
+// 	// 收集结果
+// 	responses := make([][]*mtypes.ExecutorResponses, executors)
+
+// 	for i := 0; i < len(requests); i++ {
+// 		res := <-resultChan
+// 		responses[res.ExecIdx] = append(responses[res.ExecIdx], res.Response)
+// 	}
+
+// 	close(resultChan)
+// 	wg.Wait()
+
+// 	return responses
+// }
+
+func mergeRequests(requests []*mtypes.ExecutorRequest) *mtypes.ExecutorRequest {
+	sequences := make([]*mtypes.ExecutingSequence, len(requests))
+	for i, request := range requests {
+		sequences[i] = request.Sequences[0]
+	}
+	return &mtypes.ExecutorRequest{
+		Sequences:     sequences,
+		Height:        requests[0].Height,
+		GenerationIdx: requests[0].GenerationIdx,
+		Timestamp:     requests[0].Timestamp,
+		// Debug:         requests[0].Debug,
+	}
+}
+
+func (client *ExecClient) StartIssue(
+	exectx *actor.ExecutionContext,
+	genCtx *generationContext,
 ) {
-	requests := make([]*mtypes.ExecutorRequest, 0, int(50000/client.batchSize))
+	for execId := range client.executors {
+		if client.Issue(exectx, genCtx, execId) {
+			return
+		}
+	}
+}
+
+func (client *ExecClient) Issue(
+	exectx *actor.ExecutionContext,
+	genCtx *generationContext,
+	execId int,
+) bool {
+	finish := len(genCtx.remaining) == 0
+	if finish {
+		return finish
+	}
+
+	eins, ok := client.executors[execId]
+	if !ok {
+		exectx.LogErr("not found executor", logger.F("execId", execId))
+		return false
+	}
+
+	cap := eins.Eus
+	reqs, finish := genCtx.execIssue(execId, cap)
+
+	request := mergeRequests(reqs)
+	request.ExecId = uint32(execId)
+	exectx.InvokeRPC(eins.Name, "startExecute", request, "onExecResult")
+	return finish
+}
+
+func (client *ExecClient) buildExecutorRequests(sequences []*mtypes.ExecutingSequence, timestamp *big.Int, height uint64, generationIdx int) []*mtypes.ExecutorRequest {
+	requests := make([]*mtypes.ExecutorRequest, 0, int(maxBlockSize/client.batchSize))
 	for _, sequence := range sequences {
 		if sequence.Parallel {
 			for i := 0; i < len(sequence.Msgs); i += client.batchSize {
@@ -95,7 +204,7 @@ func (client *ExecClient) Run(
 					Height:        height,
 					GenerationIdx: uint32(generationIdx),
 					Timestamp:     timestamp,
-					Debug:         false,
+					// Debug:         false,
 				})
 			}
 		} else {
@@ -104,96 +213,53 @@ func (client *ExecClient) Run(
 				Height:        height,
 				GenerationIdx: uint32(generationIdx),
 				Timestamp:     timestamp,
-				Debug:         false,
+				// Debug:         false,
 			})
 		}
+
 	}
-
-	idleExec := make(chan int, len(client.executors))
-	for i := range client.executors {
-		idleExec <- i
-	}
-
-	execBegin := time.Now()
-	concurrency := 0
-	var ccGuard sync.Mutex
-	var wg sync.WaitGroup
-	//requestIdx := 0
-	responses := make([][]*mtypes.ExecutorResponses, len(client.executors))
-	inlog.CheckPoint("exec preparation complete,start exec transactions", zap.Int("parallelism", parallelism), zap.Int("generationIdx", generationIdx))
-	for i := 0; i < len(requests); {
-		execIdx := <-idleExec
-		// Reach concurrency limit.
-		if concurrency >= parallelism {
-			continue
-		}
-
-		numThread := cmncmn.Min(parallelism-concurrency, client.execConfigs[execIdx].Concurrency)
-		numThread = cmncmn.Min(numThread, len(requests)-i)
-		ccGuard.Lock()
-		concurrency += numThread
-		ccGuard.Unlock()
-
-		wg.Add(1)
-		go func(requests []*mtypes.ExecutorRequest, execIdx int, requestIdx int, msg actor.Message) {
-			data := mergeRequests(requests)
-			msg.Name = actor.MsgTxsToExecute
-			msg.Msgid = cmncmn.GenerateUUID()
-			msg.Data = data
-
-			inlog.CheckPoint(">>>>>>>>>>>>>>>>>>>>>", zap.Int("execIdx", execIdx), zap.Int("idx", requestIdx), zap.Int("sequences", len(data.Sequences)), zap.Int("generationIdx", generationIdx))
-			response := mtypes.ExecutorResponses{}
-			err := intf.Router.Call(client.executors[execIdx], "ExecTxs", &msg, &response)
-			if err != nil {
-				panic(err)
-			}
-			inlog.CheckPoint("<<<<<<<<<<<<<<<<<<<<<", zap.Int("execIdx", execIdx), zap.Int("idx", requestIdx), zap.Int("sequences", len(data.Sequences)), zap.Int("generationIdx", generationIdx))
-			responses[execIdx] = append(responses[execIdx], &response)
-			ccGuard.Lock()
-			concurrency -= len(requests)
-			ccGuard.Unlock()
-			idleExec <- execIdx
-			wg.Done()
-		}(requests[i:i+numThread], execIdx, i, *msgTemplate)
-		i += numThread
-	}
-	wg.Wait()
-	inlog.CheckPoint(".......................................................... exec completed", zap.Int("generationIdx", generationIdx))
-	ExecTime.Observe(time.Since(execBegin).Seconds())
-	ExecTimeGauge.Set(time.Since(execBegin).Seconds())
-
-	// The following code were copied from exec v1.
-	results := make(map[evmCommon.Hash]*mtypes.ExecuteResponse)
-
-	contractAddress := make([]evmCommon.Address, 0, 10)
-
-	for _, resps := range responses {
-		for _, r := range resps {
-			for i := range r.HashList {
-				results[r.HashList[i]] = &mtypes.ExecuteResponse{
-					Hash:    r.HashList[i],
-					Status:  r.StatusList[i],
-					GasUsed: r.GasUsedList[i],
-				}
-			}
-
-			contractAddress = append(contractAddress, r.ContractAddresses...)
-
-		}
-	}
-	return results, contractAddress
+	return requests
 }
 
-func mergeRequests(requests []*mtypes.ExecutorRequest) *mtypes.ExecutorRequest {
-	sequences := make([]*mtypes.ExecutingSequence, len(requests))
-	for i, request := range requests {
-		sequences[i] = request.Sequences[0]
-	}
-	return &mtypes.ExecutorRequest{
-		Sequences:     sequences,
-		Height:        requests[0].Height,
-		GenerationIdx: requests[0].GenerationIdx,
-		Timestamp:     requests[0].Timestamp,
-		Debug:         requests[0].Debug,
-	}
-}
+// func (client *ExecClient) Run(
+// 	sequences []*mtypes.ExecutingSequence,
+// 	timestamp *big.Int,
+// 	ctx *actor.ExecutionContext,
+// 	height uint64,
+// 	executors int,
+// 	parallelism int,
+// 	generationIdx int,
+// ) (
+// 	map[evmCommon.Hash]*mtypes.ExecuteResponse,
+// 	[]evmCommon.Address,
+// ) {
+
+// 	execBegin := time.Now()
+// 	responses := client.ExecuteDynamically(ctx, requests, executors)
+
+// 	logger.Log.Info(context.Background(), "exec completed", logger.F("generationIdx", generationIdx))
+
+// 	ExecTime.Observe(time.Since(execBegin).Seconds())
+// 	ExecTimeGauge.Set(time.Since(execBegin).Seconds())
+
+// 	// The following code were copied from exec v1.
+// 	results := make(map[evmCommon.Hash]*mtypes.ExecuteResponse)
+
+// 	contractAddress := make([]evmCommon.Address, 0, 10)
+
+// 	for _, resps := range responses {
+// 		for _, r := range resps {
+// 			for i := range r.HashList {
+// 				results[r.HashList[i]] = &mtypes.ExecuteResponse{
+// 					Hash:    r.HashList[i],
+// 					Status:  r.StatusList[i],
+// 					GasUsed: r.GasUsedList[i],
+// 				}
+// 			}
+
+// 			contractAddress = append(contractAddress, r.ContractAddresses...)
+
+// 		}
+// 	}
+// 	return results, contractAddress
+// }

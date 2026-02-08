@@ -18,116 +18,111 @@
 package ethapi
 
 import (
-	"context"
 	"fmt"
-	"sync"
 
-	apifunc "github.com/arcology-network/main/modules/eth-api/backend"
 	mtypes "github.com/arcology-network/main/types"
 	statestore "github.com/arcology-network/storage-committer"
 	opadapter "github.com/arcology-network/storage-committer/op"
 	ethdb "github.com/arcology-network/storage-committer/storage/ethstorage"
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
-	"go.uber.org/zap"
-)
-
-var (
-	stateSingleton actor.IWorkerEx
-	initStateOnce  sync.Once
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 )
 
 type StateQuery struct {
-	actor.WorkerThread
 	ProofCache *ethdb.MerkleProofCache
+	request    *mtypes.RequestProof
 }
 
 // return a Subscriber struct
-func NewStateQuery(concurrency int, groupid string) actor.IWorkerEx {
-	initStateOnce.Do(func() {
-		stateSingleton = &StateQuery{}
-		stateSingleton.(*StateQuery).Set(concurrency, groupid)
-	})
-	return stateSingleton
+func NewStateQuery() actor.Business {
+
+	return &StateQuery{}
+
 }
 
 func (sq *StateQuery) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgApcHandle,
-	}, true
+		scommon.MsgApcHandle,
+	}, false
 }
 
 func (sq *StateQuery) Outputs() map[string]int {
 	return map[string]int{}
 }
 
-func (sq *StateQuery) Config(params map[string]interface{}) {
-
+func (sq *StateQuery) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgApcHandle, sq.updateApchandle)
+	reg.Register("QueryState", sq.QueryState)
 }
 
-func (*StateQuery) OnStart() {
+func (sq *StateQuery) updateApchandle(ctx *actor.ActionContext) error {
+	ddb := ctx.Messages[0].Data.(*statestore.StateStore).Backend()
+	cache := ethdb.NewMerkleProofCache(2, ddb.EthStore().EthDB())
+	sq.ProofCache = cache
 
+	return nil
+}
+func (sq *StateQuery) RpcConfig() (string, int) {
+	return "state_query", 20
 }
 
-func (*StateQuery) Stop() {}
+func (sq *StateQuery) onBlockQueried(ctx *actor.ActionContext) error {
+	rpcblock := ctx.RPC.Request.(*mtypes.RPCBlock)
+	var err error
+	roothash := rpcblock.Header.Root
 
-func (sq *StateQuery) OnMessageArrived(msgs []*actor.Message) error {
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgApcHandle:
-			ddb := v.Data.(*statestore.StateStore).Backend()
-			cache := ethdb.NewMerkleProofCache(2, ddb.EthStore().EthDB())
-			sq.ProofCache = cache
-		}
+	// Get the proof provider by a root hash.
+	provider, err := sq.ProofCache.GetProofProvider(roothash)
+	if err != nil {
+		panic(err)
 	}
+
+	keys := make([]string, len(sq.request.Keys))
+	for i := range keys {
+		keys[i] = fmt.Sprintf("%x", sq.request.Keys[i].Bytes())
+	}
+
+	ctx.ExecCtx.LogDebug("QueryState request", logger.F("keys", keys), logger.F("addr", fmt.Sprintf("%x", sq.request.Address.Bytes())))
+
+	accountResult, err := provider.GetProof(sq.request.Address, keys)
+	if err := accountResult.Validate(roothash); err != nil {
+		ctx.ExecCtx.LogErr("accountResult Validate Failed", logger.F("err", err))
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+		return err
+	}
+
+	// Convert to OP format and verify.
+	opProof := opadapter.Convertible(*accountResult).New() // To OP format
+	if err := opProof.Verify(roothash); err != nil {
+		ctx.ExecCtx.LogErr("accountResult Convert Failed", logger.F("err", err))
+	}
+
+	ctx.ExecCtx.SendRpcResponse("", accountResult)
+	// }
 	return nil
 }
 
-func (sq *StateQuery) QueryState(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
-	switch request.QueryType {
-	case mtypes.QueryType_Proof:
-		rq := request.Data.(*mtypes.RequestProof)
-		keys := make([]string, len(rq.Keys))
-		for i := range keys {
-			keys[i] = fmt.Sprintf("%x", rq.Keys[i].Bytes())
-		}
-		sq.AddLog(log.LogLevel_Debug, "************* QueryState request", zap.Strings("keys", keys), zap.String("addr", fmt.Sprintf("%x", rq.Address.Bytes())))
-		var rpcblock *mtypes.RPCBlock
-		var err error
-		if hash, ok := rq.BlockParameter.Hash(); ok {
-			rpcblock, err = apifunc.GetHeaderFromHash(hash)
-		} else if number, ok := rq.BlockParameter.Number(); ok {
-			rpcblock, err = apifunc.GetHeaderByNumber(number.Int64())
-		} else {
-			return err
-		}
+func (sq *StateQuery) QueryState(ctx *actor.ActionContext) error {
+	sq.request = ctx.RPC.Request.(*mtypes.RequestProof)
 
-		if err != nil {
-			if err != nil {
-				return err
-			}
-		}
-		roothash := rpcblock.Header.Root
-
-		// Get the proof provider by a root hash.
-		provider, err := sq.ProofCache.GetProofProvider(roothash)
-		if err != nil {
-			panic(err)
-		}
-
-		accountResult, err := provider.GetProof(rq.Address, keys)
-		if err := accountResult.Validate(roothash); err != nil {
-			sq.AddLog(log.LogLevel_Error, "accountResult Validate Failed", zap.Error(err))
-			return err
-		}
-
-		// Convert to OP format and verify.
-		opProof := opadapter.Convertible(*accountResult).New() // To OP format
-		if err := opProof.Verify(roothash); err != nil {
-			sq.AddLog(log.LogLevel_Error, "accountResult Convert Failed", zap.Error(err))
-		}
-
-		response.Data = accountResult
+	if hash, ok := sq.request.BlockParameter.Hash(); ok {
+		ctx.ExecCtx.InvokeRPC("storage", "Query", &mtypes.QueryRequest{
+			QueryType: mtypes.QueryType_HeaderByHash,
+			Data: &mtypes.RequestBlockEth{
+				Hash: hash,
+			},
+		}, "onBlockQueried")
+	} else if number, ok := sq.request.BlockParameter.Number(); ok {
+		ctx.ExecCtx.InvokeRPC("storage", "Query", &mtypes.QueryRequest{
+			QueryType: mtypes.QueryType_HeaderByNumber,
+			Data: &mtypes.RequestBlockEth{
+				Number: number.Int64(),
+			},
+		}, "onBlockQueried")
+	} else {
+		ctx.ExecCtx.SendRpcResponse("query err", nil)
 	}
+
 	return nil
 }

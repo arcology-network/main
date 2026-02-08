@@ -1,0 +1,48 @@
+{
+  "genesis_time": "2026-01-20T14:31:18.747777765Z",
+  "chain_id": "test-chain-XDikC2",
+  "initial_height": "10",
+  "consensus_params": {
+    "block": {
+      "max_bytes": "220200960",
+      "max_gas": "-1",
+      "time_iota_ms": "1000"
+    },
+    "evidence": {
+      "max_age_num_blocks": "100000",
+      "max_age_duration": "172800000000000",
+      "max_bytes": "1048576"
+    },
+    "validator": {
+      "pub_key_types": [
+        "ed25519"
+      ]
+    },
+    "version": {}
+  },
+  "validators": [
+    {
+      "address": "8E3FD460D57631AA395EE3AC14D30C8BDFF5DD42",
+      "pub_key": {
+        "type": "tendermint/PubKeyEd25519",
+        "value": "mvQyLRqt0WP3xl446FXogbT6UCt3q5BAMEe0v/54juU="
+      },
+      "power": "10",
+      "name": ""
+    }
+  ],
+  "app_hash": "",
+  "app_state": {
+    "accounts": [
+      {
+        "address": "8E3FD460D57631AA395EE3AC14D30C8BDFF5DD42",
+        "coins": [
+          {
+            "denom": "mycoin",
+            "amount": 0
+          }
+        ]
+      }
+    ]
+  }
+}

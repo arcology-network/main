@@ -19,6 +19,7 @@ package storage
 
 import (
 	"bytes"
+	"context"
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
@@ -32,7 +33,7 @@ import (
 	interfaces "github.com/arcology-network/storage-committer/common"
 	"github.com/arcology-network/storage-committer/type/commutative"
 	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/logger"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/holiman/uint256"
@@ -48,20 +49,22 @@ import (
 
 	statestore "github.com/arcology-network/storage-committer"
 	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
+
+	scommon "github.com/arcology-network/streamer/common"
 )
 
 type Initializer struct {
-	actor.WorkerThread
-
 	genesisFile     string
 	storage_db_path string
+	sender          actor.OutboundSender
+
+	from string
 }
 
-func NewInitializer(concurrency int, groupId string) actor.IWorkerEx {
-	w := &Initializer{}
-	w.Set(concurrency, groupId)
-	return w
-
+func NewInitializer() actor.Business {
+	return &Initializer{
+		from: "storage.intializer",
+	}
 }
 
 func (i *Initializer) Inputs() ([]string, bool) {
@@ -70,9 +73,14 @@ func (i *Initializer) Inputs() ([]string, bool) {
 
 func (i *Initializer) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgLocalParentInfo: 1,
-		actor.MsgInitialization:  1,
+		scommon.MsgLocalParentInfo:  1,
+		scommon.MsgInitialization:   1,
+		scommon.MsgInitScheduletate: 1,
 	}
+}
+
+func (i *Initializer) SetSender(sender actor.OutboundSender) {
+	i.sender = sender
 }
 
 // Config implements Configurable interface.
@@ -81,15 +89,16 @@ func (i *Initializer) Config(params map[string]interface{}) {
 	i.storage_db_path = params["dbpath"].(string)
 }
 
-func (i *Initializer) InitMsgs() []*actor.Message {
-	var na int
-	var state state.State
-	if err := intf.Router.Call("tmstatestore", "Load", &na, &state); err != nil {
+func (i *Initializer) InitMsgs() []*scommon.Message {
+	ret, err := i.sender.SendSync("tmstatestore", "Load", "", 0, i.from)
+	if err != nil {
 		panic(err)
 	}
+	state := ret.(state.State)
+
 	height := state.LastBlockHeight
 
-	genesis := i.readGenesis(i.genesisFile)
+	genesis := ReadGenesis(i.genesisFile)
 	blockStart := &actor.BlockStart{
 		Timestamp: big.NewInt(int64(genesis.Timestamp)),
 		Coinbase:  genesis.Coinbase,
@@ -111,7 +120,7 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 			return nil
 		})
 
-		store, rootHash = i.initGenesisAccounts(genesis, uint64(height))
+		store, rootHash, _ = InitGenesisAccounts(i.storage_db_path, genesis, uint64(height))
 
 		evmblock := genesis.ToBlock()
 
@@ -119,14 +128,14 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 		if err != nil {
 			panic("Create genesis block err!")
 		}
-		intf.Router.Call("blockstore", "Save", block, &na)
+		i.sender.SendSync("blockstore", "Save", block, block.Height, i.from)
 		hash := evmblock.Hash()
-		var na int
-		intf.Router.Call("statestore", "Save", &State{
+		// var na int
+		i.sender.SendSync("statestore", "Save", &State{
 			Height:     0,
 			ParentHash: hash,
 			ParentRoot: rootHash,
-		}, &na)
+		}, block.Height, i.from)
 		excessBlobGas := uint64(0)
 		if evmblock.Header().ExcessBlobGas != nil {
 			excessBlobGas = *evmblock.Header().ExcessBlobGas
@@ -173,54 +182,70 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 				return err
 			}
 
-			var na int
-			intf.Router.Call("statestore", "Save", &State{
+			// var na int
+			i.sender.SendSync("statestore", "Save", &State{
 				Height:        uint64(height),
 				ParentHash:    pi.ParentHash,
 				ParentRoot:    pi.ParentRoot,
 				ExcessBlobGas: pi.ExcessBlobGas,
 				BlobGasUsed:   pi.BlobGasUsed,
-			}, &na)
-			fmt.Printf("[storage.Initializer] Recover parentinfo = %v\n", pi)
+			}, uint64(height), i.from)
+			logger.Log.Debug(context.Background(), i.from, "[storage.Initializer] Recover parentinfo", logger.F("pi", pi))
 			return nil
 		})
 		transactional.RegisterRecoverFunc("schdstate", func(_ interface{}, bs []byte) error {
-			var state SchdState
+			var state mtypes.SchdState
 			if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&state); err != nil {
-				fmt.Printf("Error decoding SchdState, err = %v\n", err)
+				logger.Log.Error(context.Background(), i.from, "Error decoding SchdState", logger.F("err", err))
 				return err
 			}
 
-			var na int
-			intf.Router.Call("schdstore", "DirectWrite", &state, &na)
-			fmt.Printf("[storage.Initializer] Recover schdstate.\n")
+			// var na int
+			i.sender.SendSync("schdstore", "DirectWrite", &state, uint64(height), i.from)
+			logger.Log.Debug(context.Background(), i.from, "[storage.Initializer] Recover schdstate.")
 			return nil
 		})
 		// Recover.
 		txID := fmt.Sprintf("%d", height)
-		var na int
-		fmt.Printf("[storage.Initializer] Recover transactional store to height: %s\n", txID)
-		err := intf.Router.Call("transactionalstore", "Recover", &txID, &na)
+		// var na int
+		// fmt.Printf("[storage.Initializer] Recover transactional store to height: %s\n", txID)
+		logger.Log.Debug(context.Background(), i.from, "[storage.Initializer] Recover transactional store", logger.F("height", txID))
+		_, err := i.sender.SendSync("transactionalstore", "Recover", txID, uint64(height), i.from)
 		if err != nil {
 			panic(fmt.Sprintf("[storage.Initializer] Error occurred while recovering transactional store: %v\n", err))
 		}
 
-		iin := 12
-		if err := intf.Router.Call("statestore", "GetParentInfo", &iin, parentinfo); err != nil {
+		ret, err = i.sender.SendSync("statestore", "GetParentInfo", "", uint64(height), i.from)
+		if err != nil {
 			panic(err)
 		}
+		parentinfo = ret.(*mtypes.ParentInfo)
 	}
 
-	intf.Router.Call("urlstore", "Init", store.ReadOnlyStore(), &na)
+	i.sender.SendSync("urlstore", "Init", store.ReadOnlyStore(), uint64(height), i.from)
+	i.sender.SendSync("storage", "InitHeight", uint64(height), uint64(height), i.from)
 
-	return []*actor.Message{
+	ret, err = i.sender.SendSync("schdstore", "Load", "", uint64(height), i.from)
+	if err != nil {
+		panic(fmt.Sprintf("load conflication err : %v\n", err))
+	}
+	states := ret.([]mtypes.SchdState)
+
+	return []*scommon.Message{
 		{
-			Name:   actor.MsgLocalParentInfo,
+			Name:   scommon.MsgLocalParentInfo,
 			Height: uint64(height),
 			Data:   parentinfo,
+			From:   i.from,
 		},
 		{
-			Name:   actor.MsgInitialization,
+			Name:   scommon.MsgInitScheduletate,
+			Height: uint64(height),
+			Data:   states,
+			From:   i.from,
+		},
+		{
+			Name:   scommon.MsgInitialization,
 			Height: uint64(height),
 			Data: &mtypes.Initialization{
 				Store:             store,
@@ -228,33 +253,30 @@ func (i *Initializer) InitMsgs() []*actor.Message {
 				ChainConfig:       genesis.Config,
 				ParentInformation: parentinfo,
 			},
+			From: i.from,
 		},
 	}
 }
+func (i *Initializer) RegisterActions(reg actor.ActionRegistrar) {
 
-func (i *Initializer) OnStart() {}
-
-func (i *Initializer) OnMessageArrived(msgs []*actor.Message) error {
-	return nil
 }
-
-func (i *Initializer) initGenesisAccounts(genesis *evmcore.Genesis, height uint64) (*statestore.StateStore, evmCommon.Hash) {
-	db := stgproxy.NewLevelDBStoreProxy(i.storage_db_path)
+func InitGenesisAccounts(dbpath string, genesis *evmcore.Genesis, height uint64) (*statestore.StateStore, evmCommon.Hash, []*univaluepk.Univalue) {
+	db := stgproxy.NewLevelDBStoreProxy(dbpath)
 	stateStore := statestore.NewStateStore(db)
 	db.Inject(RootPrefix, commutative.NewPath())
 
-	transitions := i.createTransitions(db, genesis.Alloc)
+	transitions := createTransitions(db, genesis.Alloc)
 
 	stateStore.Import(slice.Clone(transitions))
 	stateStore.Precommit([]uint64{0})
 	stateStore.Commit(height)
 
-	return stateStore, evmCommon.Hash{}
+	return stateStore, evmCommon.Hash{}, transitions
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-func (i *Initializer) createTransitions(db interfaces.ReadOnlyStore, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
+func createTransitions(db interfaces.ReadOnlyStore, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
 	batch := 10
 	addresses := make([]evmCommon.Address, 0, batch)
 	index := 0
@@ -305,7 +327,7 @@ func getTransition(db interfaces.ReadOnlyStore, addresses []evmCommon.Address, g
 
 // readGenesis will read the given JSON format genesis file and return
 // the initialized Genesis structure
-func (i *Initializer) readGenesis(genesisPath string) *evmcore.Genesis {
+func ReadGenesis(genesisPath string) *evmcore.Genesis {
 	// Make sure we have a valid genesis JSON
 	//genesisPath := ctx.Args().First()
 	if len(genesisPath) == 0 {

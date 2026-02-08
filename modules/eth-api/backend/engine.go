@@ -25,7 +25,7 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
-	intf "github.com/arcology-network/streamer/interface"
+	"github.com/arcology-network/streamer/actor"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
@@ -61,7 +61,7 @@ type newPayloadResult struct {
 // getSealingBlock generates the sealing block based on the given parameters.
 // The generation result will be passed back via the given channel no matter
 // the generation itself succeeds or not.
-func getSealingBlock(params *generateParams, rawTxs [][]byte, chainID uint64) *newPayloadResult {
+func getSealingBlock(params *generateParams, rawTxs [][]byte, chainID uint64, sender actor.OutboundSender) *newPayloadResult {
 	transactions := make([]*types.StandardTransaction, len(rawTxs))
 	for i, tx := range params.txs {
 		txhash := tx.Hash() //types.RlpHash(tx)
@@ -81,12 +81,12 @@ func getSealingBlock(params *generateParams, rawTxs [][]byte, chainID uint64) *n
 		Withdrawals:  params.withdrawals,
 		Transactions: transactions,
 	}
-	var response mtypes.QueryResult
-	err := intf.Router.Call("pool", "ReceivedMessages", request, &response)
+
+	response, err := sender.SendSync("pool", "ReceivedMessages", request, 0)
 	if err != nil {
 		return nil
 	}
-	result := response.Data.(*mtypes.BlockResult)
+	result := response.(*mtypes.BlockResult)
 	return &newPayloadResult{
 		block:    result.Block,
 		fees:     result.Fees,
@@ -95,7 +95,7 @@ func getSealingBlock(params *generateParams, rawTxs [][]byte, chainID uint64) *n
 }
 
 // buildPayload builds the payload according to the provided parameters.
-func buildPayload(args *miner.BuildPayloadArgs, rawTxs [][]byte, chainid uint64) (*Payload, error) {
+func buildPayload(args *miner.BuildPayloadArgs, rawTxs [][]byte, chainid uint64, sender actor.OutboundSender) (*Payload, error) {
 	// Build the initial version with no transaction included. It should be fast
 	// enough to run. The empty payload can at least make sure there is something
 	// to deliver for not missing slot.
@@ -112,7 +112,7 @@ func buildPayload(args *miner.BuildPayloadArgs, rawTxs [][]byte, chainid uint64)
 		txs:         args.Transactions,
 		gasLimit:    args.GasLimit,
 	}
-	empty := getSealingBlock(emptyParams, rawTxs, chainid)
+	empty := getSealingBlock(emptyParams, rawTxs, chainid, sender)
 	if empty.err != nil {
 		return nil, empty.err
 	}

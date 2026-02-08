@@ -23,10 +23,10 @@ import (
 
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
+	scommon "github.com/arcology-network/streamer/common"
 )
 
 type Metrics struct {
-	actor.WorkerThread
 	firstItem *mtypes.TPSGasBurned
 	maxTps    int
 	maxGas    int
@@ -39,38 +39,28 @@ type Metrics struct {
 }
 
 // return a Subscriber struct
-func NewMetrics(concurrency int, groupid string) actor.IWorkerEx {
-	cr := Metrics{}
-	cr.Set(concurrency, groupid)
-	return &cr
+func NewMetrics() actor.Business {
+	return &Metrics{}
 }
 
 func (cr *Metrics) Inputs() ([]string, bool) {
-	return []string{actor.MsgReceiptInfo}, true
+	return []string{scommon.MsgReceiptInfo}, false
 }
 
 func (cr *Metrics) Outputs() map[string]int {
 	return map[string]int{}
 }
 
-func (cr *Metrics) OnStart() {
+func (cr *Metrics) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgReceiptInfo, cr.startGenerateLog)
 }
-
-func (cr *Metrics) Stop() {
-
-}
-
-func (cr *Metrics) OnMessageArrived(msgs []*actor.Message) error {
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgReceiptInfo:
-			if cr.isOutput {
-				go func() {
-					show := cr.Calculate(v.Data.(*mtypes.ReceiptInfo).TpsGas, v.Height)
-					cr.WriteFile(show)
-				}()
-			}
-		}
+func (cr *Metrics) startGenerateLog(ctx *actor.ActionContext) error {
+	msg := ctx.Messages[0]
+	if cr.isOutput {
+		go func() {
+			show := cr.Calculate(msg.Data.(*mtypes.ReceiptInfo).TpsGas, msg.Height)
+			cr.WriteFile(show)
+		}()
 	}
 	return nil
 }
@@ -91,7 +81,7 @@ func (cr *Metrics) Config(params map[string]interface{}) {
 	if v, ok := params["maxRecords"]; !ok {
 		panic("parameter not found: maxRecords")
 	} else {
-		cr.maxRecords = int(v.(float64))
+		cr.maxRecords = v.(int)
 	}
 }
 

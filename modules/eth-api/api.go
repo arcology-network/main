@@ -21,14 +21,17 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"math/big"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/BurntSushi/toml"
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 	wal "github.com/arcology-network/main/modules/eth-api/wallet"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/streamer/actor"
 	jsonrpc "github.com/deliveroo/jsonrpc-go"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
@@ -360,6 +363,7 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 	// 	return "null", nil
 	// }
 	queryCounter := options.Waits
+
 	for queryIdx := 0; queryIdx < queryCounter; queryIdx++ {
 		receipt, err = backend.GetTransactionReceipt(hash)
 		if err != nil {
@@ -904,18 +908,18 @@ func ToKeys(param interface{}) ([]common.Hash, error) {
 	}
 }
 
-func startJsonRpc() {
+func startJsonRpc(sender actor.OutboundSender) {
 	filters := internal.NewFilters()
 
 	privateKeys := LoadKeys(options.KeyFile)
 
-	// logFile, err := os.OpenFile("./rpc.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
-	// if err != nil {
-	// 	fmt.Println("open log file failed, err:", err)
-	// 	return
-	// }
-	// log.SetOutput(logFile)
-	// log.SetFlags(log.Lmicroseconds | log.Ldate)
+	logFile, err := os.OpenFile("./rpc.log", os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		fmt.Println("open log file failed, err:", err)
+		return
+	}
+	log.SetOutput(logFile)
+	log.SetFlags(log.Lmicroseconds | log.Ldate)
 
 	server := jsonrpc.New()
 	server.Use(func(next jsonrpc.Next) jsonrpc.Next {
@@ -931,7 +935,7 @@ func startJsonRpc() {
 	if options.Debug {
 		backend = internal.NewEthereumAPIMock(new(big.Int).SetUint64(options.ChainID))
 	} else {
-		backend = internal.NewMonaco(filters)
+		backend = internal.NewMonaco(filters, sender)
 	}
 
 	wallet = wal.NewWallet(new(big.Int).SetUint64(options.ChainID), privateKeys)

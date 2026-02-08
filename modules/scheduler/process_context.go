@@ -19,11 +19,8 @@ package scheduler
 
 import (
 	"math/big"
-	"strings"
 
 	cmncmn "github.com/arcology-network/common-lib/common"
-	"github.com/arcology-network/streamer/actor"
-	intf "github.com/arcology-network/streamer/interface"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 
 	// schdv1 "github.com/arcology-network/main/modules/scheduler"
@@ -31,8 +28,11 @@ import (
 )
 
 type processContext struct {
+	generationCtx map[int]*generationContext
+	height        uint64
+
 	executor   *ExecClient
-	arbitrator Arbitrator
+	arbitrator *RpcClientArbitrate
 
 	// Per block data.
 	timestamp     *big.Int
@@ -42,45 +42,31 @@ type processContext struct {
 	txHash2IdBiMap *cmncmn.BiMap[evmCommon.Hash, uint64]
 	txHash2Gas     map[evmCommon.Hash]uint64
 
-	executed    []evmCommon.Hash
-	deletedDict map[evmCommon.Hash]struct{}
-
-	txId uint32
-
-	// Parameters for executor.
-	msgTemplate *actor.Message
-	logger      *actor.WorkerThreadLogger
-	parallelism int
-	generation  int
-
-	height uint64
+	txId                uint32
+	currentGenerationID int
+	generationCount     int
 
 	// Results collected for scheduler.
 	newContracts []evmCommon.Address
 	conflicts    *mtypes.ConflictInfos
+
+	executed    []evmCommon.Hash
+	deletedDict map[evmCommon.Hash]struct{}
+}
+
+func (c *processContext) GetCurrentGeneration() *generation {
+	return c.generationCtx[c.currentGenerationID].generation
 }
 
 func createProcessContext() *processContext {
 	return &processContext{
-		txHash2Callee:  make(map[evmCommon.Hash]evmCommon.Address),
-		txHash2Sign:    make(map[evmCommon.Hash][4]byte),
-		txHash2IdBiMap: cmncmn.NewBiMap[evmCommon.Hash, uint64](),
-		txHash2Gas:     make(map[evmCommon.Hash]uint64),
-
-		deletedDict: make(map[evmCommon.Hash]struct{}),
-		conflicts:   mtypes.NewConflictInfos(),
-		txId:        1,
+		conflicts: mtypes.NewConflictInfos(),
+		txId:      1,
 	}
 }
 
-func (c *processContext) init(execBatchSize int) {
-	var execSvcs []string
-	for _, svc := range intf.Router.GetAvailableServices() {
-		if strings.HasPrefix(svc, "executor") {
-			execSvcs = append(execSvcs, svc)
-		}
-	}
-	c.executor = NewExecClient(execSvcs, execBatchSize)
+func (c *processContext) init(execBatchSize int, executors []*mtypes.ExecutorConf) {
+	c.executor = NewExecClient(execBatchSize, executors)
 	c.arbitrator = NewRpcClientArbitrate()
 }
 
@@ -92,13 +78,37 @@ func (c *processContext) onNewBlock(height uint64) {
 	c.executed = c.executed[:0]
 	c.deletedDict = make(map[evmCommon.Hash]struct{})
 	c.txId = 1
-	c.generation = -1
+	c.currentGenerationID = -1
 	c.newContracts = c.newContracts[:0]
 	c.conflicts.Reset()
-
 	c.height = height
 }
 
+func (c *processContext) onStartBlock(gens []*generation) {
+	c.generationCount = len(gens)
+	c.generationCtx = make(map[int]*generationContext, len(gens))
+	for i := range gens {
+		gens[i].setMsgProperty()
+		requests := c.executor.buildExecutorRequests(AddGroupId(gens[i].sequences), c.timestamp, c.height, i)
+		c.generationCtx[i] = NewGenerationContext(gens[i], i, requests)
+	}
+}
+
 func (c *processContext) onNewGeneration() {
-	c.generation++
+	c.currentGenerationID++
+}
+func AddGroupId(sequences []*mtypes.ExecutingSequence) []*mtypes.ExecutingSequence {
+	groupId := uint64(0)
+	for i := range sequences {
+		groupids := make([]uint64, 0, len(sequences[i].Msgs))
+		for j := 0; j < len(sequences[i].Msgs); j++ {
+			groupids = append(groupids, groupId)
+			if sequences[i].Parallel {
+				groupId = groupId + 1
+			}
+		}
+		sequences[i].GroupIds = groupids
+		groupId = groupId + 1
+	}
+	return sequences
 }

@@ -25,67 +25,69 @@ import (
 	internal "github.com/arcology-network/main/modules/eth-api/backend"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
+	scommon "github.com/arcology-network/streamer/common"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type FilterManager struct {
-	actor.WorkerThread
 	filters *internal.Filters
+	sender  actor.OutboundSender
 }
 
 // return a Subscriber struct
-func NewFilterManager(concurrency int, groupid string) actor.IWorkerEx {
+func NewFilterManager() actor.Business {
 	fm := FilterManager{}
-	fm.Set(concurrency, groupid)
 	return &fm
 }
+func (fm *FilterManager) SetSender(sender actor.OutboundSender) {
+	fm.sender = sender
 
+}
 func (fm *FilterManager) Inputs() ([]string, bool) {
 	return []string{
-		actor.MsgSelectedReceipts,
-		actor.MsgPendingBlock,
+		scommon.MsgSelectedReceipts,
+		scommon.MsgPendingBlock,
 	}, true
 }
-
+func (fm *FilterManager) PrimaryMsg() string {
+	return scommon.MsgSelectedReceipts
+}
 func (fm *FilterManager) Outputs() map[string]int {
 	return map[string]int{}
 }
 
 func (fm *FilterManager) Config(params map[string]interface{}) {
 	fm.filters = internal.NewFilters()
-	fm.filters.SetTimeout(time.Minute * time.Duration(int(params["filter_timeout_mins"].(float64))))
+	fm.filters.SetTimeout(time.Minute * time.Duration(params["filter_timeout_mins"].(int)))
 
 	options.KeyFile = params["key_file"].(string)
-	options.Port = uint64(params["json_rpc_port"].(float64))
-	options.AuthPort = uint64(params["auth_rpc_port"].(float64))
+	options.Port = uint64(params["json_rpc_port"].(int))
+	options.AuthPort = uint64(params["auth_rpc_port"].(int))
 	options.Debug = params["debug"].(bool)
-	options.Waits = int(params["retry_time"].(float64))
-	options.ProtocolVersion = int(params["protocol_version"].(float64))
-	options.Hashrate = int(params["hash_rate"].(float64))
+	options.Waits = params["retry_time"].(int)
+	options.ProtocolVersion = params["protocol_version"].(int)
+	options.Hashrate = params["hash_rate"].(int)
 	options.ChainID = params["chain_id"].(*big.Int).Uint64()
 	options.JwtFile = params["jwt_file"].(string)
-}
 
-func (*FilterManager) OnStart() {
-	startJsonRpc()
+	startJsonRpc(fm.sender)
 	startAuthJsonRpc()
 }
+func (fm *FilterManager) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgSelectedReceipts, fm.SetData)
+	reg.Register(scommon.MsgPendingBlock, fm.SetData)
+}
 
-func (*FilterManager) Stop() {}
-
-func (fm *FilterManager) OnMessageArrived(msgs []*actor.Message) error {
+func (fm *FilterManager) SetData(ctx *actor.ActionContext) error {
 	var receipts []*ethTypes.Receipt
 	var block *mtypes.MonacoBlock
 
-	for _, v := range msgs {
+	for _, v := range ctx.Messages {
 		switch v.Name {
-		case actor.MsgSelectedReceipts:
-			// for _, item := range v.Data.([]interface{}) {
-			// 	receipts = append(receipts, item.(*ethTypes.Receipt))
-			// }
+		case scommon.MsgSelectedReceipts:
 			receipts = v.Data.([]*ethTypes.Receipt)
-		case actor.MsgPendingBlock:
+		case scommon.MsgPendingBlock:
 			block = v.Data.(*mtypes.MonacoBlock)
 		}
 	}
@@ -102,11 +104,10 @@ func (fm *FilterManager) OnMessageArrived(msgs []*actor.Message) error {
 				receipts[i].Logs[k].TxHash = receipts[i].TxHash
 				receipts[i].Logs[k].TxIndex = receipts[i].TransactionIndex
 			}
-			//storageTypes.SaveReceipt(s.datastore, block.Height, txhash, (*receipts)[i])
 		}
 	}
 
-	common.ParallelWorker(len(receipts), fm.Concurrency, worker)
+	common.ParallelWorker(len(receipts), ctx.ExecCtx.Concurrency(), worker)
 	fm.filters.OnResultsArrived(block.Height, receipts, evmCommon.BytesToHash(blockHash))
 
 	return nil

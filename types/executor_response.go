@@ -19,6 +19,7 @@ package types
 
 import (
 	codec "github.com/arcology-network/common-lib/codec"
+	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 )
@@ -37,6 +38,8 @@ type ExecutorResponses struct {
 	ContractAddresses []ethCommon.Address
 
 	CallResults [][]byte
+
+	ExecId uint32
 }
 
 func (er *ExecutorResponses) GobEncode() ([]byte, error) {
@@ -48,6 +51,7 @@ func (er *ExecutorResponses) GobEncode() ([]byte, error) {
 		types.Addresses(er.ContractAddresses).Encode(),
 
 		codec.Byteset(er.CallResults).Encode(),
+		common.Uint32ToBytes(er.ExecId),
 	}
 	return codec.Byteset(data).Encode(), nil
 }
@@ -60,5 +64,7 @@ func (er *ExecutorResponses) GobDecode(data []byte) error {
 	er.ContractAddresses = types.Addresses(er.ContractAddresses).Decode(fields[3])
 
 	er.CallResults = [][]byte(codec.Byteset{}.Decode(fields[4]).(codec.Byteset))
+
+	er.ExecId = common.BytesToUint32(fields[5])
 	return nil
 }

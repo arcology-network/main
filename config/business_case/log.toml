@@ -1,0 +1,12 @@
+Level	  = "debug"
+Version = "2.0.0"
+
+Service = "arcology"
+Module  = "main"
+
+EnableStdout = true
+LogFile = "./logs/app.log"
+MaxSize = 10        # the maximum size in M of the log file, defaults to 100M
+MaxAge =  7         # the maximum number of days to retain old log files,The default is not to remove old log files,set 0
+MaxBackups = 3      # the maximum number of old log files to retain,The default is to retain all old log files ,set 0
+ 

@@ -1,0 +1,17 @@
+settings:
+  prometheus_listen_addr: ":19004"
+  envs:
+    generate_apc_handle: block
+    generate_url_update: true
+    generate_acct_root: true
+    init_db: true
+    dbpath: "./cfg_estimate_executor/urlfiles"
+    cached: true
+    transactional: true
+
+actors:
+  exec_debug:
+    chain_id: "__global__"
+    eus: 1
+
+  

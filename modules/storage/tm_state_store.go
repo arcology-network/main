@@ -18,13 +18,10 @@
 package storage
 
 import (
-	"context"
-
-	tmstate "github.com/arcology-network/consensus-engine/proto/tendermint/state"
-	tmproto "github.com/arcology-network/consensus-engine/proto/tendermint/types"
 	"github.com/arcology-network/consensus-engine/state"
 	contyp "github.com/arcology-network/consensus-engine/types"
 	conwrk "github.com/arcology-network/main/modules/consensus"
+	"github.com/arcology-network/streamer/actor"
 	tmdb "github.com/tendermint/tm-db"
 )
 
@@ -32,7 +29,7 @@ type TmStateStore struct {
 	impl state.Store
 }
 
-func NewTmStateStore() *TmStateStore {
+func NewTmStateStore() actor.Business {
 	return &TmStateStore{}
 }
 
@@ -45,43 +42,124 @@ func (tss *TmStateStore) Config(params map[string]interface{}) {
 	tss.impl = state.NewStore(db)
 }
 
-func (tss *TmStateStore) Load(ctx context.Context, _ *int, state *state.State) (err error) {
-	*state, err = tss.impl.Load()
-	return
+func (tss *TmStateStore) Inputs() ([]string, bool) {
+	return []string{}, false
 }
 
-func (tss *TmStateStore) LoadValidators(ctx context.Context, height *int64, vs **contyp.ValidatorSet) (err error) {
-	*vs, err = tss.impl.LoadValidators(*height)
-	return
+func (tss *TmStateStore) Outputs() map[string]int {
+	return map[string]int{}
 }
 
-func (tss *TmStateStore) LoadABCIResponses(ctx context.Context, height *int64, responses **tmstate.ABCIResponses) (err error) {
-	*responses, err = tss.impl.LoadABCIResponses(*height)
-	return
+func (tss *TmStateStore) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("Load", tss.Load)
+	reg.Register("LoadValidators", tss.LoadValidators)
+	reg.Register("LoadABCIResponses", tss.LoadABCIResponses)
+	reg.Register("LoadConsensusParams", tss.LoadConsensusParams)
+	reg.Register("Save", tss.Save)
+	reg.Register("SaveABCIResponses", tss.SaveABCIResponses)
+	reg.Register("Bootstrap", tss.Bootstrap)
+	reg.Register("PruneStates", tss.PruneStates)
+	reg.Register("LoadFromDBOrGenesisDoc", tss.LoadFromDBOrGenesisDoc)
 }
 
-func (tss *TmStateStore) LoadConsensusParams(ctx context.Context, height *int64, params *tmproto.ConsensusParams) (err error) {
-	*params, err = tss.impl.LoadConsensusParams(*height)
-	return
+func (tss *TmStateStore) RpcConfig() (string, int) {
+	return "tmstatestore", 20
 }
 
-func (tss *TmStateStore) Save(ctx context.Context, state *state.State, _ *int) error {
-	return tss.impl.Save(*state)
+func (tss *TmStateStore) Load(ctx *actor.ActionContext) error {
+	state, err := tss.impl.Load()
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", state)
+	}
+	return nil
 }
 
-func (tss *TmStateStore) SaveABCIResponses(ctx context.Context, request *conwrk.SaveABCIResponsesRequest, _ *int) error {
-	return tss.impl.SaveABCIResponses(request.Height, request.ABCIResponses)
+func (tss *TmStateStore) LoadValidators(ctx *actor.ActionContext) error {
+	height := ctx.RPC.Request.(int64)
+	vs, err := tss.impl.LoadValidators(height)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", vs)
+	}
+	return nil
 }
 
-func (tss *TmStateStore) Bootstrap(ctx context.Context, state *state.State, _ *int) error {
-	return tss.impl.Bootstrap(*state)
+func (tss *TmStateStore) LoadABCIResponses(ctx *actor.ActionContext) error {
+	height := ctx.RPC.Request.(int64)
+	responses, err := tss.impl.LoadABCIResponses(height)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", responses)
+	}
+	return nil
 }
 
-func (tss *TmStateStore) PruneStates(ctx context.Context, request *conwrk.PruneStatesRequest, _ *int) error {
-	return tss.impl.PruneStates(request.From, request.To)
+func (tss *TmStateStore) LoadConsensusParams(ctx *actor.ActionContext) error {
+	height := ctx.RPC.Request.(int64)
+	params, err := tss.impl.LoadConsensusParams(height)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", params)
+	}
+	return nil
 }
 
-func (tss *TmStateStore) LoadFromDBOrGenesisDoc(ctx context.Context, genesisDoc *contyp.GenesisDoc, state *state.State) (err error) {
-	*state, err = tss.impl.LoadFromDBOrGenesisDoc(genesisDoc)
-	return
+func (tss *TmStateStore) Save(ctx *actor.ActionContext) error {
+	state := ctx.RPC.Request.(*state.State)
+	err := tss.impl.Save(*state)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", nil)
+	}
+	return nil
+}
+
+func (tss *TmStateStore) SaveABCIResponses(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*conwrk.SaveABCIResponsesRequest)
+	err := tss.impl.SaveABCIResponses(request.Height, request.ABCIResponses)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", nil)
+	}
+	return nil
+}
+
+func (tss *TmStateStore) Bootstrap(ctx *actor.ActionContext) error {
+	state := ctx.RPC.Request.(*state.State)
+	err := tss.impl.Bootstrap(*state)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", nil)
+	}
+	return nil
+}
+
+func (tss *TmStateStore) PruneStates(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*conwrk.PruneStatesRequest)
+	err := tss.impl.PruneStates(request.From, request.To)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", nil)
+	}
+	return nil
+}
+
+func (tss *TmStateStore) LoadFromDBOrGenesisDoc(ctx *actor.ActionContext) error {
+	genesisDoc := ctx.RPC.Request.(*contyp.GenesisDoc)
+	state, err := tss.impl.LoadFromDBOrGenesisDoc(genesisDoc)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	} else {
+		ctx.ExecCtx.SendRpcResponse("", state)
+	}
+	return nil
 }

@@ -18,47 +18,64 @@
 package storage
 
 import (
-	"context"
-
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
-	evmTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/arcology-network/streamer/actor"
 )
 
 type BlockStore struct {
 	db *mstypes.BlockCaches
 }
 
-func NewBlockStore() *BlockStore {
-	return &BlockStore{
-		// TODO
-		//db: NewBlockCaches("blockfiles", 100),
-	}
+func NewBlockStore() actor.Business {
+	return &BlockStore{}
 }
 
 func (bs *BlockStore) Config(params map[string]interface{}) {
-	bs.db = mstypes.NewBlockCaches(params["storage_block_path"].(string), int(params["cache_block_size"].(float64)))
+	bs.db = mstypes.NewBlockCaches(params["storage_block_path"].(string), params["cache_block_size"].(int))
 }
 
-func (bs *BlockStore) Save(ctx context.Context, block *mtypes.MonacoBlock, _ *int) error {
+func (bs *BlockStore) Inputs() ([]string, bool) {
+	return []string{}, false
+}
+
+func (bs *BlockStore) Outputs() map[string]int {
+	return map[string]int{}
+}
+
+func (bs *BlockStore) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register("Save", bs.Save)
+	// reg.Register("SavePendingBlock", bs.SavePendingBlock)
+	reg.Register("GetByHeight", bs.GetByHeight)
+	reg.Register("GetTransaction", bs.GetTransaction)
+}
+
+func (bs *BlockStore) RpcConfig() (string, int) {
+	return "blockstore", 20
+}
+
+func (bs *BlockStore) Save(ctx *actor.ActionContext) error {
+	block := ctx.RPC.Request.(*mtypes.MonacoBlock)
 	bs.db.Save(block.Height, block)
+	ctx.ExecCtx.SendRpcResponse("", nil)
 	return nil
 }
 
-func (bs *BlockStore) SavePendingBlock(ctx context.Context, block *mtypes.MonacoBlock, _ *int) error {
-	bs.db.CacheOnly(block.Height, block)
+// func (bs *BlockStore) SavePendingBlock(ctx *actor.ActionContext) error {
+// 	block := ctx.RPC.Request.(*mtypes.MonacoBlock)
+// 	bs.db.CacheOnly(block.Height, block)
+// 	ctx.ExecCtx.SendRpcResponse("", nil)
+// 	return nil
+// }
+
+func (bs *BlockStore) GetByHeight(ctx *actor.ActionContext) error {
+	height := ctx.RPC.Request.(uint64)
+	ctx.ExecCtx.SendRpcResponse("", bs.db.Query(height))
 	return nil
 }
 
-func (bs *BlockStore) GetByHeight(ctx context.Context, height *uint64, block **mtypes.MonacoBlock) error {
-	*block = bs.db.Query(*height)
-	// if b := bs.db.Query(*height); b != nil {
-	// 	*block = *b
-	// }
-	return nil
-}
-
-func (bs *BlockStore) GetTransaction(ctx context.Context, position *mstypes.Position, tx **evmTypes.Transaction) error {
-	*tx = bs.db.QueryTx(position.Height, position.IdxInBlock)
+func (bs *BlockStore) GetTransaction(ctx *actor.ActionContext) error {
+	position := ctx.RPC.Request.(*mstypes.Position)
+	ctx.ExecCtx.SendRpcResponse("", bs.db.QueryTx(position.Height, position.IdxInBlock))
 	return nil
 }

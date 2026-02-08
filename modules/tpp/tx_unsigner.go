@@ -18,6 +18,7 @@
 package tpp
 
 import (
+	"context"
 	"fmt"
 	"math/big"
 
@@ -25,31 +26,33 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
+	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
+
+	scommon "github.com/arcology-network/streamer/common"
 )
 
 type TxUnsigner struct {
-	actor.WorkerThread
 	chainID    *big.Int
 	Signer     *evmTypes.Signer
 	SignerType uint8
 }
 
 // return a Subscriber struct
-func NewTxUnsigner(concurrency int, groupid string) actor.IWorkerEx {
+func NewTxUnsigner() actor.Business {
 	unsigner := TxUnsigner{}
-	unsigner.Set(concurrency, groupid)
 	return &unsigner
 }
 
 func (c *TxUnsigner) Inputs() ([]string, bool) {
-	return []string{actor.MsgCheckingTxs, actor.MsgSignerType}, false
+	return []string{scommon.MsgCheckingTxs, scommon.MsgSignerType}, false
 }
 
 func (c *TxUnsigner) Outputs() map[string]int {
 	return map[string]int{
-		actor.MsgMessager: 1,
+		scommon.MsgMessager: 1,
+		scommon.MsgRpcHash:  1,
 	}
 }
 
@@ -57,32 +60,34 @@ func (c *TxUnsigner) Config(params map[string]interface{}) {
 	c.chainID = params["chain_id"].(*big.Int)
 }
 
-func (c *TxUnsigner) OnStart() {}
+func (c *TxUnsigner) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgSignerType, c.ReceivedSIgnType)
+	reg.Register(scommon.MsgCheckingTxs, c.ReceivedTxs)
+}
+func (c *TxUnsigner) ReceivedSIgnType(ctx *actor.ActionContext) error {
+	c.SignerType = ctx.Messages[0].Data.(uint8)
+	signer := mtypes.MakeSigner(c.SignerType, c.chainID)
+	c.Signer = &signer
+	return nil
+}
+func (c *TxUnsigner) ReceivedTxs(ctx *actor.ActionContext) error {
 
-func (c *TxUnsigner) OnMessageArrived(msgs []*actor.Message) error {
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgSignerType:
-			c.SignerType = v.Data.(uint8)
-			signer := mtypes.MakeSigner(c.SignerType, c.chainID)
-			c.Signer = &signer
-		case actor.MsgCheckingTxs:
-			stdPack := v.Data.(*types.StdTransactionPack)
-			if c.Signer == nil {
-				return nil
-			}
-			common.ParallelWorker(len(stdPack.Txs), c.Concurrency, unSignTxs, stdPack.Txs, *c.Signer, c.SignerType)
+	stdPack := ctx.Messages[0].Data.(*types.StdTransactionPack)
+	if c.Signer == nil {
+		return nil
+	}
+	common.ParallelWorker(len(stdPack.Txs), ctx.ExecCtx.Concurrency(), unSignTxs, stdPack.Txs, *c.Signer, c.SignerType)
 
-			c.MsgBroker.Send(actor.MsgMessager, stdPack)
+	ctx.ExecCtx.LogDebug("TxUnsigner.ReceivedTxs", logger.F("count", len(stdPack.Txs)))
 
-			if stdPack.TxHashChan != nil {
-				if len(stdPack.Txs) > 0 {
-					stdPack.TxHashChan <- stdPack.Txs[0].TxHash
-				} else {
-					stdPack.TxHashChan <- evmCommon.Hash{}
-				}
-			}
+	ctx.ExecCtx.Send(scommon.MsgMessager, stdPack)
+
+	if len(stdPack.RequestID) > 0 {
+		hash := evmCommon.Hash{}
+		if len(stdPack.Txs) > 0 {
+			hash = stdPack.Txs[0].TxHash
 		}
+		ctx.ExecCtx.Send(scommon.MsgRpcHash, hash)
 	}
 	return nil
 }
@@ -98,6 +103,7 @@ func unSignTxs(start, end, idx int, args ...interface{}) {
 		}
 		if err := transaction.UnSign(signer); err != nil {
 			fmt.Printf("========================UnSign err:%v\n", err)
+			logger.Log.Error(context.Background(), "unSignTxs", "transaction UnSign err", logger.F("err", err))
 			continue
 		}
 		transaction.Signer = signerType

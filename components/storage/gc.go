@@ -22,39 +22,32 @@ import (
 	"time"
 
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/log"
-	"go.uber.org/zap"
+	scommon "github.com/arcology-network/streamer/common"
+	"github.com/arcology-network/streamer/logger"
 )
 
 type Gc struct {
-	actor.WorkerThread
 }
 
-func NewGc(lanes int, groupid string) actor.IWorkerEx {
+func NewGc() actor.Business {
 	gc := Gc{}
-	gc.Set(lanes, groupid)
 	return &gc
 }
 
 func (gc *Gc) Inputs() ([]string, bool) {
-	return []string{actor.MsgGc}, false
+	return []string{scommon.MsgGc}, false
 }
 
 func (gc *Gc) Outputs() map[string]int {
 	return map[string]int{}
 }
 
-func (gc *Gc) OnStart() {
+func (gc *Gc) RegisterActions(reg actor.ActionRegistrar) {
+	reg.Register(scommon.MsgGc, gc.gc)
 }
-
-func (gc *Gc) OnMessageArrived(msgs []*actor.Message) error {
-	for _, v := range msgs {
-		switch v.Name {
-		case actor.MsgGc:
-			t := time.Now()
-			runtime.GC()
-			gc.AddLog(log.LogLevel_Info, "gc completed ---->", zap.Duration("time", time.Since(t)))
-		}
-	}
+func (gc *Gc) gc(ctx *actor.ActionContext) error {
+	t := time.Now()
+	runtime.GC()
+	ctx.ExecCtx.LogDebug("gc completed", logger.F("time", time.Since(t)))
 	return nil
 }
