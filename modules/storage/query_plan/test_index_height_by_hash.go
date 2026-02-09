@@ -1,7 +1,7 @@
 package queryplan
 
 import (
-	"github.com/arcology-network/main/modules/storage/query"
+	"github.com/arcology-network/streamer/query"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 

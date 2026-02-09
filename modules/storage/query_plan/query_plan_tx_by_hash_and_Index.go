@@ -3,9 +3,9 @@ package queryplan
 import (
 	"math/big"
 
-	"github.com/arcology-network/main/modules/storage/query"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/streamer/query"
 )
 
 type TxByHashAndIdxQueryPlan struct {

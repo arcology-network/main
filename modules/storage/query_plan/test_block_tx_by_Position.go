@@ -1,8 +1,8 @@
 package queryplan
 
 import (
-	"github.com/arcology-network/main/modules/storage/query"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
+	"github.com/arcology-network/streamer/query"
 )
 
 type TestTxByPositionQueryPlan struct {

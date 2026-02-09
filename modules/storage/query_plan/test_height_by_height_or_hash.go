@@ -1,8 +1,8 @@
 package queryplan
 
 import (
-	"github.com/arcology-network/main/modules/storage/query"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/streamer/query"
 )
 
 type TestGetHeightByHashOrNumberQueryPlan struct {

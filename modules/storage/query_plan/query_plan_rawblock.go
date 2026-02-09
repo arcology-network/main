@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/arcology-network/main/modules/storage/query"
+	"github.com/arcology-network/streamer/query"
 )
 
 type GetRawBlockQueryPlan struct {

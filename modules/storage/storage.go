@@ -36,7 +36,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 
-	"github.com/arcology-network/main/modules/storage/query"
+	"github.com/arcology-network/streamer/query"
 )
 
 var (

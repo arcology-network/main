@@ -3,9 +3,9 @@ package queryplan
 import (
 	"math/big"
 
-	"github.com/arcology-network/main/modules/storage/query"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/streamer/query"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
