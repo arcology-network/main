@@ -18,14 +18,11 @@
 package scheduler
 
 import (
-	"context"
-
 	"github.com/arcology-network/common-lib/common"
 	types "github.com/arcology-network/common-lib/types"
 	schtyp "github.com/arcology-network/main/modules/scheduler/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
-	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -47,6 +44,14 @@ func (g *generation) NextProcess(
 ) bool {
 	gc := g.CurrentContext()
 	return gc.generation.context.executor.Issue(ctx, gc, execId)
+}
+
+func countMsg(gc *generationContext) int {
+	counter := 0
+	for i := range gc.generation.sequences {
+		counter += len(gc.generation.sequences[i].Msgs)
+	}
+	return counter
 }
 
 // func (g *generation) isExecCompleted() bool {
@@ -138,10 +143,16 @@ func (g *generation) CollectGenerationResult() *types.InclusiveList {
 	}
 
 	common.MergeMaps(g.context.deletedDict, deletedDict)
-	logger.Log.Debug(context.Background(), "gc.executed", "CollectGenerationResult", logger.F("gc.executed", gc.executed))
+
+	nextIdx := gc.genID + 1
+	if g.context.generationCount == nextIdx {
+		nextIdx = 0
+	}
+
 	return &types.InclusiveList{
-		HashList:   gc.executed,
-		Successful: flags,
+		HashList:          gc.executed,
+		Successful:        flags,
+		NextGenerationIdx: uint32(nextIdx),
 	}
 }
 
