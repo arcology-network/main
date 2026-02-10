@@ -54,6 +54,7 @@ func (sq *StateQuery) Outputs() map[string]int {
 func (sq *StateQuery) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgApcHandle, sq.updateApchandle)
 	reg.Register("QueryState", sq.QueryState)
+	reg.Register("onBlockQueried", sq.onBlockQueried)
 }
 
 func (sq *StateQuery) updateApchandle(ctx *actor.ActionContext) error {
@@ -68,7 +69,7 @@ func (sq *StateQuery) RpcConfig() (string, int) {
 }
 
 func (sq *StateQuery) onBlockQueried(ctx *actor.ActionContext) error {
-	rpcblock := ctx.RPC.Request.(*mtypes.RPCBlock)
+	rpcblock := ctx.RPC.Request.(*mtypes.QueryResult).Data.(*mtypes.RPCBlock)
 	var err error
 	roothash := rpcblock.Header.Root
 
