@@ -18,6 +18,7 @@
 package types
 
 import (
+	"log"
 	"math/big"
 
 	"github.com/arcology-network/common-lib/codec"
@@ -31,22 +32,22 @@ func GetBalance(ds interfaces.ReadOnlyStore, addr string) (*big.Int, error) {
 	key := getBalancePath(addr)
 	obj, err := ds.Retrive(key, new(commutative.U256))
 	if err != nil {
-		return nil, err
+		log.Printf("[urlstroe query] getbalance -- err:%v", err)
 	}
 	if obj == nil {
 		return big.NewInt(0), nil
 	}
 
 	balance := obj.(*commutative.U256).Value().(uint256.Int)
-	// uubalance := uint256.Int(*ubalance) //.ToBig()
-	// balance := uubalance.ToBig()
-	// return balance, nil
 	return (&balance).ToBig(), nil
 }
 func GetNonce(ds interfaces.ReadOnlyStore, addr string) (uint64, error) {
 	obj, err := ds.Retrive(getNoncePath(addr), new(commutative.Uint64))
 	if err != nil || obj == nil {
-		return 0, err
+		if err != nil {
+			log.Printf("[urlstroe query] GetNonce -- err:%v", err)
+		}
+		return 0, nil
 	}
 	nonce := obj.(*commutative.Uint64).Value().(uint64)
 	return uint64(nonce), nil
@@ -54,7 +55,10 @@ func GetNonce(ds interfaces.ReadOnlyStore, addr string) (uint64, error) {
 func GetCode(ds interfaces.ReadOnlyStore, addr string) ([]byte, error) {
 	obj, err := ds.Retrive(getCodePath(addr), new(noncommutative.Bytes))
 	if err != nil || obj == nil {
-		return []byte{}, err
+		if err != nil {
+			log.Printf("[urlstroe query] GetCode -- err:%v", err)
+		}
+		return []byte{}, nil
 	}
 	bys := obj.(*noncommutative.Bytes).Value().(codec.Bytes)
 	return []byte(bys), nil
@@ -64,7 +68,10 @@ func GetStorage(ds interfaces.ReadOnlyStore, addr, key string) ([]byte, error) {
 	path := getStorageKeyPath(addr, key)
 	obj, err := ds.Retrive(path, new(noncommutative.Bytes))
 	if err != nil || obj == nil {
-		return make([]byte, 32), err
+		if err != nil {
+			log.Printf("[urlstroe query] GetStorage -- err:%v", err)
+		}
+		return make([]byte, 32), nil
 	}
 
 	bys := obj.(*noncommutative.Bytes).Value().(codec.Bytes)
