@@ -42,7 +42,11 @@ func (p *TxNumsByHashQueryPlan) build() query.Step {
 	txCounter := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
 			mblock := ctx.Vars[QueryKey_MonacoBlock].(*mtypes.MonacoBlock)
-			ctx.Vars[QueryKey_TransactionCount] = len(mblock.Txs)
+			if mblock == nil {
+				ctx.Vars[QueryKey_TransactionCount] = 0
+			} else {
+				ctx.Vars[QueryKey_TransactionCount] = len(mblock.Txs)
+			}
 			cont(nil, nil)
 		},
 	}
