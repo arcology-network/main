@@ -1,7 +1,7 @@
 package queryplan
 
 import (
-	"log"
+	"errors"
 	"math/big"
 
 	mstypes "github.com/arcology-network/main/modules/storage/types"
@@ -21,18 +21,16 @@ func BuildGetBalanceSubPlan() query.Step {
 			if root == nil {
 				root = ctx
 			}
-			contid := root.RegisterCont(cont)
+
 			ctx.Ctx.InvokeRPC(
 				"urlstore", "GetBalance",
 				addr,
 				"QueryContinuationAction",
 				actor.NMeta(
 					"contId",
-					contid,
+					root.RegisterCont(cont),
 				),
 			)
-
-			log.Printf("[CONT] rpc sent -- contId:%s ", contid)
 
 		},
 	}
@@ -261,9 +259,29 @@ func BuildGetBlockHeightByHashSubPlan() query.Step {
 		},
 	}
 
+	saveHeight := &query.ValueStep{
+		Inner: getTxs,
+		Bind: func(ctx *query.QueryContext, v any) {
+			ctx.Vars[QueryKey_Height] = v
+		},
+	}
+
+	returnTx := &query.FuncStep{
+		Do: func(ctx *query.QueryContext, cont query.Continuation) {
+			height := ctx.Vars[QueryKey_Height].(*big.Int)
+			if height.Cmp(big.NewInt(0)) < 0 {
+				cont(nil, errors.New("not found"))
+				return
+			}
+			cont(height, nil)
+		},
+	}
+
 	return &query.SequentialStep{
 		Steps: []query.Step{
 			getTxs,
+			saveHeight,
+			returnTx,
 		},
 	}
 }
