@@ -1,7 +1,6 @@
 package queryplan
 
 import (
-	"fmt"
 	"math/big"
 
 	mstypes "github.com/arcology-network/main/modules/storage/types"
@@ -39,7 +38,7 @@ func BuildGetRpcBlockSubPlan() query.Step {
 
 	ensureBlock := &query.ReturnFromSubPlanStep{
 		Cond: func(ctx *query.QueryContext) bool {
-			return ctx.Vars[QueryKey_MonacoBlock] == nil
+			return ctx.Vars[QueryKey_MonacoBlock].(*mtypes.MonacoBlock) == nil
 		},
 		Value: func(ctx *query.QueryContext) any {
 			return &RpcBlockResult{
@@ -178,7 +177,6 @@ func BuildFillFullTxStepSubPlan() query.Step {
 			}
 		},
 		Collect: func(parent *query.QueryContext, _ any, sub *query.QueryContext) {
-			fmt.Printf("***************BuildFillFullTxStepSubPlan.buildTransactions.Body item done*********\n")
 			txs := parent.Vars[QueryKey_Transactions].([]interface{})
 			txs = append(txs, sub.Vars[QueryKey_RpcTransaction])
 			parent.Vars[QueryKey_Transactions] = txs
