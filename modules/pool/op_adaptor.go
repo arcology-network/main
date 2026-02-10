@@ -18,7 +18,6 @@
 package pool
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/arcology-network/common-lib/types"
@@ -179,12 +178,6 @@ func (oa *OpAdaptor) Calculate() (bool, *mtypes.BlockResult) {
 
 // totalFees computes total consumed miner fees in Wei. Block transactions and receipts have to have the same order.
 func totalFees(block *evmTypes.Block, receipts []*evmTypes.Receipt) *big.Int {
-	for i, tx := range block.Transactions() {
-		fmt.Printf("*****/pool/op_adaptor.go---tx---idx:%v tx.hash:%x\n", i, tx.Hash().Bytes())
-	}
-	for i := range receipts {
-		fmt.Printf("*****/pool/op_adaptor.go---receipt---idx:%v tx.hash:%x\n", i, receipts[i].TxHash.Bytes())
-	}
 	feesWei := new(big.Int)
 	for i, tx := range block.Transactions() {
 		minerFee, _ := tx.EffectiveGasTip(block.BaseFee())

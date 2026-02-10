@@ -18,8 +18,6 @@
 package gateway
 
 import (
-	"log"
-
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
@@ -94,7 +92,7 @@ func (lr *LocalReceiver) SendRawTransaction(ctx *actor.ActionContext) error {
 }
 func (lr *LocalReceiver) ReturnRpcHash(ctx *actor.ActionContext) error {
 	hash := ctx.Messages[0].Data.(evmCommon.Hash)
-	log.Printf("[Rpc] LocalReceiver ReturnRpcHash -- hash:%x", hash.Bytes())
+
 	ctx.ExecCtx.SendRpcResponse("", &mtypes.RawTransactionReply{
 		TxHash: hash,
 	})

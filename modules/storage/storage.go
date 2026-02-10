@@ -18,7 +18,6 @@
 package storage
 
 import (
-	"log"
 	"math/big"
 	"time"
 
@@ -276,13 +275,11 @@ func (a *Storage) Query(ctx *actor.ActionContext) error {
 		a.observer,
 		a.scheduler,
 		func(resp interface{}, err error) {
-
-			// ctx.ExecCtx.EndCasecade()
 			if err != nil {
 				ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 				return
 			}
-			log.Printf("[CONT] action ereturn -- resp:%v", resp)
+			// log.Printf("[CONT] action ereturn -- resp:%v", resp)
 			ctx.ExecCtx.SendRpcResponse("", &mtypes.QueryResult{
 				Data: resp,
 			})
@@ -300,10 +297,7 @@ func (a *Storage) QueryContinuationAction(ctx *actor.ActionContext) error {
 
 	msg := ctx.Messages[0]
 
-	log.Printf("[CONT] action enter -- contId:%s", msg.ContId)
-
 	cont, ok := query.TakeContinuationById(msg.ContId)
-	log.Printf("[CONT] take -- contId:%s ok:%v", msg.ContId, ok)
 
 	if !ok {
 		ctx.ExecCtx.LogErr("continuation not found", logger.F("contId", msg.ContId))
@@ -311,45 +305,8 @@ func (a *Storage) QueryContinuationAction(ctx *actor.ActionContext) error {
 	}
 
 	cont(ctx.RPC.Request, nil)
-	log.Printf("[CONT] take -- contId:%s cont END ", msg.ContId)
 	return nil
 }
-
-// func (a *Storage) QueryContinuationAction(ctx *actor.ActionContext) error {
-// 	if len(ctx.Messages) == 0 {
-// 		ctx.ExecCtx.LogErr("no messages")
-// 		return nil
-// 	}
-// 	msg := ctx.Messages[0]
-
-// 	log.Printf("[CONT] action enter -- contId:%s messages_len:%s", msg.ContId, fmt.Sprintf("%v", len(ctx.Messages)))
-
-// ctx.ExecCtx.LogDebug(
-// 	"[QueryContinuationAction] message",
-// 	logger.F("next_step", msg.NextStep),
-// 	logger.F("payload", msg.Data),
-// )
-// ctx.ExecCtx.LogDebug(fmt.Sprintf("req:%v", ctx.RPC.Request))
-// qctxAny := ctx.ExecCtx.GetLocal("query_ctx")
-// if qctxAny == nil {
-// 	ctx.ExecCtx.LogErr("query_ctx not found")
-// 	return nil
-// }
-// qctx := qctxAny.(*query.QueryContext)
-
-// cont, ok := qctx.Root.TakeContinuation(msg.ContId)
-// 	cont, ok := query.TakeContinuationById(msg.ContId)
-
-// 	log.Printf("[CONT] take -- contId:%s ok:%s", msg.ContId, fmt.Sprintf("%v", ok))
-
-// 	if !ok {
-// 		ctx.ExecCtx.LogErr("continuation not found", logger.F("contId", msg.ContId))
-// 		return nil
-// 	}
-// 	ctx.ExecCtx.LogDebug("continuation hit")
-// 	cont(ctx.RPC.Request, nil)
-// 	return nil
-// }
 
 func RegisterQuery(s *Storage) {
 	s.dispatcher.Register(mtypes.QueryType_RawBlock, &queryplan.GetRawBlockQueryPlan{})
