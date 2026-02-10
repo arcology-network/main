@@ -62,7 +62,6 @@ func (gc *generationContext) execIssue(execId int, cap int) (requests []*mtypes.
 }
 func (gc *generationContext) onExecResult(resp *mtypes.ExecutorResponses) {
 	execId := int(resp.ExecId)
-	logger.Log.Debug(context.Background(), "generationContext", "onExecResult", logger.F("execId", execId), logger.F("resp", resp))
 	gc.execReceived[execId] = append(gc.execReceived[execId], resp)
 }
 func (gc *generationContext) isExecCompleted() bool {
@@ -91,12 +90,13 @@ func (gc *generationContext) CollectExecResults() {
 				}
 				executed = append(executed, resps.HashList[k])
 			}
+			contractAddress = append(contractAddress, resps.ContractAddresses...)
 		}
 	}
 	gc.execResponses = responses
 	gc.newContracts = contractAddress
 	gc.executed = executed
-	logger.Log.Debug(context.Background(), "gc.executed", "CollectExecResults", logger.F("gc.executed", gc.executed))
+	logger.Log.Debug(context.Background(), "gc.executed", "CollectExecResults", logger.F("gc.executed", len(gc.executed)), logger.F("gc.newContracts", len(gc.newContracts)))
 }
 
 func (gc *generationContext) onArbitrateResult(resp *mtypes.ArbitratorResponse) {
