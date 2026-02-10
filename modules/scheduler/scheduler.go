@@ -168,12 +168,13 @@ func (schd *Scheduler) startCreateGenerations(ctx *actor.ActionContext) error {
 
 	ctx.ExecCtx.LogInfo("start new schedule", logger.F("messages", len(stdMsgs)))
 	schd.splitMessagesByType(stdMsgs)
-
 	schd.context.onStartBlock(schd.createGenerations())
 
-	ctx.ExecCtx.Send(scommon.MsgExecGeneration, "")
+	ctx.ExecCtx.LogDebug("block scheduler", logger.F("transfer", len(schd.transfers)), logger.F("contracts", len(schd.contractCalls)), logger.F("generationCount", schd.context.generationCount))
 
 	schd.ChangeState(ctx, scheduleStateExec, "scheduleStateExec")
+	ctx.ExecCtx.Send(scommon.MsgExecGeneration, "")
+
 	return nil
 }
 
@@ -196,11 +197,10 @@ func (schd *Scheduler) onExecResult(ctx *actor.ActionContext) error {
 	resp := ctx.Messages[0].Data.(*mtypes.ExecutorResponses)
 	currentGeneration := schd.context.GetCurrentGeneration()
 	if !currentGeneration.OnExecResult(resp) {
-		ctx.ExecCtx.LogDebug("OnExecResult next", logger.F("list", schd.context.executed))
 		currentGeneration.NextProcess(ctx.ExecCtx, int(resp.ExecId))
 		return nil
 	} else {
-		ctx.ExecCtx.LogDebug("OnExecResult end", logger.F("list", schd.context.executed))
+		ctx.ExecCtx.LogDebug("OnExecResult end")
 	}
 
 	//start arbitrate
@@ -214,8 +214,6 @@ func (schd *Scheduler) onArbResult(ctx *actor.ActionContext) error {
 
 	currentGen.onArbitrateResult(ctx.ExecCtx, resp)
 	list := currentGen.CollectGenerationResult()
-	ctx.ExecCtx.LogDebug("onArbResult", logger.F("list", schd.context.executed))
-	ctx.ExecCtx.LogDebug("MsgGenerationReapingList", logger.F("list", list))
 	ctx.ExecCtx.Send(scommon.MsgGenerationReapingList, list, schd.context.height)
 
 	schd.ChangeState(ctx, scheduleStateApc, "scheduleStateApc")
@@ -226,6 +224,7 @@ func (schd *Scheduler) waitingApc(ctx *actor.ActionContext) error {
 	if schd.context.generationCount > 0 && schd.context.currentGenerationID+1 < schd.context.generationCount {
 		//next generation
 		ctx.ExecCtx.Send(scommon.MsgExecGeneration, "")
+		schd.ChangeState(ctx, scheduleStateExec, "scheduleStateExec")
 		return nil
 	}
 
@@ -250,10 +249,13 @@ func (schd *Scheduler) waitingApc(ctx *actor.ActionContext) error {
 func (schd *Scheduler) afterSaveSchedule(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.Send(scommon.MsgSchdState, schd.schdState)
 	// Inclusive list.
+	failed := 0
 	flags := make([]bool, len(schd.context.executed))
 	for i, hash := range schd.context.executed {
 		if _, ok := schd.context.deletedDict[hash]; !ok {
 			flags[i] = true
+		} else {
+			failed++
 		}
 	}
 	ctx.ExecCtx.Send(scommon.MsgInclusive, &types.InclusiveList{
@@ -262,7 +264,7 @@ func (schd *Scheduler) afterSaveSchedule(ctx *actor.ActionContext) error {
 		NextGenerationIdx: 0,
 	})
 
-	ctx.ExecCtx.LogInfo("send inclusive", logger.F("count", len(flags)))
+	ctx.ExecCtx.LogInfo("send inclusive", logger.F("count", len(flags)), logger.F("failed", failed), logger.F("newContract", len(schd.context.newContracts)))
 
 	// Update states of scheduler.
 	common.MergeMaps(schd.contractDict, common.SliceToDict(schd.context.newContracts))
@@ -283,7 +285,7 @@ func (schd *Scheduler) afterSaveSchedule(ctx *actor.ActionContext) error {
 
 func (schd *Scheduler) ChangeState(ctx *actor.ActionContext, state int, stateName string) error {
 	schd.state = state
-	ctx.ExecCtx.LogDebug("******business state change into " + stateName)
+	ctx.ExecCtx.LogDebug("****** " + ctx.ExecCtx.WorkCtx.BusinassName + "  state change into " + stateName)
 	return nil
 }
 

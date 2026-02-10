@@ -202,7 +202,7 @@ func (exec *Executor) nextHeight(ctx *actor.ActionContext) error {
 	return nil
 }
 func (exec *Executor) ChangeState(ctx *actor.ActionContext, state int, stateName string) error {
-	ctx.ExecCtx.LogDebug("******business state change into " + stateName)
+	ctx.ExecCtx.LogDebug("****** " + ctx.ExecCtx.WorkCtx.BusinassName + " state change into " + stateName)
 	exec.state = state
 	return nil
 }
@@ -376,8 +376,6 @@ func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result,
 		euresult.Trans = transitions
 		sendingEuResults[i] = &euresult
 
-		fmt.Printf("*****/pool/op_adaptor.go---result---idx:%v tx.hash:%x\n", i, (*result).TxHash[:])
-
 		nonceEuresult := eushared.EuResult{}
 		nonceEuresult.H = string((*result).TxHash[:])
 		nonceEuresult.Status = (*result).Receipt.Status
@@ -449,9 +447,6 @@ func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result,
 	exec.ctx.LogDebug("sendResult MsgTxAccessRecords", logger.F("MsgTxAccessRecords", len(tarss)))
 
 	if counter > 0 {
-		for i, r := range sendingReceipts {
-			fmt.Printf("*****/pool/op_adaptor.go---sendingReceipts---idx:%v tx.hash:%x\n", i, r.TxHash.Bytes())
-		}
 		exec.ctx.Send(scommon.MsgReceipts, sendingReceipts, exec.height)
 	}
 }
