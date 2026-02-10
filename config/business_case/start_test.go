@@ -277,17 +277,17 @@ func TestArbitrator(t *testing.T) {
 }
 
 func TestStoreStaorMultiAddress(t *testing.T) {
-	basepath := "./case_storage_store"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage_store.yaml")
+	basepath := "./case_storage"
+	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
 
-	testc := NewStorageStore(basepath)
+	testc := NewStorageTest(basepath)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
 	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
 	StartSys(app, broker)
 
-	msgs := testc.startTestUrlStoreMuitiAddress(broker)
+	msgs := testc.startTestQueryBase(broker)
 	fmt.Printf("Received Msg list:%v\n", msgs)
-	if len(msgs) != 0 {
+	if len(msgs) != 1 {
 		t.Errorf("test err,msg counter:%v", len(msgs))
 	}
 	ClearPath(basepath)
