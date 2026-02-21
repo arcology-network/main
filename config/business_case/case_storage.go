@@ -69,24 +69,18 @@ func (st *StorageTest) receivedMsgs(ctx *actor.ActionContext) error {
 }
 
 func (st *StorageTest) startTest(ss *broker.StatefulStreamer) []string {
-	block, _ := MakeMonacoBlock()
+	block, txhashes := MakeMonacoBlock()
 	m := scommon.NewMessageForStream(scommon.MsgPendingBlock, block)
 	m.Height = 10
 	ss.Send(scommon.MsgPendingBlock, m)
 	// time.Sleep(1 * time.Second)
-	receipts := MakeReceipts()
+	receipts := MakeReceipts(txhashes)
 	m = scommon.NewMessageForStream(scommon.MsgSelectedReceipts, receipts)
 	m.Height = 10
 	ss.Send(scommon.MsgSelectedReceipts, m)
 	// time.Sleep(1 * time.Second)
 
-	p := mtypes.ParentInfo{
-		ParentRoot:    evmCommon.BytesToHash([]byte{1, 2, 3, 4, 5, 6}),
-		ParentHash:    evmCommon.BytesToHash([]byte{11, 12, 13, 14, 15, 61}),
-		ExcessBlobGas: 788333,
-		BlobGasUsed:   456454234,
-	}
-	m = scommon.NewMessageForStream(scommon.MsgParentInfo, &p)
+	m = scommon.NewMessageForStream(scommon.MsgParentInfo, GetParentInfo())
 	m.Height = 10
 	ss.Send(scommon.MsgParentInfo, m)
 	// time.Sleep(1 * time.Second)
@@ -346,7 +340,7 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 
 	blockHeight := big.NewInt(10)
 	//--------------------
-	receipts := MakeReceipts()
+	receipts := MakeReceipts(txhashes)
 	_, err = st.sender.SendSync("receiptstore", "Save", &storage.SaveReceiptsRequest{
 		Height:   10,
 		Receipts: receipts,

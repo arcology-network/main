@@ -2,7 +2,6 @@ package businessCase
 
 import (
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/arcology-network/common-lib/storage/transactional"
@@ -11,7 +10,6 @@ import (
 	"github.com/arcology-network/streamer/broker"
 	scommon "github.com/arcology-network/streamer/common"
 	"github.com/arcology-network/streamer/logger"
-	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type EstimateExecutorTest struct {
@@ -58,17 +56,8 @@ func (eet *EstimateExecutorTest) receivedMsgs(ctx *actor.ActionContext) error {
 
 func (eet *EstimateExecutorTest) startTest(ss *broker.StatefulStreamer) []string {
 	genesis, store, _ := MakeStateStore(eet.basePath)
-	blockStart := &actor.BlockStart{
-		Timestamp: big.NewInt(int64(genesis.Timestamp)),
-		Coinbase:  genesis.Coinbase,
-		Extra:     genesis.ExtraData,
-	}
-	currentinfo := &mtypes.ParentInfo{
-		ParentHash:    evmCommon.BytesToHash([]byte{1, 2, 3, 4, 5, 6}),
-		ParentRoot:    evmCommon.BytesToHash([]byte{7, 8, 9, 10, 11, 12}),
-		ExcessBlobGas: 3500000000,
-		BlobGasUsed:   20000000,
-	}
+	blockStart := GetBlockStart(genesis)
+	currentinfo := GetParentInfo()
 	//---------------------------------------
 	m := scommon.NewMessageForStream(scommon.MsgInitialization, &mtypes.Initialization{
 		Store:             store,

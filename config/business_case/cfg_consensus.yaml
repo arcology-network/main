@@ -1,0 +1,23 @@
+settings:
+  prometheus_listen_addr: ":19013"
+
+actors:
+  consensus:
+    max_tx_num: 1000
+    rate: 1
+    starter: 0
+    # storage_svc_name: storage
+    persistent_peers: "__global__"
+    prometheus_listen_addr: ":19001"
+    debug: false
+
+  storage.transactionalstore:
+    root: "./case_consensus/transactional/"
+    optimization: true
+
+  storage.tmblockstore:
+    storage_tmblock_name: "tmblockstore"
+    storage_tmblock_dir: "./case_consensus/"
+
+  storage.tmstatestore:
+    tm_state_store_dir: "./case_consensus/"

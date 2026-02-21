@@ -1,0 +1,18 @@
+settings:
+  prometheus_listen_addr: ":19003"
+
+  envs:
+    generate_apc_handle: "block"
+    generate_url_update: true
+    generate_acct_root: true
+    init_db: true
+    dbpath: "./case_core/urlfiles"
+    cached: true
+    transactional: true
+
+actors:
+  make_block: {}
+
+  storage.transactionalstore:
+    root: "./case_core/transactional/"
+    optimization: true

@@ -50,7 +50,7 @@ var InitCmd = &cobra.Command{
 }
 
 func initCmd(cmd *cobra.Command, args []string) error {
-	initCfg()
+	InitCfg()
 	return nil
 }
 
@@ -84,7 +84,7 @@ func AddToAF(addressfile, af, address string) error {
 }
 
 // if not init ,so init
-func initCfg() {
+func InitCfg() {
 	balance := big.NewInt(0)
 	// this will ensure that config.toml is there if not yet created, and create dir
 	config, err := commands.ParseConfig()

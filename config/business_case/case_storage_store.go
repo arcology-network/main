@@ -302,7 +302,8 @@ func (ss *StorageStore) startTestReceiptStore(broker *broker.StatefulStreamer) [
 
 	blockHeight := big.NewInt(10)
 	//--------------------
-	receipts := MakeReceipts()
+	_, txhashes := MakeMonacoBlock()
+	receipts := MakeReceipts(txhashes)
 	_, err := ss.sender.SendSync(sername, "Save", &storage.SaveReceiptsRequest{
 		Height:   10,
 		Receipts: receipts,

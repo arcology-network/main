@@ -1,0 +1,11 @@
+settings:
+  prometheus_listen_addr: ":19006"
+
+actors:
+  stateful_receipt_aggr_selector: {}
+
+  "receipt-hashing.calculator": {}
+
+  "receipt-hashing.metrics":
+    maxRecords: 20000
+    logfile: ./case_receipt-hashing/status.log

@@ -2,7 +2,6 @@ package businessCase
 
 import (
 	"fmt"
-	"math/big"
 	"time"
 
 	"github.com/arcology-network/main/modules/exec"
@@ -228,13 +227,9 @@ func (st *SchedulerTest) startTest(ss *broker.StatefulStreamer) []string {
 	genesis, store, univals := MakeStateStore(st.basePath)
 	st.store = store
 	st.unis = univals
-	blockStart := &actor.BlockStart{
-		Timestamp: big.NewInt(int64(genesis.Timestamp)),
-		Coinbase:  genesis.Coinbase,
-		Extra:     genesis.ExtraData,
-	}
+	blockStart := GetBlockStart(genesis)
 	mblock, txhashes := MakeMonacoBlock()
-	msgs := Transfer(mblock, txhashes)
+	msgs, _ := Transfer(mblock.Txs, txhashes)
 
 	//------------------------
 	// var na int

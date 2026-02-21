@@ -6,7 +6,7 @@ actors:
     max_tx_num: 1000
     rate: 1
     starter: 0
-    storage_svc_name: storage
+    # storage_svc_name: storage
     persistent_peers: "__global__"
     prometheus_listen_addr: ":19001"
     debug: false

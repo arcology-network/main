@@ -21,14 +21,17 @@ import (
 	"fmt"
 	"testing"
 
+	consensuspk "github.com/arcology-network/main/modules/consensus"
+	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/actor/rpc"
 	scommon "github.com/arcology-network/streamer/common"
+	"github.com/spf13/viper"
 )
 
 func TestHandleAsyncGeneral(t *testing.T) {
 	basepath := "./handleAsyncGeneral"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_handler_async_general.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_handler_async_general.yaml")
 
 	testc := NewDBHandlerAsyncTest(basepath, scommon.MsgGeneralDB, scommon.MsgGeneralPrecommit, scommon.MsgGeneralCommit, scommon.MsgGeneralCompleted)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
@@ -46,7 +49,7 @@ func TestHandleAsyncGeneral(t *testing.T) {
 
 func TestHandleAsyncNonce(t *testing.T) {
 	basepath := "./handleAsyncNonce"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_handler_async_nonce.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_handler_async_nonce.yaml")
 
 	testc := NewDBHandlerAsyncTest(basepath, scommon.MsgNonceDB, scommon.MsgNoncePrecommit, scommon.MsgNonceCommit, scommon.MsgNonceCompleted)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
@@ -63,7 +66,7 @@ func TestHandleAsyncNonce(t *testing.T) {
 
 func TestUrlAggrGeneral(t *testing.T) {
 	basepath := "./urlAggrGeneral"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_url_aggr_general.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_url_aggr_general.yaml")
 
 	testc := NewUrlAggrSelector(basepath, scommon.MsgEuResults, scommon.MsgExecuted, scommon.MsgGenerationReapingCompleted, scommon.MsgBlockEnd,
 		scommon.MsgApcHandle, scommon.MsgGeneralDB, scommon.MsgGeneralCompleted, scommon.MsgGeneralPrecommit, scommon.MsgGeneralCommit,
@@ -83,7 +86,7 @@ func TestUrlAggrGeneral(t *testing.T) {
 
 func TestUrlAggrNonce(t *testing.T) {
 	basepath := "./urlAggrNonce"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_url_aggr_nonce.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_url_aggr_nonce.yaml")
 
 	testc := NewUrlAggrSelector(basepath, scommon.MsgNonceEuResults, scommon.MsgCommitNonceUrl, scommon.MsgGenerationReapingCompleted, scommon.MsgBlockEnd,
 		scommon.MsgNonceReady, scommon.MsgNonceDB, scommon.MsgNonceCompleted, scommon.MsgNoncePrecommit, scommon.MsgNonceCommit,
@@ -103,7 +106,7 @@ func TestUrlAggrNonce(t *testing.T) {
 func TestStorageStore(t *testing.T) {
 	basepath := "./case_storage_store"
 
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage_store.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage_store.yaml")
 
 	testc := NewStorageStore(basepath)
 	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
@@ -170,7 +173,7 @@ func TestStorageStore(t *testing.T) {
 
 func TestStorage(t *testing.T) {
 	basepath := "./case_storage"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
 
 	testc := NewStorageTest(basepath)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
@@ -187,7 +190,7 @@ func TestStorage(t *testing.T) {
 
 func TestStorageQuery(t *testing.T) {
 	basepath := "./case_storage"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
 
 	testc := NewStorageTest(basepath)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
@@ -204,7 +207,7 @@ func TestStorageQuery(t *testing.T) {
 
 func TestExecutor(t *testing.T) {
 	basepath := "./case_executor"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_executor.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_executor.yaml")
 
 	testc := NewExecutorTest(basepath)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
@@ -221,7 +224,7 @@ func TestExecutor(t *testing.T) {
 
 func TestExecutorRpc(t *testing.T) {
 	basepath := "./case_executor_rpc"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_executor_rpc.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_executor_rpc.yaml")
 
 	testc := NewExecutorTest(basepath)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
@@ -238,7 +241,7 @@ func TestExecutorRpc(t *testing.T) {
 
 func TestScheduler(t *testing.T) {
 	basepath := "./cfg_scheduler"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_scheduler.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_scheduler.yaml")
 
 	arbi := NewMockArbitrator(basepath)
 	actor.CreateActor("arbi", broker, []actor.Business{arbi}, []string{"arbi"}, 10, []string{""})
@@ -261,7 +264,7 @@ func TestScheduler(t *testing.T) {
 
 func TestArbitrator(t *testing.T) {
 	basepath := "./cfg_arbitrator"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_arbitrator.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_arbitrator.yaml")
 
 	testc := NewArbitratorTest(basepath)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
@@ -276,9 +279,9 @@ func TestArbitrator(t *testing.T) {
 	ClearPath(basepath)
 }
 
-func TestStoreStaorMultiAddress(t *testing.T) {
+func TestStoreStaorQueryBase(t *testing.T) {
 	basepath := "./case_storage"
-	app, broker := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
 
 	testc := NewStorageTest(basepath)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
@@ -288,6 +291,183 @@ func TestStoreStaorMultiAddress(t *testing.T) {
 	msgs := testc.startTestQueryBase(broker)
 	fmt.Printf("Received Msg list:%v\n", msgs)
 	if len(msgs) != 1 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestPoolAsL1(t *testing.T) {
+	basepath := "./case_pool"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_pool.yaml")
+
+	testc := NewPoolTest(basepath, true)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	mtypes.RunAsL1 = true
+
+	msgs := testc.startTestAsL1(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 7 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestPoolAsL2(t *testing.T) {
+	basepath := "./case_pool"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_pool.yaml")
+
+	testc := NewPoolTest(basepath, false)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	mtypes.RunAsL1 = false
+
+	msgs := testc.startTestAsL2(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 8 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestReceiptHashing(t *testing.T) {
+	basepath := "./case_receipt-hashing"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_receipt-hashing.yaml")
+
+	testc := NewReceiptHashingTest(basepath)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	// testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	msgs := testc.startTest(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 2 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestGatewayTppTxBlock(t *testing.T) {
+	basepath := "./case_gateway_tpp"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_gateway_tpp.yaml")
+
+	testc := NewGatewayTppTest(basepath)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	msgs := testc.startTest(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 3 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestGatewayTppLocalSingle(t *testing.T) {
+	basepath := "./case_gateway_tpp"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_gateway_tpp.yaml")
+
+	testc := NewGatewayTppTest(basepath)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	msgs := testc.startTestLocalSingle(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 6 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestGatewayTppLocalBatch(t *testing.T) {
+	basepath := "./case_gateway_tpp"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_gateway_tpp.yaml")
+
+	testc := NewGatewayTppTest(basepath)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	msgs := testc.startTestLocalBatch(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 5 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestCore(t *testing.T) {
+	basepath := "./case_core"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_core.yaml")
+
+	testc := NewMakeCoreTest(basepath)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	msgs := testc.startTest(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 6 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestCoordinator(t *testing.T) {
+	basepath := "./case_coordinator"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_coordinator.yaml")
+
+	testc := NewCoordinatorTest(basepath)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	// testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	msgs := testc.startTest(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 8 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestCoonsensus(t *testing.T) {
+	basepath := "./case_consensus"
+	viper.Set("home", basepath)
+	consensuspk.InitCfg()
+
+	app, broker, dic := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_consensus.yaml")
+
+	testc := NewConsensusTest(basepath, dic)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	msgs := testc.startTest(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 5 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestEthapi(t *testing.T) {
+	basepath := "./case_eth_api"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_eth_api.yaml")
+
+	testc := NewEthApiTest(basepath)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	msgs := testc.startTest(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 5 {
 		t.Errorf("test err,msg counter:%v", len(msgs))
 	}
 	ClearPath(basepath)

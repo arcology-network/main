@@ -122,6 +122,7 @@ func (et *ExecutorTest) receivedMsgs(ctx *actor.ActionContext) error {
 func (et *ExecutorTest) rpcTestStart(ctx *actor.ActionContext) error {
 	//--------------------------------------
 	mblock, txhashes := MakeMonacoBlock()
+	stdMsgs, _ := Transfer(mblock.Txs, txhashes)
 	toExecute := &mtypes.ExecutorRequest{
 		Timestamp:     et.timestamp,
 		GenerationIdx: 0,
@@ -132,7 +133,7 @@ func (et *ExecutorTest) rpcTestStart(ctx *actor.ActionContext) error {
 				Parallel:   true,
 				SequenceId: evmCommon.BytesToHash([]byte{17, 18, 19, 110, 11, 112}),
 				GroupIds:   []uint64{0, 0},
-				Msgs:       Transfer(mblock, txhashes),
+				Msgs:       stdMsgs,
 			},
 		},
 	}
@@ -166,17 +167,8 @@ func (et *ExecutorTest) onExecResult(ctx *actor.ActionContext) error {
 func (et *ExecutorTest) startTest(ss *broker.StatefulStreamer) []string {
 	//--------------------
 	genesis, store, _ := MakeStateStore(et.basepath)
-	blockStart := &actor.BlockStart{
-		Timestamp: big.NewInt(int64(genesis.Timestamp)),
-		Coinbase:  genesis.Coinbase,
-		Extra:     genesis.ExtraData,
-	}
-	currentinfo := &mtypes.ParentInfo{
-		ParentHash:    evmCommon.BytesToHash([]byte{1, 2, 3, 4, 5, 6}),
-		ParentRoot:    evmCommon.BytesToHash([]byte{7, 8, 9, 10, 11, 12}),
-		ExcessBlobGas: 3500000000,
-		BlobGasUsed:   20000000,
-	}
+	blockStart := GetBlockStart(genesis)
+	currentinfo := GetParentInfo()
 	m := scommon.NewMessageForStream(scommon.MsgInitialization, &mtypes.Initialization{
 		Store:             store,
 		BlockStart:        blockStart,
@@ -224,6 +216,7 @@ func (et *ExecutorTest) startTest(ss *broker.StatefulStreamer) []string {
 	time.Sleep(1 * time.Second)
 	//--------------------------------------
 	mblock, txhashes := MakeMonacoBlock()
+	stdMsgs, _ := Transfer(mblock.Txs, txhashes)
 	toExecute := &mtypes.ExecutorRequest{
 		Timestamp:     blockStart.Timestamp,
 		GenerationIdx: 0,
@@ -234,7 +227,7 @@ func (et *ExecutorTest) startTest(ss *broker.StatefulStreamer) []string {
 				Parallel:   true,
 				SequenceId: evmCommon.BytesToHash([]byte{17, 18, 19, 110, 11, 112}),
 				GroupIds:   []uint64{0, 0},
-				Msgs:       Transfer(mblock, txhashes),
+				Msgs:       stdMsgs,
 			},
 		},
 	}
@@ -268,20 +261,11 @@ func (et *ExecutorTest) startTest(ss *broker.StatefulStreamer) []string {
 func (et *ExecutorTest) startTestRpc(ss *broker.StatefulStreamer) []string {
 	//--------------------
 	genesis, store, _ := MakeStateStore(et.basepath)
-	blockStart := &actor.BlockStart{
-		Timestamp: big.NewInt(int64(genesis.Timestamp)),
-		Coinbase:  genesis.Coinbase,
-		Extra:     genesis.ExtraData,
-	}
+	blockStart := GetBlockStart(genesis)
 
 	et.timestamp = blockStart.Timestamp
 
-	currentinfo := &mtypes.ParentInfo{
-		ParentHash:    evmCommon.BytesToHash([]byte{1, 2, 3, 4, 5, 6}),
-		ParentRoot:    evmCommon.BytesToHash([]byte{7, 8, 9, 10, 11, 12}),
-		ExcessBlobGas: 3500000000,
-		BlobGasUsed:   20000000,
-	}
+	currentinfo := GetParentInfo()
 	m := scommon.NewMessageForStream(scommon.MsgInitialization, &mtypes.Initialization{
 		Store:             store,
 		BlockStart:        blockStart,
