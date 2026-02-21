@@ -165,7 +165,7 @@ func (a *AggrSelector) nonceReady(ctx *actor.ActionContext, store *statestore.St
 }
 func (a *AggrSelector) ChangeState(ctx *actor.ActionContext, state int, stateName string) error {
 	a.state = state
-	ctx.ExecCtx.LogDebug("******business state change into " + stateName)
+	ctx.ExecCtx.LogDebug("****** " + ctx.ExecCtx.WorkCtx.BusinassName + " state change into " + stateName)
 	return nil
 }
 func (a *AggrSelector) ReceivedMessage(ctx *actor.ActionContext) error {
@@ -211,11 +211,10 @@ func (a *AggrSelector) ReceivedReapCommand(ctx *actor.ActionContext) error {
 
 func (a *AggrSelector) ReceivedReapinglist(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
-	ctx.ExecCtx.LogDebug("pool received reapinglist")
+	list := msg.Data.(*types.ReapingList).List
+	ctx.ExecCtx.LogDebug("ReceivedReapinglist", logger.F("reapeds", len(list)))
 
-	ctx.ExecCtx.LogDebug("ReceivedReapinglist", logger.F("reapeds", len(msg.Data.(*types.ReapingList).List)))
-
-	reaped := a.pool.CherryPick(a.opAdaptor.ClipReapList(msg.Data.(*types.ReapingList).List))
+	reaped := a.pool.CherryPick(a.opAdaptor.ClipReapList(list))
 	if reaped != nil {
 		a.send(ctx, reaped, false, a.height)
 		a.ChangeState(ctx, resultCollect, "resultCollect")
@@ -225,8 +224,7 @@ func (a *AggrSelector) ReceivedReapinglist(ctx *actor.ActionContext) error {
 
 func (a *AggrSelector) ReceivedSelectedReceipts(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
-	var receipts []*evmTypes.Receipt
-	receipts = msg.Data.([]*evmTypes.Receipt)
+	receipts := msg.Data.([]*evmTypes.Receipt)
 	if ok, result := a.opAdaptor.AddReceipts(receipts); ok {
 		a.returnResult(ctx, result)
 	}
@@ -341,14 +339,12 @@ func (a *AggrSelector) ReceivedMessages(ctx *actor.ActionContext) error {
 	return nil
 }
 func (a *AggrSelector) Query(ctx *actor.ActionContext) error {
-	// func (a *AggrSelector) Query(ctx context.Context, request *mtypes.QueryRequest, response *mtypes.QueryResult) error {
 	request := ctx.RPC.Request.(*mtypes.QueryRequest)
 	switch request.QueryType {
 	case mtypes.QueryType_Transaction:
 		hash := request.Data.(evmCommon.Hash)
 		st := a.pool.QueryByHash(evmCommon.BytesToHash(hash.Bytes()))
 		if st == nil {
-			// response.Data = nil
 			ctx.ExecCtx.SendRpcResponse("hash not found", &mtypes.QueryResult{
 				Data: nil,
 			})
