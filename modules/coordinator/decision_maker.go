@@ -104,7 +104,6 @@ func (dm *DecisionMaker) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgStateSyncDone, dm.receivedStateSyncDone)
 	reg.Register(scommon.MsgExtTxBlocks, dm.receivedExtTxBlocks)
 	reg.Register(scommon.MsgAppHash, dm.receivedAppHash)
-
 }
 
 func (dm *DecisionMaker) receivedInitialization(ctx *actor.ActionContext) error {
@@ -120,8 +119,7 @@ func (dm *DecisionMaker) receivedInitialization(ctx *actor.ActionContext) error 
 func (dm *DecisionMaker) changeStateFromInit(ctx *actor.ActionContext) {
 	if dm.storageUp && dm.consensusUp {
 		ctx.ExecCtx.Send(scommon.MsgReapCommand, "")
-		dm.state = dmStateBlockSync
-		ctx.ExecCtx.LogDebug("change into dmStateBlockSync,ready")
+		dm.ChangeState(ctx, dmStateBlockSync, "dmStateBlockSync")
 	}
 }
 
@@ -202,8 +200,7 @@ func (dm *DecisionMaker) fastSyncCountdown(ctx *actor.ActionContext) {
 func (dm *DecisionMaker) changeStateFromFastSync(ctx *actor.ActionContext) {
 	// FIXME
 	if len(dm.fastSyncMessageTypes) == 3 {
-		ctx.ExecCtx.LogDebug("[DecisionMaker.OnMessageArrived] switch to dmStateBlockSyncWaiting")
-		dm.state = dmStateBlockSyncWaiting
+		dm.ChangeState(ctx, dmStateBlockSyncWaiting, "dmStateBlockSyncWaiting")
 	}
 }
 func (dm *DecisionMaker) receivedExtBlockEnd(ctx *actor.ActionContext) error {
@@ -236,9 +233,14 @@ func (dm *DecisionMaker) receivedExtBlockCompleted(ctx *actor.ActionContext) err
 	return nil
 }
 
+func (dm *DecisionMaker) ChangeState(ctx *actor.ActionContext, state int, stateName string) error {
+	ctx.ExecCtx.LogDebug("****** " + ctx.ExecCtx.WorkCtx.BusinassName + " state change into " + stateName)
+	dm.state = state
+	return nil
+}
+
 func (dm *DecisionMaker) receivedStateSyncDone(ctx *actor.ActionContext) error {
-	ctx.ExecCtx.LogDebug("[SyncClient.OnMessageArrived] on MsgStateSyncDone, switch to dmStateBlockSync")
-	dm.state = dmStateBlockSync
+	dm.ChangeState(ctx, dmStateBlockSync, "dmStateBlockSync")
 	return nil
 }
 func (dm *DecisionMaker) receivedExtTxBlocks(ctx *actor.ActionContext) error {
