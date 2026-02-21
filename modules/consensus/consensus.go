@@ -83,7 +83,12 @@ func NewConsensus() actor.Business {
 }
 
 func (c *Consensus) Inputs() ([]string, bool) {
-	return []string{scommon.MsgExtAppHash, scommon.MsgMetaBlock, scommon.MsgTxLocals, scommon.MsgInitialization}, false
+	return []string{
+		scommon.MsgExtAppHash,
+		scommon.MsgMetaBlock,
+		scommon.MsgTxLocals,
+		scommon.MsgInitialization,
+	}, false
 }
 
 func (c *Consensus) Outputs() map[string]int {
@@ -103,7 +108,7 @@ func (c *Consensus) Config(params map[string]interface{}) {
 	c.maxTxsNum = int(params["max_tx_num"].(int))
 	c.rate = int64(params["rate"].(int))
 	c.starter = int64(params["starter"].(int))
-	c.storageSvcName = params["storage_svc_name"].(string)
+	// c.storageSvcName = params["storage_svc_name"].(string)
 	// intf.Router.SetZkServers([]string{params["zookeeper"].(string)})
 	c.debug = params["debug"].(bool)
 
@@ -209,9 +214,9 @@ func (c *Consensus) AddToMempool(txs [][]byte, src string) {
 	groups := c.parseGroups(txs)
 	for i := range groups {
 		if len(groups[i]) > 0 {
-			c.sender.Send(scommon.MsgExtTxBlocks, &mtypes.IncomingTxs{
+			c.sender.Send(scommon.MsgExtTxBlocks, &types.IncomingTxs{
 				Txs:       groups[i],
-				Src:       mtypes.NewTxSource(types.TxSourceConsensus, src),
+				Src:       types.NewTxSource(types.TxSourceConsensus, src),
 				RequestID: "",
 			}, c.height, c.from)
 
@@ -304,9 +309,8 @@ func (c *Consensus) GetTxsOnBlock(height uint64) ([][]byte, error) {
 		QueryType: mtypes.QueryType_RawBlock,
 		Data:      height,
 	}
-	// response := mtypes.QueryResult{}
-	// err := intf.Router.Call(c.storageSvcName, "Query", &request, &response)
-	response, err := c.sender.SendSync(c.storageSvcName, "Query", &request, c.height, c.from)
+
+	response, err := c.sender.SendSync("storage", "Query", &request, c.height, c.from)
 	if err != nil {
 		return nil, err
 	}
