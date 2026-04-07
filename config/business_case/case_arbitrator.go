@@ -5,6 +5,7 @@ import (
 	"time"
 
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/scheduler/conflictor"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/broker"
 	scommon "github.com/arcology-network/streamer/common"
@@ -77,7 +78,7 @@ func (at *ArbitratorTest) startTest(ss *broker.StatefulStreamer) []string {
 		fmt.Printf("-----------ArbitratorTest test err:%v\n", err)
 		return at.msgs
 	}
-	response := resp.(*mtypes.ArbitratorResponse)
+	response := resp.(*conflictor.CollisionSummary)
 	fmt.Printf("-----------ArbitratorTest result:%v\n", response)
 
 	m = scommon.NewMessageForStream(scommon.MsgBlockCompleted, "")

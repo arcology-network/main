@@ -2,6 +2,6 @@ settings:
   prometheus_listen_addr: ":19011"
 
 actors:
-  access_record_pre_processor: {}
+  # access_record_pre_processor: {}
   access_record_aggr_selector: {}
   arbitrator_rpc: {}

@@ -18,13 +18,13 @@
 package arbitrator
 
 import (
+	"github.com/arcology-network/common-lib/crdt/statecell"
 	ctypes "github.com/arcology-network/common-lib/types"
-	"github.com/arcology-network/main/modules/arbitrator/types"
+	eushared "github.com/arcology-network/eu/shared"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/aggregator/aggregator"
 	scommon "github.com/arcology-network/streamer/common"
 	"github.com/arcology-network/streamer/logger"
-	evmCommon "github.com/ethereum/go-ethereum/common"
 )
 
 type EuResultsAggreSelector struct {
@@ -44,28 +44,27 @@ func (a *EuResultsAggreSelector) Inputs() ([]string, bool) {
 	return []string{
 		scommon.MsgBlockCompleted,
 		scommon.MsgArbitrateReapinglist,
-		scommon.MsgPreProcessedEuResults,
+		scommon.MsgTxAccessRecords,
 	}, false
 }
 
 func (a *EuResultsAggreSelector) Outputs() map[string]int {
 	return map[string]int{
-		scommon.MsgEuResultSelected: 1,
+		scommon.MsgAccessRecordSelected: 1,
 	}
 }
 
 func (a *EuResultsAggreSelector) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgBlockCompleted, a.ReceivedBlockCompleted)
 	reg.Register(scommon.MsgArbitrateReapinglist, a.ReceivedArbitrateReapinglist)
-	reg.Register(scommon.MsgPreProcessedEuResults, a.receivedPreProcessedEuResults)
+	reg.Register(scommon.MsgTxAccessRecords, a.receivedTxAccessRecords)
 }
 
-func (a *EuResultsAggreSelector) receivedPreProcessedEuResults(ctx *actor.ActionContext) error {
-	data := ctx.Messages[0].Data.([]*types.AccessRecord)
-	if len(data) > 0 {
-		for _, v := range data {
-			euResult := v
-			result := a.ag.OnDataReceived(evmCommon.BytesToHash(euResult.TxHash[:]), euResult)
+func (a *EuResultsAggreSelector) receivedTxAccessRecords(ctx *actor.ActionContext) error {
+	accessRecordSet := ctx.Messages[0].Data.(*eushared.TxAccessRecordSet)
+	if len(*accessRecordSet) > 0 {
+		for _, v := range *accessRecordSet {
+			result := a.ag.OnDataReceived(v.Hash, v)
 			a.SendMsg(result)
 		}
 	}
@@ -74,7 +73,6 @@ func (a *EuResultsAggreSelector) receivedPreProcessedEuResults(ctx *actor.Action
 
 func (a *EuResultsAggreSelector) ReceivedBlockCompleted(ctx *actor.ActionContext) error {
 	remainingQuantity := a.ag.OnClearInfoReceived()
-	types.RecordPool.ReclaimRecursive()
 	ctx.ExecCtx.LogInfo("clear pool", logger.F("remainingQuantity", remainingQuantity))
 	return nil
 }
@@ -87,27 +85,17 @@ func (a *EuResultsAggreSelector) ReceivedArbitrateReapinglist(ctx *actor.ActionC
 	return nil
 }
 
-func (a *EuResultsAggreSelector) ReceivedData(ctx *actor.ActionContext) error {
-	data := ctx.Messages[0].Data.([]*types.AccessRecord)
-
-	if len(data) > 0 {
-		for _, v := range data {
-			euResult := v
-			result := a.ag.OnDataReceived(evmCommon.BytesToHash(euResult.TxHash[:]), euResult)
-			a.SendMsg(result)
-		}
-	}
-	return nil
-}
-
 func (a *EuResultsAggreSelector) SendMsg(selectedData *[]*interface{}) {
 	if selectedData != nil {
-		euResults := make([]*types.AccessRecord, len(*selectedData))
-		for i, euResult := range *selectedData {
-			euResults[i] = (*euResult).(*types.AccessRecord)
+		statecells := make([]*statecell.StateCell, 0, len(*selectedData)*10)
+		// euResults := make([]*types.AccessRecord, len(*selectedData))
+		// for i, euResult := range *selectedData {
+		// 	euResults[i] = (*euResult).(*types.AccessRecord)
+		// }
+		for _, euResult := range *selectedData {
+			statecells = append(statecells, (*euResult).(*eushared.TxAccessRecords).Accesses...)
 		}
-		a.ctx.LogInfo("send gather result", logger.F("counts", len(euResults)))
-		// ctx.ExecCtx.AddRpcReqID(a.reqId)
-		a.ctx.Send(scommon.MsgEuResultSelected, euResults)
+		a.ctx.LogInfo("send gather result", logger.F("counts", len(*selectedData)), logger.F("cells", len(statecells)))
+		a.ctx.Send(scommon.MsgAccessRecordSelected, statecells)
 	}
 }
