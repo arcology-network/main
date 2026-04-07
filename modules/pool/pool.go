@@ -21,26 +21,40 @@ import (
 	"fmt"
 
 	cmncmn "github.com/arcology-network/common-lib/common"
-	ccmap "github.com/arcology-network/common-lib/container/map"
+	ccmap "github.com/arcology-network/common-lib/exp/map"
 	"github.com/arcology-network/common-lib/exp/mempool"
 	cmntyp "github.com/arcology-network/common-lib/types"
-	adaptorcommon "github.com/arcology-network/eu/eth"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	apihandler "github.com/arcology-network/eu/apihandler"
-	statestore "github.com/arcology-network/storage-committer"
-	cache "github.com/arcology-network/storage-committer/storage/cache"
+	statestore "github.com/arcology-network/state-engine"
+
+	ethimpl "github.com/arcology-network/eu/ethadaptor"
+	statecache "github.com/arcology-network/state-engine/state/cache"
 )
+
+func stringHasher(k string) uint64 {
+	var hash uint64
+	for i := 0; i < len(k); i++ {
+		hash += uint64(k[i])
+	}
+	return hash % 16
+}
 
 type Pool struct {
 	ObsoleteTime uint64
 	CloseCheck   bool
-	TxBySender   *ccmap.ConcurrentMap
-	TxByHash     *ccmap.ConcurrentMap
-	TxUnchecked  *ccmap.ConcurrentMap
-	SourceStat   map[cmntyp.TxSource]*TxSourceStatistics
-	StateDB      vm.StateDB
+	// TxBySender   *ccmap.ConcurrentMap
+	// TxByHash     *ccmap.ConcurrentMap
+	// TxUnchecked  *ccmap.ConcurrentMap
+
+	TxBySender  *ccmap.ConcurrentMap[string, *TxSender]
+	TxByHash    *ccmap.ConcurrentMap[string, *cmntyp.StandardTransaction]
+	TxUnchecked *ccmap.ConcurrentMap[string, *cmntyp.StandardTransaction]
+
+	SourceStat map[cmntyp.TxSource]*TxSourceStatistics
+	StateDB    vm.StateDB
 
 	CherryPickResult []*cmntyp.StandardTransaction
 	Waitings         map[evmCommon.Hash]int
@@ -48,18 +62,47 @@ type Pool struct {
 }
 
 func NewPool(db *statestore.StateStore, obsoleteTime uint64, closeCheck bool) *Pool {
-	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
-		return cache.NewWriteCache(db, 32, 1)
-	}, func(cache *cache.WriteCache) { cache.Clear() }))
+	ccRuntime := apihandler.NewConcurrentRuntime(
+		0, // concurrent runtime ID
+		mempool.NewMempool(
+			16,
+			1,
+			func() *statecache.ExecutionStateCache {
+				// When creating a new writecache, use store as the backend.
+				return statecache.NewExecutionStateCache(db, 32, 1)
+			},
+			func(cache *statecache.ExecutionStateCache) {
+				cache.Clear()
+			}),
+	)
+
+	stateDB := ethimpl.NewImplStateDB(ccRuntime)
 
 	return &Pool{
 		ObsoleteTime: obsoleteTime,
 		CloseCheck:   closeCheck,
-		TxBySender:   ccmap.NewConcurrentMap(),
-		TxByHash:     ccmap.NewConcurrentMap(),
-		TxUnchecked:  ccmap.NewConcurrentMap(),
-		SourceStat:   make(map[cmntyp.TxSource]*TxSourceStatistics),
-		StateDB:      adaptorcommon.NewImplStateDB(api),
+		// TxBySender:   ccmap.NewConcurrentMap(),
+		// TxByHash:     ccmap.NewConcurrentMap(),
+		// TxUnchecked:  ccmap.NewConcurrentMap(),
+		TxBySender: ccmap.NewConcurrentMap[string, *TxSender](
+			16,
+			func(v *TxSender) bool { return v == nil },
+			stringHasher,
+		),
+
+		TxByHash: ccmap.NewConcurrentMap[string, *cmntyp.StandardTransaction](
+			16,
+			func(v *cmntyp.StandardTransaction) bool { return v == nil },
+			stringHasher,
+		),
+
+		TxUnchecked: ccmap.NewConcurrentMap[string, *cmntyp.StandardTransaction](
+			16,
+			func(v *cmntyp.StandardTransaction) bool { return v == nil },
+			stringHasher,
+		),
+		SourceStat: make(map[cmntyp.TxSource]*TxSourceStatistics),
+		StateDB:    stateDB,
 	}
 
 }
@@ -72,7 +115,7 @@ func (p *Pool) Add(txs []*cmntyp.StandardTransaction, src cmntyp.TxSource, heigh
 
 	bySender := make(map[string][]*cmntyp.StandardTransaction)
 	uncheckedHashes := make([]string, 0, len(txs))
-	uncheckedValues := make([]interface{}, 0, len(txs))
+	uncheckedValues := make([]*cmntyp.StandardTransaction, 0, len(txs))
 	for i := range txs {
 		if !txs[i].NativeMessage.SkipAccountChecks && !p.CloseCheck {
 			bySender[string(txs[i].NativeMessage.From.Bytes())] = append(bySender[string(txs[i].NativeMessage.From.Bytes())], txs[i])
@@ -85,7 +128,7 @@ func (p *Pool) Add(txs []*cmntyp.StandardTransaction, src cmntyp.TxSource, heigh
 	p.TxUnchecked.BatchSet(uncheckedHashes, uncheckedValues)
 
 	senders := make([]string, 0, len(bySender))
-	updates := make([]interface{}, 0, len(bySender))
+	updates := make([][]*cmntyp.StandardTransaction, 0, len(bySender))
 	replaced := make([][]*cmntyp.StandardTransaction, len(bySender))
 	for k, v := range bySender {
 		senders = append(senders, k)
@@ -94,21 +137,29 @@ func (p *Pool) Add(txs []*cmntyp.StandardTransaction, src cmntyp.TxSource, heigh
 	if _, ok := p.SourceStat[src]; !ok {
 		p.SourceStat[src] = NewTxSourceStatistics()
 	}
-	p.TxBySender.BatchUpdate(senders, updates, func(origin interface{}, index int, key string, value interface{}) interface{} {
-		var txSender *TxSender
-		if origin == nil {
-			txSender = NewTxSender(p.StateDB.GetNonce(evmCommon.BytesToAddress([]byte(key))), p.ObsoleteTime)
-		} else {
-			txSender = origin.(*TxSender)
+
+	for sender, txs := range bySender {
+		key := sender
+
+		origin, _ := p.TxBySender.Get(key)
+		txSender := origin
+		if txSender == nil {
+			txSender = NewTxSender(
+				p.StateDB.GetNonce(evmCommon.BytesToAddress([]byte(key))),
+				p.ObsoleteTime,
+			)
 		}
-		replaced[index] = txSender.Add(value.([]*cmntyp.StandardTransaction), p.SourceStat[src], height)
-		return txSender
-	})
+
+		replacedTxs := txSender.Add(txs, p.SourceStat[src], height)
+		replaced = append(replaced, replacedTxs)
+
+		p.TxBySender.Set(key, txSender)
+	}
 
 	hashes := uncheckedHashes
 	values := uncheckedValues
 	for _, u := range updates {
-		updated := u.([]*cmntyp.StandardTransaction)
+		updated := u
 		for i := range updated {
 			if updated[i] == nil {
 				continue
@@ -125,48 +176,56 @@ func (p *Pool) Add(txs []*cmntyp.StandardTransaction, src cmntyp.TxSource, heigh
 			removed = append(removed, string(r[i].TxHash.Bytes()))
 		}
 	}
-	values = make([]interface{}, len(removed))
+	values = make([]*cmntyp.StandardTransaction, len(removed))
 	p.TxByHash.BatchSet(removed, values)
 
 	return p.checkWaitingList(txs)
 }
 
 func (p *Pool) Reap(limit int) []*cmntyp.StandardTransaction {
-	shardedResults := p.TxBySender.Traverse(func(key string, value interface{}) (interface{}, interface{}) {
-		txSender := value.(*TxSender)
-		return value, txSender.Reap()
+	results := make([]*cmntyp.StandardTransaction, 0, limit)
+
+	p.TxBySender.ParallelForeachDo(func(_ string, sender *TxSender) {
+		if len(results) >= limit {
+			return
+		}
+		txs := sender.Reap()
+		results = append(results, txs...)
 	})
 
-	results := make([]*cmntyp.StandardTransaction, 0, limit)
-	for _, shard := range shardedResults {
-		for _, result := range shard {
-			txs := result.([]*cmntyp.StandardTransaction)
-			results = append(results, txs...)
-			if len(results) >= limit {
-				return results[:limit]
-			}
-		}
+	if len(results) >= limit {
+		return results[:limit]
 	}
 
-	if len(results) < limit {
-		uncheckedHashes := p.TxUnchecked.Keys()
-		uncheckedTxs := p.TxUnchecked.BatchGet(uncheckedHashes[:cmncmn.Min(limit-len(results), len(uncheckedHashes))])
-		for _, tx := range uncheckedTxs {
-			results = append(results, tx.(*cmntyp.StandardTransaction))
+	// unchecked
+	keys := p.TxUnchecked.Keys()
+	if len(keys) > 0 {
+		values, found := p.TxUnchecked.BatchGet(
+			keys[:cmncmn.Min(limit-len(results), len(keys))],
+		)
+		for i, ok := range found {
+			if ok {
+				results = append(results, values[i])
+			}
 		}
 	}
 	return results
 }
-
 func (p *Pool) QueryByHash(hash evmCommon.Hash) *cmntyp.StandardTransaction {
 	keys := make([]string, 1)
-	keys[0] = string(hash.Bytes())
-	txs := p.TxByHash.BatchGet(keys)
-	if txs[0] != nil {
-		return txs[0].(*cmntyp.StandardTransaction)
-	} else {
-		return nil
+	// keys[0] = string(hash.Bytes())
+	// txs := p.TxByHash.BatchGet(keys)
+	// if txs[0] != nil {
+	// 	return txs[0].(*cmntyp.StandardTransaction)
+	// } else {
+	// 	return nil
+	// }
+
+	values, found := p.TxByHash.BatchGet(keys)
+	if found[0] {
+		return values[0]
 	}
+	return nil
 }
 
 func (p *Pool) CherryPick(hashes []evmCommon.Hash) []*cmntyp.StandardTransaction {
@@ -178,10 +237,10 @@ func (p *Pool) CherryPick(hashes []evmCommon.Hash) []*cmntyp.StandardTransaction
 	}
 
 	p.ClearList = keys
-	txs := p.TxByHash.BatchGet(keys)
+	txs, _ := p.TxByHash.BatchGet(keys)
 	for i, tx := range txs {
 		if tx != nil {
-			p.CherryPickResult[i] = tx.(*cmntyp.StandardTransaction)
+			p.CherryPickResult[i] = tx
 		} else {
 			p.Waitings[hashes[i]] = i
 		}
@@ -197,34 +256,77 @@ func (p *Pool) CherryPick(hashes []evmCommon.Hash) []*cmntyp.StandardTransaction
 }
 
 func (p *Pool) Clean(height uint64) {
-	shardedResults := p.TxBySender.Traverse(func(key string, value interface{}) (interface{}, interface{}) {
-		txSender := value.(*TxSender)
-		newSender, deleted := txSender.Clean(p.StateDB.GetNonce(evmCommon.BytesToAddress([]byte(key))), height)
-		// Cautions: you cannot return *TxSender(nil) as interface{} directly,
-		// because *TxSender(nil) != nil.
-		if newSender == nil {
-			return nil, deleted
+	deletedCh := make(chan *cmntyp.StandardTransaction, 1024)
+
+	p.TxBySender.Traverse(func(key string, sender **TxSender) {
+		if *sender == nil {
+			return
 		}
-		return newSender, deleted
+
+		newSender, deleted := (*sender).Clean(
+			p.StateDB.GetNonce(evmCommon.BytesToAddress([]byte(key))),
+			height,
+		)
+
+		for _, tx := range deleted {
+			deletedCh <- tx
+		}
+
+		if newSender == nil {
+			*sender = nil // isNilVal(nil) => delete
+		} else {
+			*sender = newSender
+		}
 	})
 
-	hashes := make([]string, 0, p.TxByHash.Size())
-	for _, shard := range shardedResults {
-		for _, result := range shard {
-			txs := result.([]*cmntyp.StandardTransaction)
-			for _, tx := range txs {
-				hashes = append(hashes, string(tx.TxHash.Bytes()))
-			}
-		}
-	}
-	// Use the default value nil to delete all the entries.
-	values := make([]interface{}, len(hashes))
-	p.TxByHash.BatchSet(hashes, values)
+	close(deletedCh)
 
-	values = make([]interface{}, len(p.ClearList))
-	p.TxByHash.BatchSet(p.ClearList, values)
-	p.TxUnchecked.BatchSet(p.ClearList, values)
+	hashes := make([]string, 0)
+	for tx := range deletedCh {
+		hashes = append(hashes, string(tx.TxHash.Bytes()))
+	}
+
+	if len(hashes) > 0 {
+		values := make([]*cmntyp.StandardTransaction, len(hashes))
+		p.TxByHash.BatchSet(hashes, values)
+	}
+
+	if len(p.ClearList) > 0 {
+		values := make([]*cmntyp.StandardTransaction, len(p.ClearList))
+		p.TxByHash.BatchSet(p.ClearList, values)
+		p.TxUnchecked.BatchSet(p.ClearList, values)
+	}
 }
+
+// func (p *Pool) Clean(height uint64) {
+// 	shardedResults := p.TxBySender.Traverse(func(key string, value interface{}) (interface{}, interface{}) {
+// 		txSender := value.(*TxSender)
+// 		newSender, deleted := txSender.Clean(p.StateDB.GetNonce(evmCommon.BytesToAddress([]byte(key))), height)
+// 		// Cautions: you cannot return *TxSender(nil) as interface{} directly,
+// 		// because *TxSender(nil) != nil.
+// 		if newSender == nil {
+// 			return nil, deleted
+// 		}
+// 		return newSender, deleted
+// 	})
+
+// 	hashes := make([]string, 0, p.TxByHash.Length())
+// 	for _, shard := range shardedResults {
+// 		for _, result := range shard {
+// 			txs := result.([]*cmntyp.StandardTransaction)
+// 			for _, tx := range txs {
+// 				hashes = append(hashes, string(tx.TxHash.Bytes()))
+// 			}
+// 		}
+// 	}
+// 	// Use the default value nil to delete all the entries.
+// 	values := make([]*cmntyp.StandardTransaction, len(hashes))
+// 	p.TxByHash.BatchSet(hashes, values)
+
+// 	values = make([]*cmntyp.StandardTransaction, len(p.ClearList))
+// 	p.TxByHash.BatchSet(p.ClearList, values)
+// 	p.TxUnchecked.BatchSet(p.ClearList, values)
+// }
 
 func (p *Pool) checkWaitingList(txs []*cmntyp.StandardTransaction) []*cmntyp.StandardTransaction {
 	if len(p.Waitings) > 0 {

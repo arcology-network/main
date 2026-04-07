@@ -22,15 +22,15 @@ import (
 	"math/big"
 
 	"github.com/arcology-network/common-lib/codec"
-	interfaces "github.com/arcology-network/storage-committer/common"
-	"github.com/arcology-network/storage-committer/type/commutative"
-	"github.com/arcology-network/storage-committer/type/noncommutative"
+	crdtcommon "github.com/arcology-network/common-lib/crdt/common"
+	commutative "github.com/arcology-network/common-lib/crdt/commutative"
+	noncommutative "github.com/arcology-network/common-lib/crdt/noncommutative"
 	"github.com/holiman/uint256"
 )
 
-func GetBalance(ds interfaces.ReadOnlyStore, addr string) (*big.Int, error) {
+func GetBalance(ds crdtcommon.ReadOnlyStore, addr string) (*big.Int, error) {
 	key := getBalancePath(addr)
-	obj, err := ds.Retrive(key, new(commutative.U256))
+	obj, err := ds.Retrieve(key, new(commutative.U256))
 	if err != nil {
 		log.Printf("[urlstroe query] getbalance -- err:%v", err)
 	}
@@ -41,8 +41,8 @@ func GetBalance(ds interfaces.ReadOnlyStore, addr string) (*big.Int, error) {
 	balance := obj.(*commutative.U256).Value().(uint256.Int)
 	return (&balance).ToBig(), nil
 }
-func GetNonce(ds interfaces.ReadOnlyStore, addr string) (uint64, error) {
-	obj, err := ds.Retrive(getNoncePath(addr), new(commutative.Uint64))
+func GetNonce(ds crdtcommon.ReadOnlyStore, addr string) (uint64, error) {
+	obj, err := ds.Retrieve(getNoncePath(addr), new(commutative.Uint64))
 	if err != nil || obj == nil {
 		if err != nil {
 			log.Printf("[urlstroe query] GetNonce -- err:%v", err)
@@ -52,8 +52,8 @@ func GetNonce(ds interfaces.ReadOnlyStore, addr string) (uint64, error) {
 	nonce := obj.(*commutative.Uint64).Value().(uint64)
 	return uint64(nonce), nil
 }
-func GetCode(ds interfaces.ReadOnlyStore, addr string) ([]byte, error) {
-	obj, err := ds.Retrive(getCodePath(addr), new(noncommutative.Bytes))
+func GetCode(ds crdtcommon.ReadOnlyStore, addr string) ([]byte, error) {
+	obj, err := ds.Retrieve(getCodePath(addr), new(noncommutative.Bytes))
 	if err != nil || obj == nil {
 		if err != nil {
 			log.Printf("[urlstroe query] GetCode -- err:%v", err)
@@ -64,9 +64,9 @@ func GetCode(ds interfaces.ReadOnlyStore, addr string) ([]byte, error) {
 	return []byte(bys), nil
 }
 
-func GetStorage(ds interfaces.ReadOnlyStore, addr, key string) ([]byte, error) {
+func GetStorage(ds crdtcommon.ReadOnlyStore, addr, key string) ([]byte, error) {
 	path := getStorageKeyPath(addr, key)
-	obj, err := ds.Retrive(path, new(noncommutative.Bytes))
+	obj, err := ds.Retrieve(path, new(noncommutative.Bytes))
 	if err != nil || obj == nil {
 		if err != nil {
 			log.Printf("[urlstroe query] GetStorage -- err:%v", err)

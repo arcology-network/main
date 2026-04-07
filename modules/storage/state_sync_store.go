@@ -63,12 +63,12 @@ type StateSyncStore struct {
 	// Bufferred data
 	urlUpdate *storage.UrlUpdate
 	hash      *evmCommon.Hash
-	schdState *mtypes.SchdState
+	// schdState *mtypes.SchdState
 
 	//
 	parent *mtypes.ParentInfo
 	height uint64
-	states []mtypes.SchdState
+	// states []mtypes.SchdState
 }
 
 func NewStateSyncStore() actor.Business {
@@ -91,7 +91,7 @@ func NewStateSyncStore() actor.Business {
 func (store *StateSyncStore) Inputs() ([]string, bool) {
 	return []string{
 		scommon.MsgParentInfo,
-		scommon.MsgSchdState,
+		// scommon.MsgSchdState,
 		scommon.MsgUrlUpdate,
 		scommon.MsgAcctHash,
 	}, false
@@ -116,9 +116,9 @@ func (store *StateSyncStore) GetFSMRules() map[int]actor.FSMRule {
 		s3StateUninit: {Accept: []string{
 			scommon.MsgParentInfo,
 		}},
-		s3StateSchdState: {Accept: []string{
-			scommon.MsgSchdState,
-		}},
+		// s3StateSchdState: {Accept: []string{
+		// 	scommon.MsgSchdState,
+		// }},
 		s3StateUrlUpdate: {Accept: []string{
 			scommon.MsgUrlUpdate,
 		}},
@@ -137,7 +137,7 @@ func (store *StateSyncStore) GetCurrentState() int {
 
 func (store *StateSyncStore) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgParentInfo, store.receivedParentInfo)
-	reg.Register(scommon.MsgSchdState, store.receivedSchdState)
+	// reg.Register(scommon.MsgSchdState, store.receivedSchdState)
 	reg.Register(scommon.MsgUrlUpdate, store.receivedUrlUpdate)
 	reg.Register(scommon.MsgAcctHash, store.receivedAcctHash)
 	reg.Register("GetSyncStatus", store.GetSyncStatus)
@@ -177,8 +177,8 @@ func (store *StateSyncStore) receivedUrlUpdate(ctx *actor.ActionContext) error {
 }
 
 func (store *StateSyncStore) receivedSchdState(ctx *actor.ActionContext) error {
-	msg := ctx.Messages[0]
-	store.schdState = msg.Data.(*mtypes.SchdState)
+	// msg := ctx.Messages[0]
+	// store.schdState = msg.Data.(*mtypes.SchdState)
 	store.state = s3StateUrlUpdate
 	return nil
 }
@@ -198,10 +198,10 @@ func (store *StateSyncStore) receivedParentInfo(ctx *actor.ActionContext) error 
 				To:    msg.Height,
 				Slice: 0,
 			},
-			Hash:       store.hash.Bytes(),
-			Data:       store.encode(store.urlUpdate),
-			Parent:     parent,
-			SchdStates: store.schdState,
+			Hash:   store.hash.Bytes(),
+			Data:   store.encode(store.urlUpdate),
+			Parent: parent,
+			// SchdStates: store.schdState,
 		})
 		// var na int
 		// store.WriteSlice(context.Background(), &mtypes.SyncDataResponse{
@@ -298,28 +298,28 @@ func (store *StateSyncStore) GetSyncPoint(ctx *actor.ActionContext) error {
 }
 
 func (store *StateSyncStore) setSyncPoint_back(ctx *actor.ActionContext) error {
-	store.states = ctx.RPC.Request.([]mtypes.SchdState)
+	// store.states = ctx.RPC.Request.([]mtypes.SchdState)
 
-	end := 0
-	for i, state := range store.states {
-		if state.Height > store.height {
-			end = i
-			break
-		}
-	}
+	// end := 0
+	// for i, state := range store.states {
+	// 	if state.Height > store.height {
+	// 		end = i
+	// 		break
+	// 	}
+	// }
 
-	// TODO: Set slice hashes.
-	if err := store.setSyncPoint(&mtypes.SyncPoint{
-		From:       0,
-		To:         store.height,
-		Slices:     make([]evmCommon.Hash, mtypes.SlicePerSyncPoint),
-		Parent:     store.parent,
-		SchdStates: store.states[:end],
-	}); err != nil {
-		// ctx.ExecCtx.EndCasecade()
-		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
-		return err
-	}
+	// // TODO: Set slice hashes.
+	// if err := store.setSyncPoint(&mtypes.SyncPoint{
+	// 	From:       0,
+	// 	To:         store.height,
+	// 	Slices:     make([]evmCommon.Hash, mtypes.SlicePerSyncPoint),
+	// 	Parent:     store.parent,
+	// 	SchdStates: store.states[:end],
+	// }); err != nil {
+	// 	// ctx.ExecCtx.EndCasecade()
+	// 	ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+	// 	return err
+	// }
 	// ctx.ExecCtx.EndCasecade()
 	ctx.ExecCtx.SendRpcResponse("", nil)
 	return nil
@@ -532,22 +532,22 @@ func (store *StateSyncStore) makeSyncPoint(ctx *actor.ActionContext, from, to ui
 }
 
 func (store *StateSyncStore) makeSyncPointLoad(ctx *actor.ActionContext) error {
-	states := ctx.RPC.Request.([]mtypes.SchdState)
-	end := 0
-	for i, state := range states {
-		if state.Height > store.height {
-			end = i
-			break
-		}
-	}
-	// TODO: Set slice hashes.
-	store.setSyncPoint(&mtypes.SyncPoint{
-		From:       0,
-		To:         store.height,
-		Slices:     make([]evmCommon.Hash, mtypes.SlicePerSyncPoint),
-		Parent:     store.parent,
-		SchdStates: states[:end],
-	})
+	// states := ctx.RPC.Request.([]mtypes.SchdState)
+	// end := 0
+	// for i, state := range states {
+	// 	if state.Height > store.height {
+	// 		end = i
+	// 		break
+	// 	}
+	// }
+	// // TODO: Set slice hashes.
+	// store.setSyncPoint(&mtypes.SyncPoint{
+	// 	From:       0,
+	// 	To:         store.height,
+	// 	Slices:     make([]evmCommon.Hash, mtypes.SlicePerSyncPoint),
+	// 	Parent:     store.parent,
+	// 	SchdStates: states[:end],
+	// })
 
 	// Enable sync point.
 	store.status.SyncPoint = store.height

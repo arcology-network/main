@@ -3,11 +3,11 @@ package businessCase
 import (
 	"time"
 
+	statecell "github.com/arcology-network/common-lib/crdt/statecell"
 	"github.com/arcology-network/common-lib/exp/slice"
 	"github.com/arcology-network/common-lib/types"
 	eushared "github.com/arcology-network/eu/shared"
 	mtypes "github.com/arcology-network/main/types"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/broker"
 	scommon "github.com/arcology-network/streamer/common"
@@ -120,14 +120,14 @@ func (ua *UrlAggrSelector) startTest(ss *broker.StatefulStreamer) []string {
 
 	sendingEuResults := []*eushared.EuResult{
 		&eushared.EuResult{
-			H:       string(hashs[0].Bytes()),
+			Hash:    hashs[0],
 			ID:      uint64(10),
 			Status:  uint64(1),
 			GasUsed: uint64(100),
 			Trans:   univalues[0:2],
 		},
 		&eushared.EuResult{
-			H:       string(hashs[1].Bytes()),
+			Hash:    hashs[1],
 			ID:      uint64(11),
 			Status:  uint64(1),
 			GasUsed: uint64(110),
@@ -143,11 +143,11 @@ func (ua *UrlAggrSelector) startTest(ss *broker.StatefulStreamer) []string {
 	}
 	if ua.importMsg == scommon.MsgNonceEuResults {
 		for i := range sendingEuResults {
-			nonceTransactions := slice.CloneIf(sendingEuResults[i].Trans, func(v *univaluepk.Univalue) bool {
+			nonceTransactions := slice.CloneIf(sendingEuResults[i].Trans, func(v *statecell.StateCell) bool {
 				path := *v.GetPath()
 				return path[len(path)-5:] == "nonce"
-			}, func(v *univaluepk.Univalue) *univaluepk.Univalue {
-				return v.Clone().(*univaluepk.Univalue)
+			}, func(v *statecell.StateCell) *statecell.StateCell {
+				return v.Clone().(*statecell.StateCell)
 			})
 			sendingEuResults[i].Trans = nonceTransactions
 		}

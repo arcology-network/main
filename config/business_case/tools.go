@@ -23,11 +23,11 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/arcology-network/common-lib/crdt/statecell"
 	"github.com/arcology-network/common-lib/types"
 	mconfig "github.com/arcology-network/main/config"
 	"github.com/arcology-network/main/modules/storage"
 	mtypes "github.com/arcology-network/main/types"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/actor/rpc"
 	brokerpk "github.com/arcology-network/streamer/broker"
@@ -39,22 +39,22 @@ import (
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 
 	eushared "github.com/arcology-network/eu/shared"
-	statestore "github.com/arcology-network/storage-committer"
+	statestore "github.com/arcology-network/state-engine"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 )
 
-func MakeStateStore(basePath string) (*evmcore.Genesis, *statestore.StateStore, []*univaluepk.Univalue) {
+func MakeStateStore(basePath string) (*evmcore.Genesis, *statestore.StateStore, []*statecell.StateCell) {
 	gen := storage.ReadGenesis("./genesis.json")
 	store, _, uinvalues := storage.InitGenesisAccounts(basePath+"/db", gen, 0)
 
 	return gen, store, uinvalues
 }
 
-func MakeTxAccessRecordSet(txhashes []evmCommon.Hash, Ids []uint64, univalues []*univaluepk.Univalue) *eushared.TxAccessRecordSet {
+func MakeTxAccessRecordSet(txhashes []evmCommon.Hash, Ids []uint64, univalues []*statecell.StateCell) *eushared.TxAccessRecordSet {
 	aces := make([]*eushared.TxAccessRecords, len(txhashes))
 	for i := range txhashes {
 		aces[i] = &eushared.TxAccessRecords{
-			Hash:     string(txhashes[i][:]),
+			Hash:     txhashes[i],
 			ID:       Ids[i],
 			Accesses: univalues[i*10 : (i+1)*10],
 		}

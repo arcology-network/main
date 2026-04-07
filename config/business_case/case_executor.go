@@ -7,6 +7,7 @@ import (
 	"github.com/arcology-network/common-lib/types"
 	eushared "github.com/arcology-network/eu/shared"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/scheduler/workload"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/broker"
 	scommon "github.com/arcology-network/streamer/common"
@@ -123,19 +124,16 @@ func (et *ExecutorTest) rpcTestStart(ctx *actor.ActionContext) error {
 	//--------------------------------------
 	mblock, txhashes := MakeMonacoBlock()
 	stdMsgs, _ := Transfer(mblock.Txs, txhashes)
+	js := workload.JobSequence{}
+	for i := range stdMsgs {
+		js.AddJob(stdMsgs[i])
+	}
 	toExecute := &mtypes.ExecutorRequest{
 		Timestamp:     et.timestamp,
 		GenerationIdx: 0,
 		ExecId:        0,
 		Height:        10,
-		Sequences: []*mtypes.ExecutingSequence{
-			&mtypes.ExecutingSequence{
-				Parallel:   true,
-				SequenceId: evmCommon.BytesToHash([]byte{17, 18, 19, 110, 11, 112}),
-				GroupIds:   []uint64{0, 0},
-				Msgs:       stdMsgs,
-			},
-		},
+		JobSequences:  []*workload.JobSequence{&js},
 	}
 	et.txhashes = txhashes
 	// ctx.ExecCtx.Send(scommon.MsgTxsToExecute, toExecute, 10)
@@ -217,19 +215,19 @@ func (et *ExecutorTest) startTest(ss *broker.StatefulStreamer) []string {
 	//--------------------------------------
 	mblock, txhashes := MakeMonacoBlock()
 	stdMsgs, _ := Transfer(mblock.Txs, txhashes)
+
+	js := workload.JobSequence{}
+	for i := range stdMsgs {
+		js.AddJob(stdMsgs[i])
+	}
+	// js.FromStandardMessages(0, stdMsgs)
+
 	toExecute := &mtypes.ExecutorRequest{
 		Timestamp:     blockStart.Timestamp,
 		GenerationIdx: 0,
 		ExecId:        0,
 		Height:        10,
-		Sequences: []*mtypes.ExecutingSequence{
-			&mtypes.ExecutingSequence{
-				Parallel:   true,
-				SequenceId: evmCommon.BytesToHash([]byte{17, 18, 19, 110, 11, 112}),
-				GroupIds:   []uint64{0, 0},
-				Msgs:       stdMsgs,
-			},
-		},
+		JobSequences:  []*workload.JobSequence{&js},
 	}
 	m = scommon.NewMessageForStream(scommon.MsgTxsToExecute, toExecute)
 	m.Height = 10

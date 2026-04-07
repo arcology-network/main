@@ -103,7 +103,7 @@ func (s *Storage) PrimaryMsg() string {
 }
 
 func (s *Storage) Config(params map[string]interface{}) {
-	mstypes.CreateDB(params)
+	// mstypes.CreateDB(params)
 	s.caches = mstypes.NewLogCaches(params["log_cache_size"].(int))
 	s.chainID = params["chain_id"].(*big.Int)
 	s.scanCache = mstypes.NewScanCache(

@@ -49,8 +49,8 @@ func (s *State) Decode(data []byte) *State {
 	s.Height = uint64(codec.Uint64(0).Decode(buffers[0]).(codec.Uint64))
 	s.ParentHash = evmCommon.BytesToHash(buffers[1])
 	s.ParentRoot = evmCommon.BytesToHash(buffers[2])
-	s.ExcessBlobGas = uint64(codec.Uint64(0).Decode(buffers[2]).(codec.Uint64))
-	s.BlobGasUsed = uint64(codec.Uint64(0).Decode(buffers[3]).(codec.Uint64))
+	s.ExcessBlobGas = uint64(codec.Uint64(0).Decode(buffers[3]).(codec.Uint64))
+	s.BlobGasUsed = uint64(codec.Uint64(0).Decode(buffers[4]).(codec.Uint64))
 	return s
 }
 

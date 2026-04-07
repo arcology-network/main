@@ -24,7 +24,7 @@ import (
 	"sync"
 
 	mtypes "github.com/arcology-network/main/types"
-	ccdb "github.com/arcology-network/storage-committer/storage/ethstorage"
+	ethstg "github.com/arcology-network/state-engine/storage/ethstorage"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -60,8 +60,8 @@ func NewEthereumAPIMock(chainID *big.Int) EthereumAPI {
 	}
 }
 
-func (mock *EthereumAPIMock) GetProof(rq *mtypes.RequestProof) (*ccdb.AccountResult, error) {
-	return &ccdb.AccountResult{}, nil
+func (mock *EthereumAPIMock) GetProof(rq *mtypes.RequestProof) (*ethstg.AccountResult, error) {
+	return &ethstg.AccountResult{}, nil
 }
 
 func (mock *EthereumAPIMock) ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadAttributes *engine.PayloadAttributes, chainid uint64) (engine.ForkChoiceResponse, error) {

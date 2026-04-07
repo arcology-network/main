@@ -21,16 +21,17 @@ import (
 	"fmt"
 
 	mtypes "github.com/arcology-network/main/types"
-	statestore "github.com/arcology-network/storage-committer"
-	opadapter "github.com/arcology-network/storage-committer/op"
-	ethdb "github.com/arcology-network/storage-committer/storage/ethstorage"
+	statestore "github.com/arcology-network/state-engine"
+	opadapter "github.com/arcology-network/state-engine/op"
+	ethstg "github.com/arcology-network/state-engine/storage/ethstorage"
+	"github.com/arcology-network/state-engine/storage/proxy"
 	"github.com/arcology-network/streamer/actor"
 	scommon "github.com/arcology-network/streamer/common"
 	"github.com/arcology-network/streamer/logger"
 )
 
 type StateQuery struct {
-	ProofCache *ethdb.MerkleProofCache
+	ProofCache *ethstg.MerkleProofCache
 	request    *mtypes.RequestProof
 }
 
@@ -58,8 +59,8 @@ func (sq *StateQuery) RegisterActions(reg actor.ActionRegistrar) {
 }
 
 func (sq *StateQuery) updateApchandle(ctx *actor.ActionContext) error {
-	ddb := ctx.Messages[0].Data.(*statestore.StateStore).Backend()
-	cache := ethdb.NewMerkleProofCache(2, ddb.EthStore().EthDB())
+	ddb := ctx.Messages[0].Data.(*statestore.StateStore)
+	cache := ethstg.NewMerkleProofCache(2, ddb.ReadOnlyStore().(*proxy.StorageProxy).EthStore().EthDB())
 	sq.ProofCache = cache
 
 	return nil

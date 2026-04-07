@@ -20,7 +20,8 @@ package storage
 import (
 	"github.com/arcology-network/streamer/actor"
 
-	statestore "github.com/arcology-network/storage-committer"
+	statestore "github.com/arcology-network/state-engine"
+	"github.com/arcology-network/state-engine/storage/proxy"
 	scommon "github.com/arcology-network/streamer/common"
 )
 
@@ -92,7 +93,9 @@ func (handler *DBHandlerAsync) Config(params map[string]interface{}) {
 				task.ExecCtx.LogDebug("After Precommit Async.")
 			case handler.generationCompletedMsg:
 				if handler.generateAcctRoot {
-					task.ExecCtx.Send(scommon.MsgAcctHash, handler.StateStore.Backend().EthStore().LatestWorldTrieRoot(), task.Msg.Height)
+					acchash := handler.StateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Root()
+					task.ExecCtx.Send(scommon.MsgAcctHash, acchash, task.Msg.Height)
+					// task.ExecCtx.LogDebug("send accthash", logger.F("accHash", acchash))
 				}
 				task.ExecCtx.LogDebug("change into dbStateCommit")
 			case handler.commitMsg:

@@ -20,7 +20,7 @@ package types
 import (
 	"strings"
 
-	adaptorcommon "github.com/arcology-network/eu/eth"
+	eth "github.com/arcology-network/eu/ethadaptor"
 	evmcommon "github.com/ethereum/go-ethereum/common"
 )
 
@@ -28,10 +28,10 @@ const (
 	nthread = 4
 )
 
-var connector *adaptorcommon.EthPathBuilder
+var connector *eth.EthPathBuilder
 
 func init() {
-	connector = &adaptorcommon.EthPathBuilder{}
+	connector = &eth.EthPathBuilder{}
 }
 
 func getBalancePath(addr string) string {

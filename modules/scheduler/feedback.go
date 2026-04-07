@@ -20,15 +20,15 @@ package scheduler
 import (
 	"strings"
 
+	statecell "github.com/arcology-network/common-lib/crdt/statecell"
 	eushared "github.com/arcology-network/eu/shared"
-	stgcommon "github.com/arcology-network/storage-committer/common"
-	"github.com/arcology-network/storage-committer/type/univalue"
+	stgcommon "github.com/arcology-network/state-engine/common"
 	"github.com/arcology-network/streamer/actor"
 	scommon "github.com/arcology-network/streamer/common"
 )
 
 type Feedback struct {
-	feeds []*univalue.Univalue
+	feeds []*statecell.StateCell
 }
 
 const (
@@ -38,7 +38,7 @@ const (
 // return a Subscriber struct
 func NewFeedback() actor.Business {
 	fd := &Feedback{}
-	fd.feeds = make([]*univalue.Univalue, 0, FEEDCOUNTS)
+	fd.feeds = make([]*statecell.StateCell, 0, FEEDCOUNTS)
 	return fd
 }
 
@@ -74,14 +74,14 @@ func (fd *Feedback) receivedData(ctx *actor.ActionContext) error {
 
 func (fd *Feedback) receiveBlockEnd(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.Send(scommon.MsgFeedBacks, fd.feeds)
-	fd.feeds = make([]*univalue.Univalue, 0, FEEDCOUNTS)
+	fd.feeds = make([]*statecell.StateCell, 0, FEEDCOUNTS)
 	return nil
 }
 
 func (fd *Feedback) addUnivalues(data []*eushared.EuResult) error {
 	for i := range data {
 		for j := range data[i].Trans {
-			if data[i].Trans[j].GetPath() != nil && strings.Contains(*data[i].Trans[j].GetPath(), stgcommon.FULL_PARA_PROP_PATH) {
+			if data[i].Trans[j].GetPath() != nil && strings.Contains(*data[i].Trans[j].GetPath(), stgcommon.PATH_FUNC_PROFILE) {
 				fd.feeds = append(fd.feeds, data[i].Trans[j])
 			}
 		}

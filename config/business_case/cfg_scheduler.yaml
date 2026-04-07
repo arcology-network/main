@@ -15,8 +15,8 @@ actors:
     conflict_file: "conflictlist"
     executors: "__global__"
 
-  storage.schdstore:
-    root: "./cfg_scheduler/schdstore/"
+  # storage.schdstore:
+  #   root: "./cfg_scheduler/schdstore/"
 
   storage.transactionalstore:
     root: "./cfg_scheduler/transactional/"

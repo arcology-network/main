@@ -1,7 +1,11 @@
 nats:
   servers:
     - "nats://127.0.0.1:4222"
-  name: "node0"      #Ensure global uniqueness
+  #  - "nats://10.0.0.2:4222"
+  #  - "nats://10.0.0.3:4222"
+  user: "app"
+  password: "your_password"
+  name: "node0"
   reconnect_wait: 2s
   max_reconnects: 60
 

@@ -19,6 +19,12 @@ package types
 
 import (
 	"encoding/gob"
+
+	"github.com/arcology-network/scheduler/workload"
+)
+
+const (
+	MaxBlockSize = 50000
 )
 
 // var arEncoder *arbReqEncoder
@@ -58,8 +64,8 @@ func init() {
 	gob.Register(&ExecutorRequest{})
 	gob.Register(&ExecutorResponses{})
 
-	gob.Register(&SchdState{})
-	gob.Register([]SchdState{})
+	// gob.Register(&SchdState{})
+	// gob.Register([]SchdState{})
 	// arEncoder = newArbReqEncoder()
 	// arDecoder = newArbReqDecoder()
 
@@ -67,5 +73,10 @@ func init() {
 	// for i := 0; i < 100; i++ {
 	// 	bytesPool <- make([]byte, 0, 2*1024*1024)
 	// }
+
+	gob.Register(&ExecutorDebugRequest{})
+	gob.Register(&workload.JobSequence{})
+	gob.Register([]*workload.JobSequence{})
+	gob.Register([]*workload.Job{})
 
 }

@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	actor.Factory.Register("exec_rpc", NewRpcService)
+	// actor.Factory.Register("exec_rpc", NewRpcService)
 	actor.Factory.Register("executor", NewExecutor)
 	actor.Factory.Register("exec_debug", NewEstimateExecutor)
 

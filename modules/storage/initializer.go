@@ -23,34 +23,35 @@ import (
 	"encoding/gob"
 	"encoding/json"
 	"fmt"
+	"math"
 	"math/big"
 	"os"
 
 	"github.com/arcology-network/common-lib/storage/transactional"
 	"github.com/arcology-network/consensus-engine/state"
-	adaptorcommon "github.com/arcology-network/eu/eth"
 	"github.com/arcology-network/main/modules/core"
-	interfaces "github.com/arcology-network/storage-committer/common"
-	"github.com/arcology-network/storage-committer/type/commutative"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/logger"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/holiman/uint256"
 
 	apihandler "github.com/arcology-network/eu/apihandler"
-	cache "github.com/arcology-network/storage-committer/storage/cache"
 	evmcore "github.com/ethereum/go-ethereum/core"
 
+	"github.com/arcology-network/common-lib/crdt/statecell"
 	"github.com/arcology-network/common-lib/exp/mempool"
 	"github.com/arcology-network/common-lib/exp/slice"
 	mtypes "github.com/arcology-network/main/types"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
-
-	statestore "github.com/arcology-network/storage-committer"
-	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
-
+	statestore "github.com/arcology-network/state-engine"
+	"github.com/arcology-network/state-engine/storage/proxy"
 	scommon "github.com/arcology-network/streamer/common"
+
+	ethimpl "github.com/arcology-network/eu/ethadaptor"
+
+	stateengine "github.com/arcology-network/state-engine"
+	statecache "github.com/arcology-network/state-engine/state/cache"
 )
 
 type Initializer struct {
@@ -73,9 +74,9 @@ func (i *Initializer) Inputs() ([]string, bool) {
 
 func (i *Initializer) Outputs() map[string]int {
 	return map[string]int{
-		scommon.MsgLocalParentInfo:  1,
-		scommon.MsgInitialization:   1,
-		scommon.MsgInitScheduletate: 1,
+		scommon.MsgLocalParentInfo: 1,
+		scommon.MsgInitialization:  1,
+		// scommon.MsgInitScheduletate: 1,
 	}
 }
 
@@ -116,9 +117,9 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 		transactional.RegisterRecoverFunc("parentinfo", func(interface{}, []byte) error {
 			return nil
 		})
-		transactional.RegisterRecoverFunc("schdstate", func(interface{}, []byte) error {
-			return nil
-		})
+		// transactional.RegisterRecoverFunc("schdstate", func(interface{}, []byte) error {
+		// 	return nil
+		// })
 
 		store, rootHash, _ = InitGenesisAccounts(i.storage_db_path, genesis, uint64(height))
 
@@ -151,28 +152,12 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 			BlobGasUsed:   blobGasUsed,
 		}
 	} else {
-
-		// db = ccdb.NewLevelDBDataStore(i.storage_db_path)
-
-		db := stgproxy.NewLevelDBStoreProxy(i.storage_db_path) //.EnableCache()
-		db.Inject(RootPrefix, commutative.NewPath())
+		db := proxy.NewLevelDBStoreProxy(i.storage_db_path, i.storage_db_path, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100}) //.EnableCache()
+		// db.Inject(RootPrefix, commutative.NewPath())
 		store = statestore.NewStateStore(db)
 
 		// Register recover function.
 		transactional.RegisterRecoverFunc("urlupdate", func(_ interface{}, bs []byte) error {
-			// var updates storage.UrlUpdate
-			// if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&updates); err != nil {
-			// 	fmt.Printf("Error decoding UrlUpdate, err = %v\n", err)
-			// 	return err
-			// }
-
-			// values := make([]interface{}, len(updates.EncodedValues))
-			// for i, v := range updates.EncodedValues {
-			// 	values[i] = ccdb.Codec{}.Decode(v, nil) //urltyp.FromBytes(v)
-			// }
-
-			// db.BatchInject(updates.Keys, values)
-			// fmt.Printf("[storage.Initializer] Recover urlupdate.\n")
 			return nil
 		})
 		transactional.RegisterRecoverFunc("parentinfo", func(_ interface{}, bs []byte) error {
@@ -193,18 +178,18 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 			logger.Log.Debug(context.Background(), i.from, "[storage.Initializer] Recover parentinfo", logger.F("pi", pi))
 			return nil
 		})
-		transactional.RegisterRecoverFunc("schdstate", func(_ interface{}, bs []byte) error {
-			var state mtypes.SchdState
-			if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&state); err != nil {
-				logger.Log.Error(context.Background(), i.from, "Error decoding SchdState", logger.F("err", err))
-				return err
-			}
+		// transactional.RegisterRecoverFunc("schdstate", func(_ interface{}, bs []byte) error {
+		// 	var state mtypes.SchdState
+		// 	if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&state); err != nil {
+		// 		logger.Log.Error(context.Background(), i.from, "Error decoding SchdState", logger.F("err", err))
+		// 		return err
+		// 	}
 
-			// var na int
-			i.sender.SendSync("schdstore", "DirectWrite", &state, uint64(height), i.from)
-			logger.Log.Debug(context.Background(), i.from, "[storage.Initializer] Recover schdstate.")
-			return nil
-		})
+		// 	// var na int
+		// 	i.sender.SendSync("schdstore", "DirectWrite", &state, uint64(height), i.from)
+		// 	logger.Log.Debug(context.Background(), i.from, "[storage.Initializer] Recover schdstate.")
+		// 	return nil
+		// })
 		// Recover.
 		txID := fmt.Sprintf("%d", height)
 		// var na int
@@ -225,11 +210,11 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 	i.sender.SendSync("urlstore", "Init", store.ReadOnlyStore(), uint64(height), i.from)
 	i.sender.SendSync("storage", "InitHeight", uint64(height), uint64(height), i.from)
 
-	ret, err = i.sender.SendSync("schdstore", "Load", "", uint64(height), i.from)
-	if err != nil {
-		panic(fmt.Sprintf("load conflication err : %v\n", err))
-	}
-	states := ret.([]mtypes.SchdState)
+	// ret, err = i.sender.SendSync("schdstore", "Load", "", uint64(height), i.from)
+	// if err != nil {
+	// 	panic(fmt.Sprintf("load conflication err : %v\n", err))
+	// }
+	// states := ret.([]mtypes.SchdState)
 
 	return []*scommon.Message{
 		{
@@ -238,12 +223,12 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 			Data:   parentinfo,
 			From:   i.from,
 		},
-		{
-			Name:   scommon.MsgInitScheduletate,
-			Height: uint64(height),
-			Data:   states,
-			From:   i.from,
-		},
+		// {
+		// 	Name:   scommon.MsgInitScheduletate,
+		// 	Height: uint64(height),
+		// 	Data:   states,
+		// 	From:   i.from,
+		// },
 		{
 			Name:   scommon.MsgInitialization,
 			Height: uint64(height),
@@ -260,27 +245,26 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 func (i *Initializer) RegisterActions(reg actor.ActionRegistrar) {
 
 }
-func InitGenesisAccounts(dbpath string, genesis *evmcore.Genesis, height uint64) (*statestore.StateStore, evmCommon.Hash, []*univaluepk.Univalue) {
-	db := stgproxy.NewLevelDBStoreProxy(dbpath)
+func InitGenesisAccounts(dbpath string, genesis *evmcore.Genesis, height uint64) (*statestore.StateStore, evmCommon.Hash, []*statecell.StateCell) {
+	db := proxy.NewLevelDBStoreProxy(dbpath, dbpath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100})
 	stateStore := statestore.NewStateStore(db)
-	db.Inject(RootPrefix, commutative.NewPath())
 
 	transitions := createTransitions(db, genesis.Alloc)
 
 	stateStore.Import(slice.Clone(transitions))
-	stateStore.Precommit([]uint64{0})
-	stateStore.Commit(height)
+	stateStore.DebugPrecommit([]uint64{0})
+	stateStore.DebugCommit(height)
 
 	return stateStore, evmCommon.Hash{}, transitions
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-func createTransitions(db interfaces.ReadOnlyStore, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
+func createTransitions(db *proxy.StorageProxy, genesisAlloc evmcore.GenesisAlloc) []*statecell.StateCell {
 	batch := 10
 	addresses := make([]evmCommon.Address, 0, batch)
 	index := 0
-	transitions := make([]*univaluepk.Univalue, 0, len(genesisAlloc)*10)
+	transitions := make([]*statecell.StateCell, 0, len(genesisAlloc)*10)
 	for addr, _ := range genesisAlloc {
 		if index%batch == 0 && index > 0 {
 			transitions = append(transitions, getTransition(db, addresses, genesisAlloc)...)
@@ -295,13 +279,34 @@ func createTransitions(db interfaces.ReadOnlyStore, genesisAlloc evmcore.Genesis
 	return transitions
 }
 
-func getTransition(db interfaces.ReadOnlyStore, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []*univaluepk.Univalue {
-	api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
-		return cache.NewWriteCache(db, 32, 1)
-	}, func(cache *cache.WriteCache) { cache.Clear() }))
+// This is for setting up the initial accounts and balances, which skips
+// the normal EVM account creation flow.
+type dummyEU struct{}
 
-	stateDB := adaptorcommon.NewImplStateDB(api)
-	stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
+func (dummyEU) ID() uint64 { return 0 }
+
+func getTransition(db *proxy.StorageProxy, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []*statecell.StateCell {
+	store := stateengine.NewStateStore(db)
+
+	ccRuntime := apihandler.NewConcurrentRuntime(
+		0, // concurrent runtime ID
+		mempool.NewMempool(
+			16,
+			1,
+			func() *statecache.ExecutionStateCache {
+				// When creating a new writecache, use store as the backend.
+				return statecache.NewExecutionStateCache(store, 32, 1)
+			},
+			func(cache *statecache.ExecutionStateCache) {
+				cache.Clear()
+			}),
+	)
+
+	dummyEU := dummyEU{}
+	ccRuntime.SetEU(dummyEU)
+
+	stateDB := ethimpl.NewImplStateDB(ccRuntime)
+	// stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for _, addr := range addresses {
 		acct := genesisAlloc[addr]
 		stateDB.CreateAccount(addr)
@@ -320,8 +325,7 @@ func getTransition(db interfaces.ReadOnlyStore, addresses []evmCommon.Address, g
 		}
 
 	}
-	_, transitions := api.WriteCache().(*cache.WriteCache).ExportAll()
-
+	_, transitions := statecache.NewStateCacheFilter(ccRuntime.StateStore()).ByType()
 	return transitions
 }
 

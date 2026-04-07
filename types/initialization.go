@@ -1,7 +1,7 @@
 package types
 
 import (
-	statestore "github.com/arcology-network/storage-committer"
+	statestore "github.com/arcology-network/state-engine"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"

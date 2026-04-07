@@ -66,7 +66,7 @@ actors:
     stateless_euresult_aggr_selector:
       output: executed
   
-  exec_rpc: {}
+  # exec_rpc: {}
 
   exec_debug:
     chain_id: "__global__"
@@ -135,8 +135,8 @@ actors:
 
   storage.metrics: {}
 
-  storage.schdstore:
-    root: ../arcology/schdstore/
+  # storage.schdstore:
+  #   root: ../arcology/schdstore/
 
   "storage.tmblockstore": 
     "storage_tmblock_name": "tmblockstore"

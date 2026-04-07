@@ -25,7 +25,7 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
-	statestore "github.com/arcology-network/storage-committer"
+	statestore "github.com/arcology-network/state-engine"
 	"github.com/arcology-network/streamer/actor"
 	scommon "github.com/arcology-network/streamer/common"
 	"github.com/arcology-network/streamer/logger"

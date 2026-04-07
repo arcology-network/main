@@ -48,8 +48,8 @@ actors:
   #   sync_point_root: "./sync_point/"
   #   sync_point_interval: 65536
 
-  storage.schdstore:
-    root: "./schdstore/"
+  # storage.schdstore:
+  #   root: "./schdstore/"
 
   storage.tmblockstore:
     storage_tmblock_name: "tmblockstore"

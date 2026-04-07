@@ -18,16 +18,36 @@
 package types
 
 import (
+	"bytes"
 	"crypto/sha256"
+	"encoding/gob"
+	"log"
 	"math/big"
 
 	"github.com/arcology-network/common-lib/codec"
 	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/types"
 	eucommon "github.com/arcology-network/common-lib/types"
+	"github.com/arcology-network/scheduler/workload"
 	ethCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/eth/tracers"
 )
+
+type ExecutorDebugMsg struct {
+	Msg   *eucommon.StandardMessage
+	ReqId string
+}
+
+type ExecutorDebugJobSequence struct {
+	JobSequence *workload.JobSequence
+	ReqId       string
+}
+
+type ExecutorDebugRequest struct {
+	Msg    *eucommon.StandardMessage
+	Config *tracers.TraceConfig
+	Ctx    *tracers.Context
+}
 
 type ExecutorConf struct {
 	Name string `yaml:"name" json:"name"`
@@ -121,7 +141,7 @@ func (this *ExecutingSequences) Decode(data []byte) ([]*ExecutingSequence, error
 }
 
 type ExecutorRequest struct {
-	Sequences     []*ExecutingSequence
+	JobSequences  []*workload.JobSequence
 	Height        uint64
 	GenerationIdx uint32
 
@@ -131,11 +151,19 @@ type ExecutorRequest struct {
 }
 
 func (this *ExecutorRequest) GobEncode() ([]byte, error) {
-	executingSequences := ExecutingSequences(this.Sequences)
-	executingSequencesData, err := executingSequences.Encode()
+	// executingSequences := ExecutingSequences(this.Sequences)
+	// executingSequencesData, err := executingSequences.Encode()
+	// if err != nil {
+	// 	return []byte{}, err
+	// }
+
+	var buf bytes.Buffer
+	encoder := gob.NewEncoder(&buf)
+	err := encoder.Encode(this.JobSequences)
 	if err != nil {
-		return []byte{}, err
+		log.Fatal("encode error:", err)
 	}
+	executingSequencesData := buf.Bytes()
 
 	timeStampData := []byte{}
 	if this.Timestamp != nil {
@@ -155,11 +183,21 @@ func (this *ExecutorRequest) GobEncode() ([]byte, error) {
 
 func (this *ExecutorRequest) GobDecode(data []byte) error {
 	fields := codec.Byteset{}.Decode(data).(codec.Byteset)
-	msgResults, err := new(ExecutingSequences).Decode(fields[0])
+	// msgResults, err := new(ExecutingSequences).Decode(fields[0])
+	// if err != nil {
+	// 	return err
+	// }
+	// this.Sequences = msgResults
+
+	var jobsequence []*workload.JobSequence
+	reader := bytes.NewReader(fields[0])
+	decoder := gob.NewDecoder(reader)
+	err := decoder.Decode(&jobsequence)
 	if err != nil {
 		return err
 	}
-	this.Sequences = msgResults
+
+	this.JobSequences = jobsequence
 	this.Height = common.BytesToUint64(fields[1])
 	this.GenerationIdx = common.BytesToUint32(fields[2])
 	this.Timestamp = new(big.Int).SetBytes(fields[3])

@@ -340,65 +340,65 @@ func (ss *StorageStore) startTestReceiptStore(broker *broker.StatefulStreamer) [
 	return ss.msgs
 }
 
-func (ss *StorageStore) startTestSchdStore(broker *broker.StatefulStreamer) []string {
-	ss.msgs = []string{}
-	sername := "schdstore"
+// func (ss *StorageStore) startTestSchdStore(broker *broker.StatefulStreamer) []string {
+// 	ss.msgs = []string{}
+// 	sername := "schdstore"
 
-	//-----------------
-	txID := fmt.Sprintf("%d", 10)
-	_, err := ss.sender.SendSync("transactionalstore", "BeginTransaction", txID, 1, ss.from)
-	if err != nil {
-		fmt.Printf("******transactionalstore.BeginTransaction err:%v\n", err)
-		return ss.msgs
-	}
-	ss.msgs = append(ss.msgs, "transactionalstore.BeginTransaction")
+// 	//-----------------
+// 	txID := fmt.Sprintf("%d", 10)
+// 	_, err := ss.sender.SendSync("transactionalstore", "BeginTransaction", txID, 1, ss.from)
+// 	if err != nil {
+// 		fmt.Printf("******transactionalstore.BeginTransaction err:%v\n", err)
+// 		return ss.msgs
+// 	}
+// 	ss.msgs = append(ss.msgs, "transactionalstore.BeginTransaction")
 
-	//--------------------
-	schdState := &mtypes.SchdState{
-		Height:                10,
-		NewContracts:          []evmCommon.Address{evmCommon.BytesToAddress([]byte{1, 2, 3, 4, 5, 6})},
-		ConflictionLefts:      []evmCommon.Address{evmCommon.BytesToAddress([]byte{11, 12, 13, 14, 15, 16})},
-		ConflictionRights:     []evmCommon.Address{evmCommon.BytesToAddress([]byte{21, 22, 23, 24, 25, 26})},
-		ConflictionLeftSigns:  [][4]byte{[4]byte{1, 2, 3, 4}},
-		ConflictionRightSigns: [][4]byte{[4]byte{15, 12, 13, 14}},
-	}
+//--------------------
+// schdState := &mtypes.SchdState{
+// 	Height:                10,
+// 	NewContracts:          []evmCommon.Address{evmCommon.BytesToAddress([]byte{1, 2, 3, 4, 5, 6})},
+// 	ConflictionLefts:      []evmCommon.Address{evmCommon.BytesToAddress([]byte{11, 12, 13, 14, 15, 16})},
+// 	ConflictionRights:     []evmCommon.Address{evmCommon.BytesToAddress([]byte{21, 22, 23, 24, 25, 26})},
+// 	ConflictionLeftSigns:  [][4]byte{[4]byte{1, 2, 3, 4}},
+// 	ConflictionRightSigns: [][4]byte{[4]byte{15, 12, 13, 14}},
+// }
 
-	_, err = ss.sender.SendSync(sername, "Save", schdState, 3, ss.from)
-	if err != nil {
-		fmt.Printf("******%v.Save err:%v\n", sername, err)
-		return ss.msgs
-	}
-	ss.msgs = append(ss.msgs, sername+".Save")
+// _, err = ss.sender.SendSync(sername, "Save", schdState, 3, ss.from)
+// if err != nil {
+// 	fmt.Printf("******%v.Save err:%v\n", sername, err)
+// 	return ss.msgs
+// }
+// ss.msgs = append(ss.msgs, sername+".Save")
 
-	//--------------------
-	schdState.NewContracts = []evmCommon.Address{evmCommon.BytesToAddress([]byte{11, 2, 3, 4, 5, 6})}
-	_, err = ss.sender.SendSync(sername, "DirectWrite", schdState, 3, ss.from)
-	if err != nil {
-		fmt.Printf("******%v.DirectWrite err:%v\n", sername, err)
-		return ss.msgs
-	}
-	ss.msgs = append(ss.msgs, sername+".DirectWrite")
+//--------------------
+// schdState.NewContracts = []evmCommon.Address{evmCommon.BytesToAddress([]byte{11, 2, 3, 4, 5, 6})}
+// _, err = ss.sender.SendSync(sername, "DirectWrite", schdState, 3, ss.from)
+// if err != nil {
+// 	fmt.Printf("******%v.DirectWrite err:%v\n", sername, err)
+// 	return ss.msgs
+// }
+// ss.msgs = append(ss.msgs, sername+".DirectWrite")
 
-	//--------------------
-	state, err := ss.sender.SendSync(sername, "Load", "", 3, ss.from)
-	if err != nil {
-		fmt.Printf("******%v.Load err:%v\n", sername, err)
-		return ss.msgs
-	}
-	states := state.([]mtypes.SchdState)
-	fmt.Printf("******%v.Load val:%x\n", sername, states)
-	ss.msgs = append(ss.msgs, sername+".Load")
+//--------------------
+// 	state, err := ss.sender.SendSync(sername, "Load", "", 3, ss.from)
+// 	if err != nil {
+// 		fmt.Printf("******%v.Load err:%v\n", sername, err)
+// 		return ss.msgs
+// 	}
+// 	states := state.([]mtypes.SchdState)
+// 	fmt.Printf("******%v.Load val:%x\n", sername, states)
+// 	ss.msgs = append(ss.msgs, sername+".Load")
 
-	//-------------------------
-	_, err = ss.sender.SendSync("transactionalstore", "EndTransaction", "", 1, ss.from)
-	if err != nil {
-		fmt.Printf("******transactionalstore.EndTransaction err:%v\n", err)
-		return ss.msgs
-	}
-	ss.msgs = append(ss.msgs, "transactionalstore.EndTransaction")
+// 	//-------------------------
+// 	_, err = ss.sender.SendSync("transactionalstore", "EndTransaction", "", 1, ss.from)
+// 	if err != nil {
+// 		fmt.Printf("******transactionalstore.EndTransaction err:%v\n", err)
+// 		return ss.msgs
+// 	}
+// 	ss.msgs = append(ss.msgs, "transactionalstore.EndTransaction")
 
-	return ss.msgs
-}
+// 	return ss.msgs
+// }
 
 func (ss *StorageStore) startTestStatestore(broker *broker.StatefulStreamer) []string {
 	ss.msgs = []string{}

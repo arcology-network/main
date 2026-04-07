@@ -22,7 +22,7 @@ import (
 )
 
 func init() {
-	actor.Factory.Register("access_record_pre_processor", NewEuResultPreProcessor)
+	// actor.Factory.Register("access_record_pre_processor", NewEuResultPreProcessor)
 	actor.Factory.Register("access_record_aggr_selector", NewEuResultsAggreSelector)
 	actor.Factory.Register("arbitrator_rpc", NewRpcService)
 }

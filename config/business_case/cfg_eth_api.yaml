@@ -32,8 +32,8 @@ actors:
     tx_cache_size: 10
     chain_id: "__global__" 
 
-  storage.schdstore:
-    root: "./case_eth_api/schdstore/"
+  # storage.schdstore:
+  #   root: "./case_eth_api/schdstore/"
 
   storage.tmblockstore:
     storage_tmblock_name: "tmblockstore"

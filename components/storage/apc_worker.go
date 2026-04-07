@@ -19,8 +19,8 @@ package storage
 
 import (
 	"github.com/arcology-network/common-lib/common"
+	statecell "github.com/arcology-network/common-lib/crdt/statecell"
 	eushared "github.com/arcology-network/eu/shared"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 )
 
 func GetTransitionIds(euresults []*eushared.EuResult) []uint64 {
@@ -31,7 +31,7 @@ func GetTransitionIds(euresults []*eushared.EuResult) []uint64 {
 	return txIds
 }
 
-func GetTransitions(euresults []*eushared.EuResult) ([]uint64, []*univaluepk.Univalue) {
+func GetTransitions(euresults []*eushared.EuResult) ([]uint64, []*statecell.StateCell) {
 	txIds := make([]uint64, len(euresults))
 	transitionsize := 0
 	for i, euresult := range euresults {
@@ -39,7 +39,7 @@ func GetTransitions(euresults []*eushared.EuResult) ([]uint64, []*univaluepk.Uni
 		txIds[i] = euresult.ID
 	}
 	threadNum := 6
-	transitionses := make([][]*univaluepk.Univalue, threadNum)
+	transitionses := make([][]*statecell.StateCell, threadNum)
 	worker := func(start, end, index int, args ...interface{}) {
 		for i := start; i < end; i++ {
 			transitionses[index] = append(transitionses[index], euresults[i].Trans...)
@@ -47,7 +47,7 @@ func GetTransitions(euresults []*eushared.EuResult) ([]uint64, []*univaluepk.Uni
 	}
 	common.ParallelWorker(len(euresults), threadNum, worker)
 
-	transitions := make([]*univaluepk.Univalue, 0, transitionsize)
+	transitions := make([]*statecell.StateCell, 0, transitionsize)
 	for _, trans := range transitionses {
 		transitions = append(transitions, trans...)
 	}

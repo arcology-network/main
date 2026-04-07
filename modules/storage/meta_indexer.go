@@ -23,12 +23,12 @@ import (
 	"sync"
 
 	"github.com/arcology-network/common-lib/common"
-	concurrenturlcommon "github.com/arcology-network/storage-committer/common"
-	"github.com/arcology-network/storage-committer/type/commutative"
+	commutative "github.com/arcology-network/common-lib/crdt/commutative"
+	enginecommon "github.com/arcology-network/state-engine/common"
 )
 
 var (
-	RootPrefix         = concurrenturlcommon.ETH10_ACCOUNT_PREFIX //ccurl.NewPlatform().Eth10Account()
+	RootPrefix         = enginecommon.ETH_ACCOUNT_PREFIX //ccurl.NewPlatform().Eth10Account()
 	ContainerPrefix    = "/storage/containers/"
 	RootPrefixLen      = len(RootPrefix)
 	AddressPrefixLen   = len(RootPrefix) + 40

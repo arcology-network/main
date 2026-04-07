@@ -18,22 +18,20 @@
 package types
 
 import (
-	interfaces "github.com/arcology-network/storage-committer/common"
-
-	evmAdaptorCommon "github.com/arcology-network/eu/common"
+	crdtcommon "github.com/arcology-network/common-lib/crdt/common"
+	"github.com/arcology-network/eu/eu"
 	eushared "github.com/arcology-network/eu/shared"
-	mtypes "github.com/arcology-network/main/types"
+	workload "github.com/arcology-network/scheduler/workload"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type ExecMessagers struct {
-	Snapshot *interfaces.ReadOnlyStore
-	Config   *evmAdaptorCommon.Config
-	Sequence *mtypes.ExecutingSequence
-	// Debug    bool
-	Msgid uint64
-	// ExecCtx *actor.ExecutionContext
+	Snapshot *crdtcommon.ReadOnlyStore
+	Config   *eu.Config
+	Sequence *workload.JobSequence
+	// Msgid    uint64
+	// Idx int
 }
 
 type ExecutionResponse struct {

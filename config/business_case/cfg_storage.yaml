@@ -23,8 +23,8 @@ actors:
     # prometheus_fetch_step: "3"
     # coefficient: 130
 
-  storage.schdstore:
-    root: "./case_storage/schdstore/"
+  # storage.schdstore:
+  #   root: "./case_storage/schdstore/"
 
   storage.tmblockstore:
     storage_tmblock_name: "tmblockstore"

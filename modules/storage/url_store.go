@@ -18,9 +18,9 @@
 package storage
 
 import (
+	crdtcommon "github.com/arcology-network/common-lib/crdt/common"
 	strtyp "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
-	interfaces "github.com/arcology-network/storage-committer/common"
 	"github.com/arcology-network/streamer/actor"
 )
 
@@ -31,7 +31,7 @@ const (
 )
 
 type UrlStore struct {
-	store   interfaces.ReadOnlyStore
+	store   crdtcommon.ReadOnlyStore
 	indexer *MetaIndexer
 }
 
@@ -66,7 +66,7 @@ func (us *UrlStore) RpcConfig() (string, int) {
 }
 
 func (us *UrlStore) Init(ctx *actor.ActionContext) error {
-	store := ctx.RPC.Request.(interfaces.ReadOnlyStore)
+	store := ctx.RPC.Request.(crdtcommon.ReadOnlyStore)
 	us.store = store
 	ctx.ExecCtx.SendRpcResponse("", nil)
 	return nil

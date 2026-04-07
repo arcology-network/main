@@ -104,44 +104,6 @@ func (st *StorageTest) startTest(ss *broker.StatefulStreamer) []string {
 	return st.msgs
 }
 
-func (st *StorageTest) startTestQueryBase(ss *broker.StatefulStreamer) []string {
-	st.msgs = []string{}
-
-	blockHashNotExist := evmCommon.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000") // evmCommon.BytesToHash([]byte{1, 2, 3, 45, 6, 7, 8, 90, 11, 111, 122, 33})
-	// h, err := st.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
-	// 	QueryType: mtypes.QueryType_TestHeightByHashOrNumber,
-	// 	Data: &mtypes.BlockNumberOrHash{
-	// 		// BlockNumber: big.NewInt(10),
-	// 		BlockHash: &blockHashNotExist,
-	// 	},
-	// }, 1, st.from)
-
-	// if err != nil {
-	// 	fmt.Printf("******storage.Query err:%v\n", err)
-	// 	return st.msgs
-	// }
-	// fmt.Printf("-------storage.Query height:%v\n", h.(*mtypes.QueryResult).Data.(*big.Int))
-	// st.msgs = append(st.msgs, "QueryType_TestHeightByHashOrNumber")
-
-	// QueryType_Block_Receipts
-	h, err := st.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
-		QueryType: mtypes.QueryType_TestHeightByHashOrNumber,
-		Data: &mtypes.BlockNumberOrHash{
-			// BlockNumber: big.NewInt(0),
-			BlockHash: &blockHashNotExist,
-		},
-	}, 1, st.from)
-
-	if err != nil {
-		fmt.Printf("******storage.Query err:%v\n", err)
-		return st.msgs
-	}
-	fmt.Printf("-------storage.Query receipts:%v\n", h.(*mtypes.QueryResult).Data.([]*evmTypes.Receipt))
-	st.msgs = append(st.msgs, "QueryType_Block_Receipts")
-
-	return st.msgs
-}
-
 func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []string {
 	st.msgs = []string{}
 

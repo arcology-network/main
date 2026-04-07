@@ -22,7 +22,7 @@ import (
 	"math/big"
 
 	mtypes "github.com/arcology-network/main/types"
-	ccdb "github.com/arcology-network/storage-committer/storage/ethstorage"
+	ethstg "github.com/arcology-network/state-engine/storage/ethstorage"
 	eth "github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	ethcmn "github.com/ethereum/go-ethereum/common"
@@ -88,7 +88,7 @@ type EthereumAPI interface {
 	NewPayloadV2(params engine.ExecutableData) (engine.PayloadStatusV1, error)
 	SignalSuperchainV1(signal *catalyst.SuperchainSignal) (params.ProtocolVersion, error)
 
-	GetProof(rq *mtypes.RequestProof) (*ccdb.AccountResult, error)
+	GetProof(rq *mtypes.RequestProof) (*ethstg.AccountResult, error)
 
 	SendRawTransactions(rawTxs [][]byte) (uint64, error)
 	TraceTransaction(hash ethcmn.Hash, config *tracers.TraceConfig) (json.RawMessage, error)

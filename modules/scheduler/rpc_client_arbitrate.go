@@ -47,34 +47,6 @@ func NewRpcClientArbitrate() *RpcClientArbitrate {
 	return &RpcClientArbitrate{}
 }
 
-// func (rca *RpcClientArbitrate) Do(ctx *actor.ExecutionContext, arbitrateList [][]evmCommon.Hash, generationIdx int) ([]uint64, []uint64) {
-// 	cpairLeft := make([]uint64, 0, len(arbitrateList))
-// 	cpairRight := make([]uint64, 0, len(arbitrateList))
-
-// 	ctx.LogInfo("start arbitrate", logger.F("txs", len(arbitrateList)), logger.F("generationIdx", generationIdx))
-// 	arbBegin = time.Now()
-
-// 	resp, err := ctx.SendSync("arbitrator", "Arbitrate", &mtypes.ArbitratorRequest{
-// 		TxsListGroup: arbitrateList,
-// 	})
-// 	if err != nil {
-// 		ctx.LogErr("arbitrate err", logger.F("err", err))
-// 		return nil, nil
-// 	} else {
-// 		ctx.LogInfo("return arbitrate", logger.F("generationIdx", generationIdx))
-// 		ArbTime.Observe(time.Since(arbBegin).Seconds())
-// 		ArbTimeGauge.Set(time.Since(arbBegin).Seconds())
-// 		response := resp.(*mtypes.ArbitratorResponse)
-// 		if response.CPairLeft != nil {
-// 			cpairLeft = response.CPairLeft
-// 		}
-// 		if response.CPairRight != nil {
-// 			cpairRight = response.CPairRight
-// 		}
-// 	}
-// 	return cpairLeft, cpairRight
-// }
-
 // ----------------------------------
 func (rca *RpcClientArbitrate) Issue(
 	ctx *actor.ExecutionContext,

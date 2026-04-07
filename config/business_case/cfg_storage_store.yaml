@@ -10,8 +10,8 @@ settings:
     transactional: true
 
 actors:
-  storage.schdstore:
-    root: "./case_storage_store/schdstore/"
+  # storage.schdstore:
+  #   root: "./case_storage_store/schdstore/"
 
   storage.tmblockstore:
     storage_tmblock_name: "tmblockstore"

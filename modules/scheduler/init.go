@@ -21,11 +21,7 @@ import (
 	"github.com/arcology-network/streamer/actor"
 )
 
-const (
-	maxBlockSize = 50000
-)
-
 func init() {
 	actor.Factory.Register("scheduler", NewScheduler)
-	actor.Factory.Register("feedback", NewFeedback)
+	// actor.Factory.Register("feedback", NewFeedback)
 }

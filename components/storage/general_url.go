@@ -18,15 +18,9 @@
 package storage
 
 import (
-	"github.com/arcology-network/common-lib/codec"
-	"github.com/arcology-network/common-lib/common"
 	"github.com/arcology-network/common-lib/storage/transactional"
 
-	"github.com/arcology-network/common-lib/exp/slice"
 	eushared "github.com/arcology-network/eu/shared"
-	interfaces "github.com/arcology-network/storage-committer/common"
-	"github.com/arcology-network/storage-committer/type/commutative"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
 	"github.com/arcology-network/streamer/actor"
 	scommon "github.com/arcology-network/streamer/common"
 )
@@ -77,56 +71,57 @@ func (url *GeneralUrl) PreCommit(ctx *actor.ActionContext, euResults []*eushared
 	if url.generateApcHandle == "generation" {
 		ctx.ExecCtx.Send(url.apcHandleName, url.StateStore)
 	}
+	/*
+		if url.generateUrlUpdate {
+			keys, values := url.BasicDBOperation.Keys, url.BasicDBOperation.Values
+			keys = codec.Strings(keys).Clone()
+			encodedValues := make([][]byte, len(values))
+			metaKeys := make([]string, len(keys))
+			encodedMetas := make([][]byte, len(keys))
+			worker := func(start, end, index int, args ...interface{}) {
+				for i := start; i < end; i++ {
+					if values[i] != nil {
+						univalue := values[i].(*statecell.StateCell)
+						if univalue.Value() != nil && univalue.Value().(crdtcommon.CRDT).TypeID() == commutative.PATH { // Skip meta data
+							metaKeys[i] = keys[i]
+							encodedMetas[i] = univalue.Value().(crdtcommon.CRDT).StorageEncode(keys[i])
 
-	if url.generateUrlUpdate {
-		keys, values := url.BasicDBOperation.Keys, url.BasicDBOperation.Values
-		keys = codec.Strings(keys).Clone()
-		encodedValues := make([][]byte, len(values))
-		metaKeys := make([]string, len(keys))
-		encodedMetas := make([][]byte, len(keys))
-		worker := func(start, end, index int, args ...interface{}) {
-			for i := start; i < end; i++ {
-				if values[i] != nil {
-					univalue := values[i].(*univaluepk.Univalue)
-					if univalue.Value() != nil && univalue.Value().(interfaces.Type).TypeID() == commutative.PATH { // Skip meta data
-						metaKeys[i] = keys[i]
-						encodedMetas[i] = univalue.Value().(interfaces.Type).StorageEncode(keys[i])
-
-						keys[i] = ""
-						continue
+							keys[i] = ""
+							continue
+						}
+						encodedValues[i] = univalue.Value().(crdtcommon.CRDT).StorageEncode(keys[i])
+					} else {
+						encodedValues[i] = nil
 					}
-					encodedValues[i] = univalue.Value().(interfaces.Type).StorageEncode(keys[i])
-				} else {
-					encodedValues[i] = nil
 				}
 			}
+			common.ParallelWorker(len(keys), 4, worker)
+
+			filter := func(_ int, v []byte) bool { return v == nil }
+			slice.Remove(&keys, "")
+			slice.RemoveIf(&encodedValues, filter)
+			slice.Remove(&metaKeys, "")
+			slice.RemoveIf(&encodedMetas, filter)
+
+			url.keys = keys
+			url.encodedValues = encodedValues
+			url.metaKeys = metaKeys
+			url.encodedMetas = encodedMetas
+
+			// var na int
+			if len(keys) > 0 {
+				ctx.ExecCtx.InvokeRPC("transactionalstore", "AddData", &transactional.AddDataRequest{
+					Data: &UrlUpdate{
+						Keys:          keys,
+						EncodedValues: encodedValues,
+					},
+					RecoverFunc: "urlupdate",
+				}, "AddMetas")
+			} else {
+				url.AddMetas(ctx)
+			}
 		}
-		common.ParallelWorker(len(keys), 4, worker)
-
-		filter := func(_ int, v []byte) bool { return v == nil }
-		slice.Remove(&keys, "")
-		slice.RemoveIf(&encodedValues, filter)
-		slice.Remove(&metaKeys, "")
-		slice.RemoveIf(&encodedMetas, filter)
-
-		url.keys = keys
-		url.encodedValues = encodedValues
-		url.metaKeys = metaKeys
-		url.encodedMetas = encodedMetas
-
-		// var na int
-		if len(keys) > 0 {
-			ctx.ExecCtx.InvokeRPC("transactionalstore", "AddData", &transactional.AddDataRequest{
-				Data: &UrlUpdate{
-					Keys:          keys,
-					EncodedValues: encodedValues,
-				},
-				RecoverFunc: "urlupdate",
-			}, "AddMetas")
-		} else {
-			url.AddMetas(ctx)
-		}
-	}
+	*/
 }
 
 func (url *GeneralUrl) AddMetas(ctx *actor.ActionContext) {

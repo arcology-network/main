@@ -26,7 +26,7 @@ import (
 	"time"
 
 	mtypes "github.com/arcology-network/main/types"
-	ccdb "github.com/arcology-network/storage-committer/storage/ethstorage"
+	ethstg "github.com/arcology-network/state-engine/storage/ethstorage"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/logger"
 	eth "github.com/ethereum/go-ethereum"
@@ -69,12 +69,12 @@ func NewMonaco(filters *Filters, sender actor.OutboundSender) *Monaco {
 	}
 }
 
-func (api *Monaco) GetProof(rq *mtypes.RequestProof) (*ccdb.AccountResult, error) {
+func (api *Monaco) GetProof(rq *mtypes.RequestProof) (*ethstg.AccountResult, error) {
 	response, err := api.sender.SendSync("state_query", "QueryState", rq, 0)
 	if err != nil {
 		return nil, err
 	}
-	return response.(*ccdb.AccountResult), nil
+	return response.(*ethstg.AccountResult), nil
 }
 
 // ForkchoiceUpdatedV2 is equivalent to V1 with the addition of withdrawals in the payload attributes.
@@ -329,7 +329,9 @@ func (m *Monaco) EstimateGas(msg eth.CallMsg) (uint64, error) {
 
 	// try run
 	// var response core.ExecutionResult
-	response, err := m.sender.SendSync("estimate-executor", "ExecTxs", request, 0)
+	// response, err := m.sender.SendSync("estimate-executor", "ExecTxs", request, 0)
+	response, err := m.sender.SendSync("estimate-executor", "DebugExecTxs", request, 0)
+
 	if err != nil {
 		return uint64(0), err
 	}
@@ -366,7 +368,7 @@ func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPCTransaction,
 	return response.(*mtypes.QueryResult).Data.(*mtypes.RPCTransaction), nil
 }
 
-func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorRequest, uint64) {
+func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorDebugRequest, uint64) {
 	var to *ethcmn.Address
 	if msg.To != nil {
 		addr := ethcmn.BytesToAddress(msg.To.Bytes())
@@ -409,25 +411,16 @@ func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorRequest, uin
 		false,
 	)
 	hash, _ := msgHash(&message)
-	return &mtypes.ExecutorRequest{
-		Sequences: []*mtypes.ExecutingSequence{
-			{
-				Msgs: []*eucommon.StandardMessage{
-					{
-						TxHash: hash,
-						Native: &message,
-						ID:     0,
-					},
-				},
-				Parallel:   true,
-				SequenceId: hash,
-			},
-		},
-		Height:        0,
-		GenerationIdx: 0,
-		Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
-		// Parallelism:   1,
-		// Debug:         true,
+
+	stdMsg := &eucommon.StandardMessage{
+		TxHash: hash,
+		Native: &message,
+		ID:     0,
+	}
+
+	return &mtypes.ExecutorDebugRequest{
+		// JobSequences: workload.NewJobSequenceFromStandardMessages(0, stdMsg),
+		Msg: stdMsg,
 	}, gas
 }
 
@@ -435,7 +428,8 @@ func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
 	// try run
 	// var response core.ExecutionResult
 	request, _ := m.callmsgToRequest(msg)
-	response, err := m.sender.SendSync("estimate-executor", "ExecTxs", request, 0)
+	// response, err := m.sender.SendSync("estimate-executor", "ExecTxs", request, 0)
+	response, err := m.sender.SendSync("estimate-executor", "DebugExecTxs", request, 0)
 	if err != nil {
 		return nil, err
 	}
@@ -675,31 +669,23 @@ func (m *Monaco) TraceTransaction(hash ethcmn.Hash, config *tracers.TraceConfig)
 	}
 	queryResult := response.(*mtypes.QueryResult).Data.(*mtypes.QueryReplayMsgResult)
 
-	request := &mtypes.ExecutorRequest{
-		Sequences: []*mtypes.ExecutingSequence{
-			{
-				Msgs: []*eucommon.StandardMessage{
-					{
-						TxHash: hash,
-						Native: queryResult.Msg,
-						ID:     0,
-					},
-				},
-				Parallel:   true,
-				SequenceId: hash,
-				Config:     config,
-				Ctx:        queryResult.Ctx,
-			},
-		},
-		Height:        0,
-		GenerationIdx: 0,
-		Timestamp:     new(big.Int).SetInt64(time.Now().Unix()),
-		// Parallelism:   1,
-		// Debug:         true,
+	stdMsg := &eucommon.StandardMessage{
+		TxHash: hash,
+		Native: queryResult.Msg,
+		ID:     0,
+	}
+
+	request := &mtypes.ExecutorDebugRequest{
+		// JobSequences: workload.NewJobSequenceFromStandardMessages(0, stdMsg),
+		Msg:    stdMsg,
+		Config: config,
+		Ctx:    queryResult.Ctx,
 	}
 
 	// var result mtypes.QueryResult //json.RawMessage
-	response, err = m.sender.SendSync("estimate-executor", "ExecTxsWithTrace", request, 0)
+	// response, err = m.sender.SendSync("estimate-executor", "ExecTxsWithTrace", request, 0)
+	response, err = m.sender.SendSync("estimate-executor", "DebugExecTxs", request, 0)
+
 	if err != nil {
 		return nil, err
 	}

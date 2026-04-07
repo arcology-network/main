@@ -18,21 +18,24 @@
 package storage
 
 import (
+	"math"
+
 	"github.com/arcology-network/streamer/actor"
 	scommon "github.com/arcology-network/streamer/common"
+	"github.com/ethereum/go-ethereum/triedb/hashdb"
 
 	eushared "github.com/arcology-network/eu/shared"
-	statestore "github.com/arcology-network/storage-committer"
+	statestore "github.com/arcology-network/state-engine"
 
+	statecell "github.com/arcology-network/common-lib/crdt/statecell"
 	mtypes "github.com/arcology-network/main/types"
-	stgproxy "github.com/arcology-network/storage-committer/storage/proxy"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
+	"github.com/arcology-network/state-engine/storage/proxy"
 )
 
 type DBOperation interface {
 	Init(stateStore *statestore.StateStore)
 	InitAsync(ctx *actor.ActionContext)
-	Import(transitions []*univaluepk.Univalue)
+	Import(transitions []*statecell.StateCell)
 	PreCommit(ctx *actor.ActionContext, euResults []*eushared.EuResult, height uint64)
 	PreCommitCompleted(ctx *actor.ActionContext)
 	Commit(ctx *actor.ActionContext, height uint64)
@@ -60,7 +63,7 @@ func (op *BasicDBOperation) Init(stateStore *statestore.StateStore) {
 	op.AcctRoot = [32]byte{}
 }
 
-func (op *BasicDBOperation) Import(transitions []*univaluepk.Univalue) {
+func (op *BasicDBOperation) Import(transitions []*statecell.StateCell) {
 	op.StateStore.Import(transitions)
 }
 
@@ -144,7 +147,7 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 	} else {
 		if !v.(bool) {
 
-			handler.StateStore = statestore.NewStateStore(stgproxy.NewLevelDBStoreProxy(dbpath))
+			handler.StateStore = statestore.NewStateStore(proxy.NewLevelDBStoreProxy(dbpath, dbpath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100}))
 
 			handler.op.Init(handler.StateStore)
 			handler.initDb = true

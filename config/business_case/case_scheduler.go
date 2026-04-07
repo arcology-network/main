@@ -4,10 +4,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/arcology-network/main/modules/exec"
+	"github.com/arcology-network/common-lib/crdt/statecell"
 	mtypes "github.com/arcology-network/main/types"
-	statestore "github.com/arcology-network/storage-committer"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
+	"github.com/arcology-network/scheduler/conflictor"
+
+	statestore "github.com/arcology-network/state-engine"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/broker"
 	scommon "github.com/arcology-network/streamer/common"
@@ -52,10 +53,9 @@ func (ma *MockArbitrator) RpcConfig() (string, int) {
 func (ma *MockArbitrator) startArbitrate(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("startRpc", logger.F("data", ctx.Messages[0].Data), logger.F("reqID", ctx.Messages[0].ReqID))
 
-	ctx.ExecCtx.SendRpcResponse("", &mtypes.ArbitratorResponse{
-		CPairLeft:  []uint64{},
-		CPairRight: []uint64{},
-	})
+	resp := &conflictor.CollisionSummary{}
+
+	ctx.ExecCtx.SendRpcResponse("", resp)
 	ctx.ExecCtx.Send("generationEnd", "")
 	return nil
 }
@@ -91,63 +91,27 @@ func (me *MockExecutor) RpcConfig() (string, int) {
 func (me *MockExecutor) startExecute(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("startExecute", logger.F("data", ctx.Messages[0].Data), logger.F("reqID", ctx.Messages[0].ReqID))
 
-	res := []*mtypes.ExecuteResponse{}
+	res := []*mtypes.JobSequenceResponse{}
 	params := ctx.RPC.Request.(*mtypes.ExecutorRequest)
-	total := 0
-	for _, sequence := range params.Sequences {
-		total = total + len(sequence.Msgs)
-
-		for k := range sequence.Msgs {
-			res = append(res, &mtypes.ExecuteResponse{
-				Hash:    sequence.Msgs[k].TxHash,
+	for _, sequence := range params.JobSequences {
+		resp := make([]*mtypes.ExecuteResponse, 0, len(sequence.Jobs))
+		for k := range sequence.Jobs {
+			resp = append(resp, &mtypes.ExecuteResponse{
+				Hash:    sequence.Jobs[k].StdMsg.TxHash,
 				Status:  1,
 				GasUsed: 2000000,
 			})
 		}
-	}
-	totalGroups := total
-	// ctx.ExecCtx.Send(scommon.MsgTxsToExecute, params, params.Height)
-	//----------------------------------------------------
-	resp := []*exec.ExecutorResponse{
-		&exec.ExecutorResponse{
-			Responses:       res,
+		res = append(res, &mtypes.JobSequenceResponse{
+			Responses:       resp,
 			ContractAddress: []evmCommon.Address{},
 			CallResults:     [][]byte{},
-		},
-	}
-	//----------------------------------------------
-	resultLength := 0
-
-	HashList := make([]evmCommon.Hash, 0, totalGroups)
-	StatusList := make([]uint64, 0, totalGroups)
-	GasUsedList := make([]uint64, 0, totalGroups)
-	contractAddress := []evmCommon.Address{}
-
-	callResults := make([][]byte, 0, totalGroups)
-
-	for _, exectorResponse := range resp {
-
-		contractAddress = append(contractAddress, exectorResponse.ContractAddress...)
-
-		resultLength = resultLength + len(exectorResponse.Responses)
-		for _, txResponse := range exectorResponse.Responses {
-
-			HashList = append(HashList, txResponse.Hash)
-			StatusList = append(StatusList, txResponse.Status)
-			GasUsedList = append(GasUsedList, txResponse.GasUsed)
-		}
-
-		callResults = append(callResults, exectorResponse.CallResults...)
+		})
 	}
 
-	ctx.ExecCtx.LogDebug("Exec return results", logger.F("txResults", resultLength))
-
-	ctx.ExecCtx.SendRpcResponse("", &mtypes.ExecutorResponses{
-		HashList:          HashList,
-		StatusList:        StatusList,
-		GasUsedList:       GasUsedList,
-		ContractAddresses: contractAddress,
-		CallResults:       callResults,
+	ctx.ExecCtx.SendRpcResponse("", &mtypes.ExecResponses{
+		Resp:   res,
+		ExecId: 0,
 	})
 	return nil
 }
@@ -157,7 +121,7 @@ type SchedulerTest struct {
 	basePath string
 	msgs     []string
 	store    *statestore.StateStore
-	unis     []*univaluepk.Univalue
+	unis     []*statecell.StateCell
 
 	sender actor.OutboundSender
 }
@@ -177,7 +141,7 @@ func (st *SchedulerTest) SetSender(sender actor.OutboundSender) {
 func (st *SchedulerTest) Inputs() ([]string, bool) {
 	return []string{
 		scommon.MsgInclusive,
-		scommon.MsgSchdState,
+		// scommon.MsgSchdState,
 		scommon.MsgGenerationReapingList,
 		scommon.MsgGenerationReapingCompleted,
 		// scommon.MsgExecGeneration,
@@ -187,7 +151,7 @@ func (st *SchedulerTest) Inputs() ([]string, bool) {
 
 func (st *SchedulerTest) Outputs() map[string]int {
 	return map[string]int{
-		scommon.MsgInitScheduletate: 1,
+		// scommon.MsgInitScheduletate: 1,
 		actor.CombinedName(scommon.MsgMessagersReaped, scommon.MsgBlockStart): 1,
 		scommon.MsgFeedBacks:      1,
 		scommon.MsgExecGeneration: 1,
@@ -197,7 +161,7 @@ func (st *SchedulerTest) Outputs() map[string]int {
 
 func (st *SchedulerTest) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgInclusive, st.receivedMsgs)
-	reg.Register(scommon.MsgSchdState, st.receivedMsgs)
+	// reg.Register(scommon.MsgSchdState, st.receivedMsgs)
 	reg.Register(scommon.MsgGenerationReapingList, st.receivedMsgs)
 	reg.Register(scommon.MsgGenerationReapingCompleted, st.receivedMsgs)
 	reg.Register("generationEnd", st.receivedGenerationEnd)
@@ -242,9 +206,11 @@ func (st *SchedulerTest) startTest(ss *broker.StatefulStreamer) []string {
 	st.msgs = append(st.msgs, "transactionalstore.BeginTransaction")
 
 	//-------------------
-	m := scommon.NewMessageForStream(scommon.MsgInitScheduletate, []mtypes.SchdState{})
+	m := scommon.NewMessageForStream(scommon.MsgInitialization, &mtypes.Initialization{
+		Store: store,
+	})
 	m.Height = 10
-	ss.Send(scommon.MsgInitScheduletate, m)
+	ss.Send(scommon.MsgInitialization, m)
 	time.Sleep(1 * time.Second)
 
 	//--------------------------
