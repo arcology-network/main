@@ -30,22 +30,23 @@ import (
 	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 
-	eupk "github.com/arcology-network/eu/common"
-	cache "github.com/arcology-network/storage-committer/storage/cache"
-	univaluepk "github.com/arcology-network/storage-committer/type/univalue"
-
+	"github.com/arcology-network/common-lib/crdt/statecell"
 	"github.com/arcology-network/common-lib/exp/mempool"
 	"github.com/arcology-network/common-lib/exp/slice"
 
 	apihandler "github.com/arcology-network/eu/apihandler"
-	eucommon "github.com/arcology-network/eu/common"
 	eushared "github.com/arcology-network/eu/shared"
 	mtypes "github.com/arcology-network/main/types"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 
-	statestore "github.com/arcology-network/storage-committer"
+	statestore "github.com/arcology-network/state-engine"
 
 	scommon "github.com/arcology-network/streamer/common"
+
+	"github.com/arcology-network/eu/eu"
+	statecache "github.com/arcology-network/state-engine/state/cache"
+
+	workload "github.com/arcology-network/scheduler/workload"
 )
 
 type ExecutorResponse struct {
@@ -71,7 +72,7 @@ type Executor struct {
 	execParams *exetyp.ExecutorParameter
 
 	taskCh   chan *exetyp.ExecMessagers
-	resultCh chan *ExecutorResponse
+	resultCh chan *mtypes.JobSequenceResponse
 	numTasks int
 	ctx      *actor.ExecutionContext
 
@@ -81,6 +82,8 @@ type Executor struct {
 	stateInit bool
 
 	euCount int
+
+	ExecId uint32
 }
 
 func NewExecutor() actor.Business {
@@ -97,7 +100,6 @@ func (exec *Executor) Inputs() ([]string, bool) {
 	return []string{
 		scommon.MsgApcHandle, // Init DB on every generation.
 		actor.CombinedName(scommon.MsgBlockStart, scommon.MsgParentInfo, scommon.MsgObjectCached), // Got block context.
-		scommon.MsgTxsToExecute,          // Txs to run.
 		scommon.MsgGenerationReapingList, //update generationIdx
 		scommon.MsgBlockEnd,
 		scommon.MsgInitialization,
@@ -106,20 +108,23 @@ func (exec *Executor) Inputs() ([]string, bool) {
 
 func (exec *Executor) Outputs() map[string]int {
 	return map[string]int{
-		scommon.MsgReceipts:          100, // Exec results.
-		scommon.MsgEuResults:         100, // Exec results.
-		scommon.MsgNonceEuResults:    100,
-		scommon.MsgTxAccessRecords:   100, // Access records for arbitrator.
-		scommon.MsgTxsExecuteResults: 1,   // To wake up rpc service.
+		scommon.MsgReceipts:        100, // Exec results.
+		scommon.MsgEuResults:       100, // Exec results.
+		scommon.MsgNonceEuResults:  100,
+		scommon.MsgTxAccessRecords: 100, // Access records for arbitrator.
 	}
 }
 
 func (exec *Executor) Config(params map[string]interface{}) {
 	exec.chainId = params["chain_id"].(*big.Int)
 	exec.euCount = params["eus"].(int)
-	exec.taskCh = make(chan *exetyp.ExecMessagers, exec.euCount)
-	exec.resultCh = make(chan *ExecutorResponse, exec.euCount)
+	exec.taskCh = make(chan *exetyp.ExecMessagers, mtypes.MaxBlockSize)
+	exec.resultCh = make(chan *mtypes.JobSequenceResponse, exec.euCount)
 	exec.startExec()
+}
+
+func (exec *Executor) RpcConfig() (string, int) {
+	return "executor", 20
 }
 
 func (exec *Executor) GetFSMRules() map[int]actor.FSMRule {
@@ -134,7 +139,6 @@ func (exec *Executor) GetFSMRules() map[int]actor.FSMRule {
 			scommon.MsgApcHandle,
 		}},
 		execStateReady: {Accept: []string{
-			scommon.MsgTxsToExecute,
 			scommon.MsgGenerationReapingList,
 		}},
 		execStateNextHeight: {Accept: []string{
@@ -156,9 +160,11 @@ func (exec *Executor) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgApcHandle, exec.waitGenerationReady)
 	reg.Register(scommon.MsgInitialization, exec.StateInit)
 	reg.Register(scommon.MsgBlockEnd, exec.nextHeight)
-	reg.Register(scommon.MsgTxsToExecute, exec.newTxsPack)
 	reg.Register(scommon.MsgGenerationReapingList, exec.receivedGenerationReapingList)
+
+	reg.Register("startExecute", exec.startExecute)
 }
+
 func (exec *Executor) waitBlockStart(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	combined := msg.Data.(*actor.CombinerElements)
@@ -206,20 +212,41 @@ func (exec *Executor) ChangeState(ctx *actor.ActionContext, state int, stateName
 	exec.state = state
 	return nil
 }
-func (exec *Executor) newTxsPack(ctx *actor.ActionContext) error {
-	msg := ctx.Messages[0]
-	request := msg.Data.(*mtypes.ExecutorRequest)
-	exec.numTasks = len(request.Sequences)
+
+func (exec *Executor) startExecute(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*mtypes.ExecutorRequest)
+	exec.ExecId = request.ExecId
+
+	exec.numTasks = len(request.JobSequences)
 	exec.ctx = ctx.ExecCtx.Fork()
 	if exec.generationIdx != request.GenerationIdx {
 		panic("generationIdx not match!")
 	}
-	for i := range request.Sequences {
-		exec.sendNewTask(request.Timestamp, request.Sequences[i])
+	ctx.ExecCtx.LogDebug("newTxsPack sequenct counter", logger.F("counter", len(request.JobSequences)))
+	for i := range request.JobSequences {
+		exec.sendNewTask(request.Timestamp, request.JobSequences[i])
 	}
-	exec.collectResults(ctx)
+	exec.collectResults(ctx, len(request.JobSequences))
 	return nil
 }
+
+func (exec *Executor) collectResults(ctx *actor.ActionContext, taskNums int) {
+	responses := make([]*mtypes.JobSequenceResponse, 0, taskNums)
+
+	for {
+		responses = append(responses, <-exec.resultCh)
+		if len(responses) == taskNums {
+			break
+		}
+	}
+
+	ctx.ExecCtx.SendRpcResponse("", &mtypes.ExecResponses{
+		Resp:   responses,
+		ExecId: exec.ExecId,
+	})
+
+}
+
 func (exec *Executor) receivedGenerationReapingList(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	reapinglist := msg.Data.(*types.InclusiveList)
@@ -234,8 +261,7 @@ func (exec *Executor) receivedGenerationReapingList(ctx *actor.ActionContext) er
 
 func (exec *Executor) sendNewTask(
 	timestamp *big.Int,
-	sequence *mtypes.ExecutingSequence,
-	// execCtx *actor.ExecutionContext,
+	sequence *workload.JobSequence,
 ) {
 	config := exetyp.MainConfig(exec.chainId)
 	config.Coinbase = exec.execParams.Coinbase
@@ -245,19 +271,10 @@ func (exec *Executor) sendNewTask(
 	task := &exetyp.ExecMessagers{
 		Sequence: sequence,
 		Config:   config,
-		// ExecCtx:  execCtx,
 	}
 	exec.taskCh <- task
 }
 
-func (exec *Executor) collectResults(ctx *actor.ActionContext) {
-	responses := make([]*ExecutorResponse, exec.numTasks)
-	for i := 0; i < exec.numTasks; i++ {
-		responses[i] = <-exec.resultCh
-	}
-	// exec.ctx.ExecCtx.AddRpcReqID(exec.requestId)
-	exec.ctx.Send(scommon.MsgTxsExecuteResults, responses, exec.height)
-}
 func GetThreadID(hash evmCommon.Hash) uint64 {
 	return uint64(codec.Uint64(0).Decode(hash.Bytes()[:8]).(codec.Uint64))
 }
@@ -267,55 +284,44 @@ func (exec *Executor) startExec() {
 		go func(index int) {
 			for {
 				task := <-exec.taskCh
-				exec.ctx.LogDebug("start execute", logger.F("Sequence.Parallel", task.Sequence.Parallel), logger.F("txs counter", len(task.Sequence.Msgs)))
-				if task.Sequence.Parallel {
-					results := make([]*eucommon.Result, 0, len(task.Sequence.Msgs))
-					mtransitions := make(map[uint64][]*univaluepk.Univalue, len(task.Sequence.Msgs))
-					for j := range task.Sequence.Msgs {
-						api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
-							return exec.store.WriteCache
-						}, func(cache *cache.WriteCache) { cache.Clear() }))
-						jobsequence := eupk.JobSequence{
-							ID:     uint64(j),
-							SeqAPI: api,
-						}
-						jobsequence.AppendMsg(task.Sequence.Msgs[j])
+				exec.ctx.LogDebug("start execute", logger.F("txs counter", len(task.Sequence.Jobs)))
 
-						jobsequence.Run(task.Config, api, GetThreadID(task.Sequence.Msgs[j].TxHash))
-						results = append(results, jobsequence.Jobs[0].Results)
-						mtransitions[uint64(task.Sequence.Msgs[j].ID)] = jobsequence.Jobs[0].Results.Transitions()
-					}
-					exec.sendResults(task.Sequence.GroupIds, results, mtransitions)
-				} else {
-					api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
-						return exec.store.WriteCache
-					}, func(cache *cache.WriteCache) { cache.Clear() }))
-
-					jobsequence := eupk.JobSequence{
-						ID:     uint64(0),
-						SeqAPI: api,
-					}
-					for i := range task.Sequence.Msgs {
-						jobsequence.AppendMsg(task.Sequence.Msgs[i])
-					}
-
-					jobsequence.Run(task.Config, api, GetThreadID(task.Sequence.Msgs[0].TxHash))
-					transitions := jobsequence.GetClearedTransition()
-					mtransitions := exec.parseResults(transitions)
-
-					results := make([]*eucommon.Result, len(task.Sequence.Msgs))
-					for i := range task.Sequence.Msgs {
-						results[i] = jobsequence.Jobs[i].Results
-					}
-
-					exec.sendResults(task.Sequence.GroupIds, results, mtransitions)
+				pipeline := eu.ExecutionPipeline{
+					NumThreads: uint32(exec.euCount),
+					Config:     task.Config,
 				}
+
+				ccRuntime := apihandler.NewConcurrentRuntime(
+					0, // concurrent runtime ID
+					mempool.NewMempool(
+						16,
+						1,
+						func() *statecache.ExecutionStateCache {
+							// When creating a new writecache, use store as the backend.
+							return statecache.NewExecutionStateCache(exec.store, 32, 1)
+						},
+						func(cache *statecache.ExecutionStateCache) {
+							cache.Clear()
+						}),
+				)
+
+				transitions, _ := pipeline.RunSequence(&workload.Generation{ID: uint64(exec.generationIdx)}, task.Sequence, ccRuntime.Cascade(uint64(0)), uint64(0))
+
+				mtransitions := exec.parseResults(transitions)
+
+				results := make([]*workload.Result, len(task.Sequence.Jobs))
+				for i := range task.Sequence.Jobs {
+					results[i] = task.Sequence.Jobs[i].Result
+				}
+
+				exec.sendResults(task.Sequence.ID, results, mtransitions)
+
 			}
 		}(index)
 	}
 }
-func (exec *Executor) parseResults(alltransitions []*univaluepk.Univalue) map[uint64][]*univaluepk.Univalue {
-	mTransitions := make(map[uint64][]*univaluepk.Univalue, len(alltransitions))
+func (exec *Executor) parseResults(alltransitions []*statecell.StateCell) map[uint64][]*statecell.StateCell {
+	mTransitions := make(map[uint64][]*statecell.StateCell, len(alltransitions))
 	for i := range alltransitions {
 		id := alltransitions[i].GetTx()
 		mTransitions[id] = append(mTransitions[id], alltransitions[i])
@@ -323,14 +329,14 @@ func (exec *Executor) parseResults(alltransitions []*univaluepk.Univalue) map[ui
 
 	return mTransitions
 }
-func addGroupIds(groupid uint64, accessRecords univaluepk.Univalues) univaluepk.Univalues {
+func addGroupIds(groupid uint64, accessRecords statecell.StateCells) statecell.StateCells {
 	for i := range accessRecords {
-		accessRecords[i].Property.SetSequence(groupid)
+		accessRecords[i].Property.JobSequenceID = groupid
 	}
 	return accessRecords
 }
 
-func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result, mTransitions map[uint64][]*univaluepk.Univalue) {
+func (exec *Executor) sendResults(groupId uint64, results []*workload.Result, mTransitions map[uint64][]*statecell.StateCell) {
 	counter := len(results)
 
 	exec.ctx.LogDebug("sendResult", logger.F("results counter", counter))
@@ -349,54 +355,44 @@ func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result,
 	}
 	faileds := make([]int, len(results))
 	contractAddresses := make([]evmCommon.Address, len(results))
-	slice.ParallelForeach(results, threadNum, func(i int, result **eucommon.Result) {
-		rawtransitions := mTransitions[uint64((*result).StdMsg.ID)]
-		accesses := univaluepk.Univalues(slice.Clone(rawtransitions)).To(univaluepk.IPAccess{})
-		transitions := univaluepk.Univalues(rawtransitions).To(univaluepk.IPTransition{})
-
-		// fmt.Printf("-----------------------------------main/modules/exec/executor.go--------size:%v-----\n", len(transitions))
-		// univaluepk.Univalues(transitions).Print()
-		// transitions.Print(func(v *univalue.Univalue) bool {
-		// 	//return v.Writes() > 0 || v.DeltaWrites() > 0
-		// 	return true
-		// })
-
-		// fmt.Printf("====================================main/modules/exec/executor.go================\n")
-		// accesses.Print()
+	slice.ParallelForeach(results, threadNum, func(i int, result **workload.Result) {
+		rawtransitions := mTransitions[(*result).TxInfo.ID]
+		accesses := statecell.StateCells(slice.Clone(rawtransitions)).To(statecell.InterProcAccess{})
+		transitions := statecell.StateCells(rawtransitions).To(statecell.InterProcTransition{})
 
 		if (*result).Receipt.Status == 0 {
 			faileds[i] = 1
-			exec.ctx.LogErr("Tx failed", logger.F("txhash", fmt.Sprintf("%x", (*result).TxHash[:])), logger.F("err", (*result).EvmResult.Err))
+			exec.ctx.LogErr("Tx failed", logger.F("txhash", fmt.Sprintf("%x", (*result).TxInfo.Hash[:])), logger.F("err", fmt.Sprintf("%v", (*result).Err)))
 		}
 		euresult := eushared.EuResult{}
-		euresult.H = string((*result).TxHash[:])
+		euresult.Hash = (*result).TxInfo.Hash
 		euresult.GasUsed = (*result).Receipt.GasUsed
 		euresult.Status = (*result).Receipt.Status
-		euresult.ID = uint64((*result).StdMsg.ID)
+		euresult.ID = (*result).TxInfo.ID
 		euresult.Trans = transitions
 		sendingEuResults[i] = &euresult
 
 		nonceEuresult := eushared.EuResult{}
-		nonceEuresult.H = string((*result).TxHash[:])
+		nonceEuresult.Hash = (*result).TxInfo.Hash
 		nonceEuresult.Status = (*result).Receipt.Status
-		nonceEuresult.ID = uint64((*result).StdMsg.ID)
+		nonceEuresult.ID = (*result).TxInfo.ID
 
-		nonceTransactions := slice.CloneIf(transitions, func(v *univaluepk.Univalue) bool {
+		nonceTransactions := slice.CloneIf(transitions, func(v *statecell.StateCell) bool {
 			path := *v.GetPath()
 			return path[len(path)-5:] == "nonce"
-		}, func(v *univaluepk.Univalue) *univaluepk.Univalue {
-			return v.Clone().(*univaluepk.Univalue)
+		}, func(v *statecell.StateCell) *statecell.StateCell {
+			return v.Clone().(*statecell.StateCell)
 		})
 
-		nonceEuresult.Trans = nonceTransactions //univaluepk.Univalues(nonceTransactions).Clone()
+		nonceEuresult.Trans = nonceTransactions
 
 		sendingNonceEuResults[i] = &nonceEuresult
 
 		accessRecord := eushared.TxAccessRecords{}
-		accessRecord.Hash = euresult.H
-		accessRecord.ID = uint64((*result).StdMsg.ID)
+		accessRecord.Hash = (*result).TxInfo.Hash
+		accessRecord.ID = (*result).TxInfo.ID
 
-		accessRecord.Accesses = addGroupIds(groupIds[i], accesses)
+		accessRecord.Accesses = addGroupIds(groupId, accesses)
 		sendingAccessRecords[i] = &accessRecord
 
 		sendingReceipts[i] = (*result).Receipt
@@ -409,7 +405,7 @@ func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result,
 		sendingCallResults[i] = (*result).EvmResult.ReturnData
 
 		txsResults[i] = &mtypes.ExecuteResponse{
-			Hash:    evmCommon.BytesToHash([]byte(euresult.H)),
+			Hash:    euresult.Hash,
 			Status:  euresult.Status,
 			GasUsed: euresult.GasUsed,
 		}
@@ -433,12 +429,11 @@ func (exec *Executor) sendResults(groupIds []uint64, results []*eucommon.Result,
 	exec.ctx.Send(scommon.MsgNonceEuResults, &nonceeEuresults, exec.height)
 	exec.ctx.LogDebug("sendResult nonceeEuresults", logger.F("nonceeEuresults", len(nonceeEuresults)))
 
-	responses := ExecutorResponse{
+	responses := mtypes.JobSequenceResponse{
 		Responses:       txsResults,
 		ContractAddress: contractAddress,
+		CallResults:     [][]byte{},
 	}
-
-	responses.CallResults = [][]byte{}
 
 	exec.resultCh <- &responses
 

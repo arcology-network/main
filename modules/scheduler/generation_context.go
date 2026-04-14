@@ -4,6 +4,8 @@ import (
 	"context"
 
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/scheduler/conflictor"
+	workload "github.com/arcology-network/scheduler/workload"
 	"github.com/arcology-network/streamer/logger"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 )
@@ -12,12 +14,12 @@ type generationContext struct {
 	genID      int
 	generation *generation
 
-	remaining []*mtypes.ExecutorRequest
+	remaining []*workload.JobSequence
 
 	// ===== exec phase =====
-	execIssued   map[int]bool                        // Executor idx 已经发起执行
-	execReceived map[int][]*mtypes.ExecutorResponses // 每台 Executor 已返回的结果
-	execPending  map[int][]*mtypes.ExecutorRequest   // 每台 Executor 待执行队列
+	execIssued   map[int]bool
+	execReceived map[int][]*mtypes.JobSequenceResponse
+	execPending  map[int][]*workload.JobSequence
 
 	execResponses map[evmCommon.Hash]*mtypes.ExecuteResponse
 	newContracts  []evmCommon.Address
@@ -26,71 +28,110 @@ type generationContext struct {
 	// ===== arb phase =====
 	arbIssued bool
 	arbDone   bool
-	cpLeft    []uint64
 	cpRight   []uint64
 
 	finished bool
 }
 
-func NewGenerationContext(generation *generation, Id int, requests []*mtypes.ExecutorRequest) *generationContext {
+func NewGenerationContext(generation *generation, Id int, sequences []*workload.JobSequence) *generationContext {
 	return &generationContext{
 		genID:      Id,
 		generation: generation,
-		remaining:  requests,
+		remaining:  sequences,
 
 		execIssued:    map[int]bool{},
-		execReceived:  map[int][]*mtypes.ExecutorResponses{},
-		execPending:   map[int][]*mtypes.ExecutorRequest{},
+		execReceived:  map[int][]*mtypes.JobSequenceResponse{},
+		execPending:   map[int][]*workload.JobSequence{},
 		execResponses: map[evmCommon.Hash]*mtypes.ExecuteResponse{},
 	}
 }
-func (gc *generationContext) execIssue(execId int, cap int) (requests []*mtypes.ExecutorRequest, finish bool) {
-	if cap >= len(gc.remaining) {
-		//all
+func (gc *generationContext) execIssue(execId int, cap int, batchSize int) (requests []*workload.JobSequence, finish bool) {
+	singleTx := 0
+	ColllectIdx := -1
+	batches := 0
+	for i := range gc.remaining {
+		jobSize := len(gc.remaining[i].Jobs)
+
+		if singleTx > 0 && batches == cap-1 {
+			if jobSize > 1 {
+				ColllectIdx = i - 1
+				break
+			}
+		}
+
+		if jobSize == 1 {
+			singleTx++
+			if singleTx >= batchSize {
+				batches++
+				singleTx = 0
+			}
+		} else {
+			batches++
+		}
+		if batches == cap {
+			if i > 0 {
+				ColllectIdx = i - 1
+			} else {
+				ColllectIdx = i
+			}
+			break
+		}
+		ColllectIdx = i
+	}
+
+	if ColllectIdx == len(gc.remaining)-1 {
 		requests = gc.remaining
-		gc.remaining = gc.remaining[:0] //clear
+		gc.remaining = gc.remaining[:0]
 		finish = true
 	} else {
-		//part
-		requests = gc.remaining[:cap]
-		gc.remaining = gc.remaining[cap:] //clear
+		requests = gc.remaining[:ColllectIdx+1]
+		gc.remaining = gc.remaining[ColllectIdx+1:] //clear
 		finish = false
 	}
+
+	// if cap >= len(gc.remaining) {
+	// 	//all
+	// 	requests = gc.remaining
+	// 	gc.remaining = gc.remaining[:0] //clear
+	// 	finish = true
+	// } else {
+	// 	//part
+	// 	requests = gc.remaining[:cap]
+	// 	gc.remaining = gc.remaining[cap:] //clear
+	// 	finish = false
+	// }
 	gc.execPending[execId] = append(gc.execPending[execId], requests...)
 	gc.execIssued[execId] = true
 	return
 }
-func (gc *generationContext) onExecResult(resp *mtypes.ExecutorResponses) {
+func (gc *generationContext) onExecResult(resp *mtypes.ExecResponses) {
 	execId := int(resp.ExecId)
-	gc.execReceived[execId] = append(gc.execReceived[execId], resp)
+	gc.execReceived[execId] = append(gc.execReceived[execId], resp.Resp...)
 }
 func (gc *generationContext) isExecCompleted() bool {
-	// gc := g.context.generationCtx[g.context.currentGenerationID]
 	if len(gc.remaining) > 0 {
 		return false
 	}
+
 	for execId := range gc.execIssued {
 		if len(gc.execPending[execId]) != len(gc.execReceived[execId]) {
 			return false
 		}
 	}
+
 	return true
 }
 func (gc *generationContext) CollectExecResults() {
-	responses := make(map[evmCommon.Hash]*mtypes.ExecuteResponse, maxBlockSize)
-	contractAddress := make([]evmCommon.Address, 0, maxBlockSize)
-	executed := make([]evmCommon.Hash, 0, maxBlockSize)
+	responses := make(map[evmCommon.Hash]*mtypes.ExecuteResponse, mtypes.MaxBlockSize)
+	contractAddress := make([]evmCommon.Address, 0, mtypes.MaxBlockSize)
+	executed := make([]evmCommon.Hash, 0, mtypes.MaxBlockSize)
 	for execId := range gc.execIssued {
 		for _, resps := range gc.execReceived[execId] {
-			for k := range resps.HashList {
-				responses[resps.HashList[k]] = &mtypes.ExecuteResponse{
-					Hash:    resps.HashList[k],
-					Status:  resps.StatusList[k],
-					GasUsed: resps.GasUsedList[k],
-				}
-				executed = append(executed, resps.HashList[k])
+			for k := range resps.Responses {
+				responses[resps.Responses[k].Hash] = resps.Responses[k]
+				executed = append(executed, resps.Responses[k].Hash)
 			}
-			contractAddress = append(contractAddress, resps.ContractAddresses...)
+			contractAddress = append(contractAddress, resps.ContractAddress...)
 		}
 	}
 	gc.execResponses = responses
@@ -99,9 +140,12 @@ func (gc *generationContext) CollectExecResults() {
 	logger.Log.Debug(context.Background(), "gc.executed", "CollectExecResults", logger.F("gc.executed", len(gc.executed)), logger.F("gc.newContracts", len(gc.newContracts)))
 }
 
-func (gc *generationContext) onArbitrateResult(resp *mtypes.ArbitratorResponse) {
+func (gc *generationContext) onArbitrateResult(resp *conflictor.CollisionSummary) {
 	gc.arbDone = true
-	gc.cpLeft = resp.CPairLeft
-	gc.cpRight = resp.CPairRight
+	for _, collision := range resp.Collisions {
+		for _, peer := range collision.Peers {
+			gc.cpRight = append(gc.cpRight, peer.JobID)
+		}
+	}
 	gc.finished = true
 }

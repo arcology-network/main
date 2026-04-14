@@ -22,7 +22,7 @@ actors:
     stateless_euresult_aggr_selector:
       output: executed
 
-  exec_rpc: {}
+  # exec_rpc: {}
 
   exec_debug:
     chain_id: "__global__"

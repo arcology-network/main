@@ -23,7 +23,6 @@ import (
 	cmncmn "github.com/arcology-network/common-lib/common"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 
-	// schdv1 "github.com/arcology-network/main/modules/scheduler"
 	mtypes "github.com/arcology-network/main/types"
 )
 
@@ -35,9 +34,7 @@ type processContext struct {
 	arbitrator *RpcClientArbitrate
 
 	// Per block data.
-	timestamp     *big.Int
-	txHash2Callee map[evmCommon.Hash]evmCommon.Address
-	txHash2Sign   map[evmCommon.Hash][4]byte
+	timestamp *big.Int
 
 	txHash2IdBiMap *cmncmn.BiMap[evmCommon.Hash, uint64]
 	txHash2Gas     map[evmCommon.Hash]uint64
@@ -71,8 +68,6 @@ func (c *processContext) init(execBatchSize int, executors []*mtypes.ExecutorCon
 }
 
 func (c *processContext) onNewBlock(height uint64) {
-	c.txHash2Callee = make(map[evmCommon.Hash]evmCommon.Address)
-	c.txHash2Sign = make(map[evmCommon.Hash][4]byte)
 	c.txHash2IdBiMap = cmncmn.NewBiMap[evmCommon.Hash, uint64]()
 	c.txHash2Gas = make(map[evmCommon.Hash]uint64)
 	c.executed = c.executed[:0]
@@ -89,26 +84,10 @@ func (c *processContext) onStartBlock(gens []*generation) {
 	c.generationCtx = make(map[int]*generationContext, len(gens))
 	for i := range gens {
 		gens[i].setMsgProperty()
-		requests := c.executor.buildExecutorRequests(AddGroupId(gens[i].sequences), c.timestamp, c.height, i)
-		c.generationCtx[i] = NewGenerationContext(gens[i], i, requests)
+		c.generationCtx[i] = NewGenerationContext(gens[i], i, gens[i].gen.JobSeqs)
 	}
 }
 
 func (c *processContext) onNewGeneration() {
 	c.currentGenerationID++
-}
-func AddGroupId(sequences []*mtypes.ExecutingSequence) []*mtypes.ExecutingSequence {
-	groupId := uint64(0)
-	for i := range sequences {
-		groupids := make([]uint64, 0, len(sequences[i].Msgs))
-		for j := 0; j < len(sequences[i].Msgs); j++ {
-			groupids = append(groupids, groupId)
-			if sequences[i].Parallel {
-				groupId = groupId + 1
-			}
-		}
-		sequences[i].GroupIds = groupids
-		groupId = groupId + 1
-	}
-	return sequences
 }

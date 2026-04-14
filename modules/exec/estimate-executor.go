@@ -18,24 +18,25 @@
 package exec
 
 import (
+	"errors"
 	"math"
 	"math/big"
 
 	exetyp "github.com/arcology-network/main/modules/exec/types"
+	"github.com/arcology-network/scheduler/workload"
+	statecache "github.com/arcology-network/state-engine/state/cache"
 	"github.com/arcology-network/streamer/actor"
 	scommon "github.com/arcology-network/streamer/common"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 
-	eupk "github.com/arcology-network/eu/common"
-	cache "github.com/arcology-network/storage-committer/storage/cache"
+	"github.com/arcology-network/eu/eu"
 
 	"github.com/arcology-network/common-lib/exp/mempool"
 
 	apihandler "github.com/arcology-network/eu/apihandler"
-	eucommon "github.com/arcology-network/eu/common"
 	mtypes "github.com/arcology-network/main/types"
 
-	statestore "github.com/arcology-network/storage-committer"
+	statestore "github.com/arcology-network/state-engine"
 	evmCore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
@@ -61,12 +62,15 @@ type EstimateExecutor struct {
 	timestamp *big.Int
 
 	euCount int
+
+	requestStore map[string]*mtypes.ExecutorDebugRequest
 }
 
 func NewEstimateExecutor() actor.Business {
 	exec := &EstimateExecutor{
-		state:  estmigateExecStateInit,
-		height: math.MaxUint64,
+		state:        estmigateExecStateInit,
+		height:       math.MaxUint64,
+		requestStore: map[string]*mtypes.ExecutorDebugRequest{},
 	}
 
 	return exec
@@ -78,11 +82,14 @@ func (exec *EstimateExecutor) Inputs() ([]string, bool) {
 		scommon.MsgApcHandle,
 		actor.CombinedName(scommon.MsgBlockStart, scommon.MsgParentInfo),
 		scommon.MsgInitialization,
+		scommon.MsgDebugJobSequence,
 	}, false
 }
 
 func (exec *EstimateExecutor) Outputs() map[string]int {
-	return map[string]int{}
+	return map[string]int{
+		scommon.MsgDebugMsg: 1,
+	}
 }
 
 func (exec *EstimateExecutor) Config(params map[string]interface{}) {
@@ -110,8 +117,8 @@ func (exec *EstimateExecutor) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgInitialization, exec.stateInit)
 	reg.Register(actor.CombinedName(scommon.MsgBlockStart, scommon.MsgParentInfo), exec.stateReady)
 	reg.Register(scommon.MsgApcHandle, exec.updateApc)
-	reg.Register("ExecTxs", exec.ExecTxs)
-	reg.Register("ExecTxsWithTrace", exec.ExecTxsWithTrace)
+	reg.Register("DebugExecTxs", exec.DebugExecTxs)
+	reg.Register(scommon.MsgDebugJobSequence, exec.receivedDebugJobSequence)
 }
 func (exec *EstimateExecutor) stateInit(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
@@ -147,47 +154,60 @@ func (exec *EstimateExecutor) updateApc(ctx *actor.ActionContext) error {
 	exec.store = ctx.Messages[0].Data.(*statestore.StateStore)
 	return nil
 }
-func (exec *EstimateExecutor) ExecTxs(ctx *actor.ActionContext) error {
-	request := ctx.RPC.Request.(*mtypes.ExecutorRequest)
-	task, _, err := exec.newTask(request.Sequences[0])
-	if err != nil {
-		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
-		return nil
-	}
 
-	results := exec.execute(task)
-
-	ctx.ExecCtx.SendRpcResponse("", &evmCore.ExecutionResult{
-		UsedGas:    results.UsedGas,
-		ReturnData: results.ReturnData,
-		Err:        results.Err,
+func (exec *EstimateExecutor) DebugExecTxs(ctx *actor.ActionContext) error {
+	request := ctx.RPC.Request.(*mtypes.ExecutorDebugRequest)
+	exec.requestStore[ctx.ExecCtx.Current.ReqID] = request
+	ctx.ExecCtx.Send(scommon.MsgDebugMsg, &mtypes.ExecutorDebugMsg{
+		Msg:   request.Msg,
+		ReqId: ctx.ExecCtx.Current.ReqID,
 	})
 	return nil
 }
-func (exec *EstimateExecutor) ExecTxsWithTrace(ctx *actor.ActionContext) error {
-	request := ctx.RPC.Request.(*mtypes.ExecutorRequest)
-	for i := range request.Sequences[0].Msgs {
-		request.Sequences[0].Msgs[i].Native.SkipAccountChecks = true
-	}
-	task, tracer, err := exec.newTask(request.Sequences[0])
-	if err != nil {
-		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
-		return err
-	}
-	exec.execute(task)
 
-	if request.Sequences[0].Config != nil {
-		result, err := tracer.GetResult()
-		ctx.ExecCtx.SendRpcResponse("", &mtypes.QueryResult{
-			Data: result,
-		})
-		return err
+func (exec *EstimateExecutor) receivedDebugJobSequence(ctx *actor.ActionContext) error {
+	sequence := ctx.Messages[0].Data.(*mtypes.ExecutorDebugJobSequence)
+	if request, ok := exec.requestStore[sequence.ReqId]; ok {
+		delete(exec.requestStore, sequence.ReqId)
+
+		// if request.Config != nil {
+		sequence.JobSequence.Jobs[0].StdMsg.Native.SkipAccountChecks = true
+		sequence.JobSequence.Jobs[0].IsDeferred = false
+		// }
+
+		task, tracer, err := exec.newTask(request, sequence.JobSequence)
+		if err != nil {
+			ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+			return err
+		}
+
+		results := exec.execute(task)
+
+		if request.Config != nil {
+			result, err := tracer.GetResult()
+			ctx.ExecCtx.SendRpcResponse("", &mtypes.QueryResult{
+				Data: result,
+			})
+			return err
+		} else {
+			ctx.ExecCtx.SendRpcResponse("", &evmCore.ExecutionResult{
+				UsedGas:    results.UsedGas,
+				ReturnData: results.ReturnData,
+				Err:        results.Err,
+			})
+		}
+	} else {
+		errstr := "request not found"
+		ctx.ExecCtx.SendRpcResponse(errstr, nil)
+		return errors.New(errstr)
 	}
+
 	return nil
 }
 
 func (exec *EstimateExecutor) newTask(
-	sequence *mtypes.ExecutingSequence,
+	request *mtypes.ExecutorDebugRequest,
+	jobsequence *workload.JobSequence,
 ) (*exetyp.ExecMessagers, tracers.Tracer, error) {
 	config := exetyp.MainConfig(exec.chainId)
 	config.Coinbase = exec.execParams.Coinbase
@@ -195,12 +215,12 @@ func (exec *EstimateExecutor) newTask(
 	config.Time = exec.timestamp
 	config.ParentHash = evmCommon.BytesToHash(exec.execParams.ParentInfo.ParentHash.Bytes())
 	var tracer tracers.Tracer
-	if sequence.Config != nil {
+	if request.Config != nil {
 
 		var err error
-		tracer = logger.NewStructLogger(sequence.Config.Config)
-		if sequence.Config.Tracer != nil {
-			tracer, err = tracers.DefaultDirectory.New(*sequence.Config.Tracer, sequence.Ctx, sequence.Config.TracerConfig)
+		tracer = logger.NewStructLogger(request.Config.Config)
+		if request.Config.Tracer != nil {
+			tracer, err = tracers.DefaultDirectory.New(*request.Config.Tracer, request.Ctx, request.Config.TracerConfig)
 			if err != nil {
 				return nil, nil, err
 			}
@@ -209,7 +229,7 @@ func (exec *EstimateExecutor) newTask(
 		config.VMConfig.NoBaseFee = true
 	}
 	task := &exetyp.ExecMessagers{
-		Sequence: sequence,
+		Sequence: jobsequence,
 		Config:   config,
 	}
 
@@ -217,45 +237,31 @@ func (exec *EstimateExecutor) newTask(
 }
 
 func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) *evmCore.ExecutionResult {
-	if task.Sequence.Parallel {
-		results := make([]*eucommon.Result, 0, len(task.Sequence.Msgs))
-
-		for j := range task.Sequence.Msgs {
-
-			api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
-				return exec.store.WriteCache
-			}, func(cache *cache.WriteCache) { cache.Clear() }))
-			jobsequence := eupk.JobSequence{
-				ID:     uint64(j),
-				SeqAPI: api,
-			}
-			jobsequence.AppendMsg(task.Sequence.Msgs[j])
-
-			jobsequence.Run(task.Config, api, GetThreadID(jobsequence.Jobs[0].StdMsg.TxHash))
-			results = append(results, jobsequence.Jobs[0].Results)
-			results[0].EvmResult.UsedGas += jobsequence.Jobs[0].PrepaidGas
-		}
-
-		return results[0].EvmResult
-	} else {
-		api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
-			return exec.store.WriteCache
-		}, func(cache *cache.WriteCache) { cache.Clear() }))
-
-		jobsequence := eupk.JobSequence{
-			ID:     uint64(0),
-			SeqAPI: api,
-		}
-		for i := range task.Sequence.Msgs {
-			jobsequence.AppendMsg(task.Sequence.Msgs[i])
-		}
-
-		jobsequence.Run(task.Config, api, GetThreadID(task.Sequence.Msgs[0].TxHash))
-		results := make([]*eucommon.Result, len(task.Sequence.Msgs))
-		for i := range task.Sequence.Msgs {
-			results[i] = jobsequence.Jobs[i].Results
-		}
-
-		return jobsequence.Jobs[0].Results.EvmResult
+	pipeline := eu.ExecutionPipeline{
+		NumThreads: 1,
+		Config:     task.Config,
 	}
+
+	ccRuntime := apihandler.NewConcurrentRuntime(
+		0, // concurrent runtime ID
+		mempool.NewMempool(
+			16,
+			1,
+			func() *statecache.ExecutionStateCache {
+				// When creating a new writecache, use store as the backend.
+				return statecache.NewExecutionStateCache(exec.store, 32, 1)
+			},
+			func(cache *statecache.ExecutionStateCache) {
+				cache.Clear()
+			}),
+	)
+
+	pipeline.RunSequence(&workload.Generation{ID: uint64(0)}, task.Sequence, ccRuntime.Cascade(uint64(0)), uint64(0))
+
+	results := make([]*workload.Result, len(task.Sequence.Jobs))
+	for i := range task.Sequence.Jobs {
+		results[i] = task.Sequence.Jobs[i].Result
+	}
+
+	return task.Sequence.Jobs[0].Result.EvmResult
 }

@@ -6,4 +6,3 @@ actors:
     conflict_file: "conflictlist"
     executors: "__global__"
     
-  feedback: {}
