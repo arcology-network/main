@@ -43,14 +43,14 @@ type EthereumAPI interface {
 	GetCode(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) ([]byte, error)
 	GetBalance(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (*big.Int, error)
 	GetTransactionCount(address ethcmn.Address, blockParams *mtypes.BlockNumberOrHash) (uint64, error)
-	GetStorageAt(address ethcmn.Address, key string, blockParams *mtypes.BlockNumberOrHash) ([]byte, error)
+	GetStorageAt(address ethcmn.Address, key []byte, blockParams *mtypes.BlockNumberOrHash) ([]byte, error)
 
-	EstimateGas(msg eth.CallMsg) (uint64, error)
+	EstimateGas(msg eth.CallMsg, blockParams *mtypes.BlockNumberOrHash) (uint64, error)
 	GasPrice() (*big.Int, error)
 
 	GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPCTransaction, error)
 
-	Call(msg eth.CallMsg) ([]byte, error)
+	Call(msg eth.CallMsg, blockParams *mtypes.BlockNumberOrHash) ([]byte, error)
 	SendRawTransaction(rawTx []byte) (ethcmn.Hash, error)
 	GetTransactionReceipt(hash ethcmn.Hash) (*ethtyp.Receipt, error)
 	GetBlockReceipts(blockParams *mtypes.BlockNumberOrHash) ([]*ethtyp.Receipt, error)

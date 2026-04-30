@@ -283,7 +283,7 @@ func getStorageAt(ctx context.Context, params []interface{}) (interface{}, error
 		return nil, jsonrpc.InvalidParams("invalid blockParameter given :%v", err)
 	}
 
-	value, err := backend.GetStorageAt(address, key.Hex(), blockParameter)
+	value, err := backend.GetStorageAt(address, key.Bytes(), blockParameter)
 	if err != nil {
 		return nil, nil
 	}
@@ -299,8 +299,15 @@ func estimateGas(ctx context.Context, params []interface{}) (interface{}, error)
 	if err != nil {
 		return nil, jsonrpc.InvalidParams("invalid call msg given :%v", err)
 	}
+	var blockParams *mtypes.BlockNumberOrHash
+	if len(params) == 2 {
+		blockParams, err = mtypes.ParseBlockParameter(params[1])
+		if err != nil {
+			return nil, jsonrpc.InvalidParams("invalid blockParameter given :%v", err)
+		}
+	}
 
-	gas, err := backend.EstimateGas(msg)
+	gas, err := backend.EstimateGas(msg, blockParams)
 	return NumberToHex(gas), err
 }
 
@@ -465,7 +472,15 @@ func call(ctx context.Context, params []interface{}) (interface{}, error) {
 		return nil, jsonrpc.InvalidParams("invalid call msg given : %v", err)
 	}
 
-	ret, err := backend.Call(msg)
+	var blockParams *mtypes.BlockNumberOrHash
+	if len(params) == 2 {
+		blockParams, err = mtypes.ParseBlockParameter(params[1])
+		if err != nil {
+			return nil, jsonrpc.InvalidParams("invalid blockParameter given :%v", err)
+		}
+	}
+
+	ret, err := backend.Call(msg, blockParams)
 	if err != nil {
 		return nil, jsonrpc.InternalError(err)
 	}

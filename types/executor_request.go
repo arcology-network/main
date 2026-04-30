@@ -33,6 +33,16 @@ import (
 	"github.com/ethereum/go-ethereum/eth/tracers"
 )
 
+type StateRootRequest struct {
+	BlockParam *BlockNumberOrHash
+	ReqId      string
+}
+
+type StateRootResponse struct {
+	Root  []byte
+	ReqId string
+}
+
 type ExecutorDebugMsg struct {
 	Msg   *eucommon.StandardMessage
 	ReqId string
@@ -44,9 +54,10 @@ type ExecutorDebugJobSequence struct {
 }
 
 type ExecutorDebugRequest struct {
-	Msg    *eucommon.StandardMessage
-	Config *tracers.TraceConfig
-	Ctx    *tracers.Context
+	Msg         *eucommon.StandardMessage
+	Config      *tracers.TraceConfig
+	Ctx         *tracers.Context
+	BlockParams *BlockNumberOrHash
 }
 
 type ExecutorConf struct {

@@ -319,13 +319,35 @@ func RegisterQuery(s *Storage) {
 		},
 	)
 
-	s.dispatcher.Register(mtypes.QueryType_TransactionCount, &queryplan.TransactionCountQueryPlan{})
+	s.dispatcher.Register(mtypes.QueryType_TransactionCount, &queryplan.TransactionCountQueryPlan{
+		GetLastHeight: func() uint64 {
+			return s.lastHeight
+		},
+	})
 
-	s.dispatcher.Register(mtypes.QueryType_Code, &queryplan.CodeQueryPlan{})
+	s.dispatcher.Register(mtypes.QueryType_Code, &queryplan.CodeQueryPlan{
+		GetLastHeight: func() uint64 {
+			return s.lastHeight
+		},
+	})
 
-	s.dispatcher.Register(mtypes.QueryType_Balance_Eth, &queryplan.BalanceEthQueryPlan{})
+	s.dispatcher.Register(mtypes.QueryType_Balance_Eth, &queryplan.BalanceEthQueryPlan{
+		GetLastHeight: func() uint64 {
+			return s.lastHeight
+		},
+	})
 
-	s.dispatcher.Register(mtypes.QueryType_Storage, &queryplan.StorageQueryPlan{})
+	s.dispatcher.Register(mtypes.QueryType_State_Root, &queryplan.StateRootQueryPlan{
+		GetLastHeight: func() uint64 {
+			return s.lastHeight
+		},
+	})
+
+	s.dispatcher.Register(mtypes.QueryType_Storage, &queryplan.StorageQueryPlan{
+		GetLastHeight: func() uint64 {
+			return s.lastHeight
+		},
+	})
 
 	//-------------
 

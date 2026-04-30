@@ -30,8 +30,6 @@ type ExecMessagers struct {
 	Snapshot *crdtcommon.ReadOnlyStore
 	Config   *eu.Config
 	Sequence *workload.JobSequence
-	// Msgid    uint64
-	// Idx int
 }
 
 type ExecutionResponse struct {

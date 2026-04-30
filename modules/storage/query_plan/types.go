@@ -18,7 +18,8 @@ const (
 	QueryKey_Block          = "_block"
 	QueryKey_MonacoBlock    = "_monacoblock"
 	QueryKey_Position       = "_position"
-	QueryKey_AccountAddress = "_address"
+	QueryKey_AccountAddress = "_accountAddress"
+	QueryKey_Address        = "_address"
 	QueryKey_StorageKey     = "_storagekey"
 	QueryKey_Storage        = "_storage"
 
@@ -39,6 +40,8 @@ const (
 
 	QueryKey_RpcBlockResult = "_rpcBlockResult"
 	QueryKey_IdxInBlock     = "_idxInBlock"
+	QueryKey_StateRoot      = "_stateRoot"
+	QueryKey_RequestId      = "_requestId"
 )
 
 type QueryParamTransactionByPosition struct {

@@ -136,11 +136,11 @@ func (mock *EthereumAPIMock) GetTransactionCount(address ethcmn.Address, blockPa
 	return 0, nil
 }
 
-func (mock *EthereumAPIMock) GetStorageAt(address ethcmn.Address, key string, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
+func (mock *EthereumAPIMock) GetStorageAt(address ethcmn.Address, key []byte, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
 	return ethcmn.HexToHash("0x0000000000000000000000000000000000000000000000000000000000000000").Bytes(), nil
 }
 
-func (mock *EthereumAPIMock) EstimateGas(msg eth.CallMsg) (uint64, error) {
+func (mock *EthereumAPIMock) EstimateGas(msg eth.CallMsg, blockParams *mtypes.BlockNumberOrHash) (uint64, error) {
 	return 0x1000, nil
 }
 
@@ -163,7 +163,7 @@ func (mock *EthereumAPIMock) GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPC
 	}, nil
 }
 
-func (mock *EthereumAPIMock) Call(msg eth.CallMsg) ([]byte, error) {
+func (mock *EthereumAPIMock) Call(msg eth.CallMsg, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
 	if bytes.Equal(msg.Data[:4], []byte{0xf8, 0xb2, 0xcb, 0x4f}) {
 		return ethcmn.BytesToHash([]byte{0x27, 0x10}).Bytes(), nil
 	} else if bytes.Equal(msg.Data[:4], []byte{0x7b, 0xd7, 0x03, 0xe8}) {

@@ -23,6 +23,7 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	ethCommon "github.com/ethereum/go-ethereum/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth/tracers"
 )
@@ -50,6 +51,7 @@ const (
 	QueryType_BlockNumber      = "blocknumber"
 	QueryType_Code             = "code"
 	QueryType_Balance_Eth      = "balanceEth"
+	QueryType_State_Root       = "stateRoot"
 	QueryType_TransactionCount = "transactionCount"
 	QueryType_Storage          = "storage"
 	QueryType_Receipt_Eth      = "receiptEth"
@@ -105,7 +107,7 @@ type RequestBlockEth struct {
 type RequestStorage struct {
 	BlockParams *BlockNumberOrHash
 	Address     ethCommon.Address
-	Key         string
+	Key         []byte
 }
 
 type RequestBalance struct {
@@ -191,4 +193,10 @@ type RawTransactionArgs struct {
 }
 type RawTransactionReply struct {
 	TxHash interface{}
+}
+
+type QueryBlockParam struct {
+	Address evmCommon.Address
+	Key     []byte
+	Root    []byte
 }

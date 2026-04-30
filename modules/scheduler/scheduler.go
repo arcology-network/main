@@ -31,7 +31,6 @@ import (
 
 	eucommon "github.com/arcology-network/common-lib/types"
 	"github.com/arcology-network/scheduler/scheduler"
-	"github.com/arcology-network/scheduler/workload"
 
 	cmap "github.com/arcology-network/common-lib/exp/map"
 	profile "github.com/arcology-network/scheduler/callee"
@@ -78,7 +77,6 @@ func (schd *Scheduler) Inputs() ([]string, bool) {
 		actor.CombinedName(scommon.MsgMessagersReaped, scommon.MsgBlockStart),
 		scommon.MsgExecGeneration,
 		scommon.MsgApcHandle,
-		scommon.MsgDebugMsg,
 	}, false
 }
 
@@ -88,7 +86,6 @@ func (schd *Scheduler) Outputs() map[string]int {
 		scommon.MsgGenerationReapingList:      1,
 		scommon.MsgGenerationReapingCompleted: 1,
 		scommon.MsgExecGeneration:             1,
-		scommon.MsgDebugJobSequence:           1,
 	}
 }
 
@@ -107,11 +104,9 @@ func (schd *Scheduler) GetFSMRules() map[int]actor.FSMRule {
 		scheduleStateInit: {Accept: []string{scommon.MsgInitialization}},
 		scheduleStateReady: {Accept: []string{
 			actor.CombinedName(scommon.MsgMessagersReaped, scommon.MsgBlockStart),
-			scommon.MsgDebugMsg,
 		}},
 		scheduleStateExec: {Accept: []string{
 			scommon.MsgExecGeneration,
-			scommon.MsgDebugMsg,
 		}},
 		scheduleStateApc: {Accept: []string{scommon.MsgApcHandle}},
 	}
@@ -129,27 +124,8 @@ func (schd *Scheduler) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register("onArbResult", schd.onArbResult)
 	reg.Register(scommon.MsgApcHandle, schd.waitingApc)
 	reg.Register("afterSaveSchedule", schd.afterSaveSchedule)
-	reg.Register(scommon.MsgDebugMsg, schd.MakeJobSequenceFromMsg)
 }
 
-func (schd *Scheduler) MakeJobSequenceFromMsg(ctx *actor.ActionContext) error {
-	debugmsg := ctx.Messages[0].Data.(*mtypes.ExecutorDebugMsg)
-	jobsequence := mtypes.ExecutorDebugJobSequence{
-		ReqId:       debugmsg.ReqId,
-		JobSequence: &workload.JobSequence{},
-	}
-	eplan, err := schd.schdEngine.New([]*eucommon.StandardMessage{debugmsg.Msg})
-	if err != nil {
-		logger.Log.Error(context.Background(), "scheduler", "createGenerations err", logger.F("err", err))
-		// return []*generation{}
-	}
-	if len(eplan.Generations) > 0 && len(eplan.Generations[0].JobSeqs) > 0 {
-		jobsequence.JobSequence = eplan.Generations[0].JobSeqs[0]
-	}
-
-	ctx.ExecCtx.Send(scommon.MsgDebugJobSequence, &jobsequence)
-	return nil
-}
 func (schd *Scheduler) InitSchedule(ctx *actor.ActionContext) error {
 	store := ctx.Messages[0].Data.(*mtypes.Initialization).Store
 	scheduler, err := scheduler.NewScheduler(profile.NewProfileManager(store, 1024))

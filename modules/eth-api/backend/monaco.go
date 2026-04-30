@@ -301,7 +301,7 @@ func (m *Monaco) GetTransactionCount(address ethcmn.Address, blockParams *mtypes
 	// return response.(uint64), nil
 }
 
-func (m *Monaco) GetStorageAt(address ethcmn.Address, key string, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
+func (m *Monaco) GetStorageAt(address ethcmn.Address, key []byte, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
 	// var response mtypes.QueryResult
 	response, err := m.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Storage,
@@ -317,7 +317,7 @@ func (m *Monaco) GetStorageAt(address ethcmn.Address, key string, blockParams *m
 	return response.(*mtypes.QueryResult).Data.([]byte), nil
 }
 
-func (m *Monaco) EstimateGas(msg eth.CallMsg) (uint64, error) {
+func (m *Monaco) EstimateGas(msg eth.CallMsg, blockParams *mtypes.BlockNumberOrHash) (uint64, error) {
 	// TODO
 	// If the transaction is a plain value transfer, short circuit estimation and directly try 21000.
 	if len(msg.Data) == 0 {
@@ -325,7 +325,7 @@ func (m *Monaco) EstimateGas(msg eth.CallMsg) (uint64, error) {
 	}
 
 	//set GasPrice and GasLimit
-	request, maxGasLimit := m.callmsgToRequest(msg)
+	request, maxGasLimit := m.callmsgToRequest(msg, blockParams)
 
 	// try run
 	// var response core.ExecutionResult
@@ -368,7 +368,7 @@ func (m *Monaco) GetTransactionByHash(hash ethcmn.Hash) (*mtypes.RPCTransaction,
 	return response.(*mtypes.QueryResult).Data.(*mtypes.RPCTransaction), nil
 }
 
-func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorDebugRequest, uint64) {
+func (m *Monaco) callmsgToRequest(msg eth.CallMsg, blockParams *mtypes.BlockNumberOrHash) (*mtypes.ExecutorDebugRequest, uint64) {
 	var to *ethcmn.Address
 	if msg.To != nil {
 		addr := ethcmn.BytesToAddress(msg.To.Bytes())
@@ -389,7 +389,7 @@ func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorDebugRequest
 
 	gas := msg.Gas
 	if gas == 0 {
-		balance, err := m.GetBalance(msg.From, &mtypes.BlockNumberOrHash{BlockNumber: big.NewInt(0)})
+		balance, err := m.GetBalance(msg.From, &mtypes.BlockNumberOrHash{BlockNumber: big.NewInt(mtypes.BlockNumberLatest)})
 		if err != nil {
 			balance = big.NewInt(0)
 		}
@@ -419,15 +419,15 @@ func (m *Monaco) callmsgToRequest(msg eth.CallMsg) (*mtypes.ExecutorDebugRequest
 	}
 
 	return &mtypes.ExecutorDebugRequest{
-		// JobSequences: workload.NewJobSequenceFromStandardMessages(0, stdMsg),
-		Msg: stdMsg,
+		Msg:         stdMsg,
+		BlockParams: blockParams,
 	}, gas
 }
 
-func (m *Monaco) Call(msg eth.CallMsg) ([]byte, error) {
+func (m *Monaco) Call(msg eth.CallMsg, blockParams *mtypes.BlockNumberOrHash) ([]byte, error) {
 	// try run
 	// var response core.ExecutionResult
-	request, _ := m.callmsgToRequest(msg)
+	request, _ := m.callmsgToRequest(msg, blockParams)
 	// response, err := m.sender.SendSync("estimate-executor", "ExecTxs", request, 0)
 	response, err := m.sender.SendSync("estimate-executor", "DebugExecTxs", request, 0)
 	if err != nil {

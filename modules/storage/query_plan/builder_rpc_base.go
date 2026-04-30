@@ -15,7 +15,8 @@ import (
 func BuildGetBalanceSubPlan() query.Step {
 	getBalance := &query.RpcStep{
 		Call: func(ctx *query.QueryContext, cont query.Continuation) {
-			addr := ctx.Vars[QueryKey_AccountAddress].(string)
+			addr := ctx.Vars[QueryKey_Address].(evmCommon.Address)
+			stateroot := ctx.Vars[QueryKey_StateRoot].([]byte)
 
 			root := ctx.Root
 			if root == nil {
@@ -24,7 +25,10 @@ func BuildGetBalanceSubPlan() query.Step {
 
 			ctx.Ctx.InvokeRPC(
 				"urlstore", "GetBalance",
-				addr,
+				&mtypes.QueryBlockParam{
+					Address: addr,
+					Root:    stateroot,
+				},
 				"QueryContinuationAction",
 				actor.NMeta(
 					"contId",
@@ -44,7 +48,8 @@ func BuildGetBalanceSubPlan() query.Step {
 func BuildGetNonceSubPlan() query.Step {
 	getNonce := &query.RpcStep{
 		Call: func(ctx *query.QueryContext, cont query.Continuation) {
-			addr := ctx.Vars[QueryKey_AccountAddress].(string)
+			addr := ctx.Vars[QueryKey_Address].(evmCommon.Address)
+			stateroot := ctx.Vars[QueryKey_StateRoot].([]byte)
 
 			root := ctx.Root
 			if root == nil {
@@ -53,7 +58,10 @@ func BuildGetNonceSubPlan() query.Step {
 
 			ctx.Ctx.InvokeRPC(
 				"urlstore", "GetNonce",
-				addr,
+				&mtypes.QueryBlockParam{
+					Address: addr,
+					Root:    stateroot,
+				},
 				"QueryContinuationAction",
 				actor.NMeta(
 					"contId",
@@ -73,7 +81,8 @@ func BuildGetNonceSubPlan() query.Step {
 func BuildGetCodeSubPlan() query.Step {
 	getCode := &query.RpcStep{
 		Call: func(ctx *query.QueryContext, cont query.Continuation) {
-			addr := ctx.Vars[QueryKey_AccountAddress].(string)
+			addr := ctx.Vars[QueryKey_Address].(evmCommon.Address)
+			stateroot := ctx.Vars[QueryKey_StateRoot].([]byte)
 
 			root := ctx.Root
 			if root == nil {
@@ -82,7 +91,10 @@ func BuildGetCodeSubPlan() query.Step {
 
 			ctx.Ctx.InvokeRPC(
 				"urlstore", "GetCode",
-				addr,
+				&mtypes.QueryBlockParam{
+					Address: addr,
+					Root:    stateroot,
+				},
 				"QueryContinuationAction",
 				actor.NMeta(
 					"contId",
@@ -102,8 +114,9 @@ func BuildGetCodeSubPlan() query.Step {
 func BuildGetStorageSubPlan() query.Step {
 	getStorage := &query.RpcStep{
 		Call: func(ctx *query.QueryContext, cont query.Continuation) {
-			addr := ctx.Vars[QueryKey_AccountAddress].(string)
-			key := ctx.Vars[QueryKey_StorageKey].(string)
+			key := ctx.Vars[QueryKey_StorageKey].([]byte)
+			addr := ctx.Vars[QueryKey_Address].(evmCommon.Address)
+			stateroot := ctx.Vars[QueryKey_StateRoot].([]byte)
 
 			root := ctx.Root
 			if root == nil {
@@ -112,9 +125,10 @@ func BuildGetStorageSubPlan() query.Step {
 
 			ctx.Ctx.InvokeRPC(
 				"urlstore", "GetEthStorage",
-				&mtypes.UrlEthStorageGetRequest{
+				&mtypes.QueryBlockParam{
 					Address: addr,
 					Key:     key,
+					Root:    stateroot,
 				},
 				"QueryContinuationAction",
 				actor.NMeta(
@@ -334,6 +348,32 @@ func BuildGetReceiptByPositionSubPlan() query.Step {
 	return &query.SequentialStep{
 		Steps: []query.Step{
 			getReceipt,
+		},
+	}
+}
+
+func BuildGetStateRootByHeightSubPlan() query.Step {
+	getRoot := &query.RpcStep{
+		Call: func(ctx *query.QueryContext, cont query.Continuation) {
+			height := ctx.Vars[QueryKey_Height].(*big.Int)
+
+			root := ctx.Root
+			if root == nil {
+				root = ctx
+			}
+
+			ctx.Ctx.InvokeRPC(
+				"blockstore", "GetStateRootByHeight",
+				height.Uint64(),
+				"QueryContinuationAction",
+				actor.NMeta("contId", root.RegisterCont(cont)),
+			)
+		},
+	}
+
+	return &query.SequentialStep{
+		Steps: []query.Step{
+			getRoot,
 		},
 	}
 }

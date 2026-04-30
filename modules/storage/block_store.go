@@ -21,6 +21,7 @@ import (
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
+	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type BlockStore struct {
@@ -48,6 +49,7 @@ func (bs *BlockStore) RegisterActions(reg actor.ActionRegistrar) {
 	// reg.Register("SavePendingBlock", bs.SavePendingBlock)
 	reg.Register("GetByHeight", bs.GetByHeight)
 	reg.Register("GetTransaction", bs.GetTransaction)
+	reg.Register("GetStateRootByHeight", bs.GetStateRootByHeight)
 }
 
 func (bs *BlockStore) RpcConfig() (string, int) {
@@ -77,5 +79,23 @@ func (bs *BlockStore) GetByHeight(ctx *actor.ActionContext) error {
 func (bs *BlockStore) GetTransaction(ctx *actor.ActionContext) error {
 	position := ctx.RPC.Request.(*mstypes.Position)
 	ctx.ExecCtx.SendRpcResponse("", bs.db.QueryTx(position.Height, position.IdxInBlock))
+	return nil
+}
+
+func (bs *BlockStore) GetStateRootByHeight(ctx *actor.ActionContext) error {
+	height := ctx.RPC.Request.(uint64)
+	block := bs.db.Query(height)
+	var header evmTypes.Header
+	for i := range block.Headers {
+		if block.Headers[i][0] != mtypes.AppType_Eth {
+			continue
+		}
+		if err := header.UnmarshalJSON(block.Headers[i][1:]); err != nil {
+			ctx.ExecCtx.SendRpcResponse(err.Error(), "")
+			return err
+		}
+	}
+
+	ctx.ExecCtx.SendRpcResponse("", header.Root.Bytes())
 	return nil
 }

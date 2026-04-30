@@ -7,7 +7,7 @@ type UrlContainerGetRequest struct {
 	Key           string
 }
 
-type UrlEthStorageGetRequest struct {
-	Address string
-	Key     string
-}
+// type UrlEthStorageGetRequest struct {
+// 	Address string
+// 	Key     string
+// }

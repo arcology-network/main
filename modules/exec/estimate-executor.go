@@ -36,7 +36,10 @@ import (
 	apihandler "github.com/arcology-network/eu/apihandler"
 	mtypes "github.com/arcology-network/main/types"
 
+	crdtcommon "github.com/arcology-network/common-lib/crdt/common"
+	eucommon "github.com/arcology-network/common-lib/types"
 	statestore "github.com/arcology-network/state-engine"
+	proxy "github.com/arcology-network/state-engine/storage/proxy"
 	evmCore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth/tracers"
 	"github.com/ethereum/go-ethereum/eth/tracers/logger"
@@ -82,14 +85,11 @@ func (exec *EstimateExecutor) Inputs() ([]string, bool) {
 		scommon.MsgApcHandle,
 		actor.CombinedName(scommon.MsgBlockStart, scommon.MsgParentInfo),
 		scommon.MsgInitialization,
-		scommon.MsgDebugJobSequence,
 	}, false
 }
 
 func (exec *EstimateExecutor) Outputs() map[string]int {
-	return map[string]int{
-		scommon.MsgDebugMsg: 1,
-	}
+	return map[string]int{}
 }
 
 func (exec *EstimateExecutor) Config(params map[string]interface{}) {
@@ -118,7 +118,7 @@ func (exec *EstimateExecutor) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(actor.CombinedName(scommon.MsgBlockStart, scommon.MsgParentInfo), exec.stateReady)
 	reg.Register(scommon.MsgApcHandle, exec.updateApc)
 	reg.Register("DebugExecTxs", exec.DebugExecTxs)
-	reg.Register(scommon.MsgDebugJobSequence, exec.receivedDebugJobSequence)
+	reg.Register("onStateRoot", exec.onStateRoot)
 }
 func (exec *EstimateExecutor) stateInit(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
@@ -157,31 +157,53 @@ func (exec *EstimateExecutor) updateApc(ctx *actor.ActionContext) error {
 
 func (exec *EstimateExecutor) DebugExecTxs(ctx *actor.ActionContext) error {
 	request := ctx.RPC.Request.(*mtypes.ExecutorDebugRequest)
-	exec.requestStore[ctx.ExecCtx.Current.ReqID] = request
-	ctx.ExecCtx.Send(scommon.MsgDebugMsg, &mtypes.ExecutorDebugMsg{
-		Msg:   request.Msg,
-		ReqId: ctx.ExecCtx.Current.ReqID,
-	})
+	reqId := ctx.ExecCtx.Current.ReqID
+	exec.requestStore[reqId] = request
+
+	if request.BlockParams != nil {
+		ctx.ExecCtx.InvokeRPC("storage", "Query", &mtypes.QueryRequest{
+			QueryType: mtypes.QueryType_State_Root,
+			Data: &mtypes.StateRootRequest{
+				BlockParam: request.BlockParams,
+				ReqId:      reqId,
+			},
+		}, "onStateRoot")
+	} else {
+		exec.startExec(ctx, reqId)
+	}
 	return nil
 }
 
-func (exec *EstimateExecutor) receivedDebugJobSequence(ctx *actor.ActionContext) error {
-	sequence := ctx.Messages[0].Data.(*mtypes.ExecutorDebugJobSequence)
-	if request, ok := exec.requestStore[sequence.ReqId]; ok {
-		delete(exec.requestStore, sequence.ReqId)
+func (exec *EstimateExecutor) startExec(ctx *actor.ActionContext, reqId string) error {
+	exec.process(ctx, reqId, exec.store)
+	return nil
+}
 
-		// if request.Config != nil {
-		sequence.JobSequence.Jobs[0].StdMsg.Native.SkipAccountChecks = true
-		sequence.JobSequence.Jobs[0].IsDeferred = false
-		// }
+func (exec *EstimateExecutor) onStateRoot(ctx *actor.ActionContext) error {
+	resp := ctx.RPC.Request.(*mtypes.QueryResult).Data.(*mtypes.StateRootResponse)
 
-		task, tracer, err := exec.newTask(request, sequence.JobSequence)
+	tri, err := proxy.NewEthStateSnapshot([32]byte(resp.Root), exec.store.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend())
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+		return err
+	}
+	store := statestore.NewStateStore(tri)
+
+	exec.process(ctx, resp.ReqId, store)
+	return nil
+}
+
+func (exec *EstimateExecutor) process(ctx *actor.ActionContext, reqId string, store *statestore.StateStore) error {
+	if request, ok := exec.requestStore[reqId]; ok {
+		delete(exec.requestStore, reqId)
+
+		task, tracer, err := exec.newTask(request, request.Msg)
 		if err != nil {
 			ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 			return err
 		}
 
-		results := exec.execute(task)
+		results := exec.execute(task, store)
 
 		if request.Config != nil {
 			result, err := tracer.GetResult()
@@ -207,7 +229,7 @@ func (exec *EstimateExecutor) receivedDebugJobSequence(ctx *actor.ActionContext)
 
 func (exec *EstimateExecutor) newTask(
 	request *mtypes.ExecutorDebugRequest,
-	jobsequence *workload.JobSequence,
+	stdmsg *eucommon.StandardMessage,
 ) (*exetyp.ExecMessagers, tracers.Tracer, error) {
 	config := exetyp.MainConfig(exec.chainId)
 	config.Coinbase = exec.execParams.Coinbase
@@ -229,14 +251,14 @@ func (exec *EstimateExecutor) newTask(
 		config.VMConfig.NoBaseFee = true
 	}
 	task := &exetyp.ExecMessagers{
-		Sequence: jobsequence,
+		Sequence: workload.NewJobSequenceFromStandardMessages(0, stdmsg),
 		Config:   config,
 	}
 
 	return task, tracer, nil
 }
 
-func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) *evmCore.ExecutionResult {
+func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers, store crdtcommon.ReadOnlyStore) *evmCore.ExecutionResult {
 	pipeline := eu.ExecutionPipeline{
 		NumThreads: 1,
 		Config:     task.Config,
@@ -249,7 +271,7 @@ func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers) *evmCore.Execu
 			1,
 			func() *statecache.ExecutionStateCache {
 				// When creating a new writecache, use store as the backend.
-				return statecache.NewExecutionStateCache(exec.store, 32, 1)
+				return statecache.NewExecutionStateCache(store, 32, 1)
 			},
 			func(cache *statecache.ExecutionStateCache) {
 				cache.Clear()

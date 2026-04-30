@@ -207,7 +207,7 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 		parentinfo = ret.(*mtypes.ParentInfo)
 	}
 
-	i.sender.SendSync("urlstore", "Init", store.ReadOnlyStore(), uint64(height), i.from)
+	i.sender.SendSync("urlstore", "Init", store, uint64(height), i.from)
 	i.sender.SendSync("storage", "InitHeight", uint64(height), uint64(height), i.from)
 
 	// ret, err = i.sender.SendSync("schdstore", "Load", "", uint64(height), i.from)

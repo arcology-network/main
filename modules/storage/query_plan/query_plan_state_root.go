@@ -5,26 +5,27 @@ import (
 	"github.com/arcology-network/streamer/query"
 )
 
-type TransactionCountQueryPlan struct {
+type StateRootQueryPlan struct {
 	GetLastHeight func() uint64
 }
 
-func (p *TransactionCountQueryPlan) Start(
+func (p *StateRootQueryPlan) Start(
 	ctx *query.QueryContext,
 	cont query.Continuation,
 ) {
 	root := p.buildSteps()
 	query.StartStep(ctx, root, cont)
 }
-func (p *TransactionCountQueryPlan) buildSteps() query.Step {
+func (p *StateRootQueryPlan) buildSteps() query.Step {
 	params := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
-			request := ctx.Req.(*mtypes.RequestParameters)
-			ctx.Vars[QueryKey_Address] = request.Address
-			ctx.Vars[QueryKey_BlockParams] = request.BlockParams
+			params := ctx.Req.(*mtypes.StateRootRequest)
+			ctx.Vars[QueryKey_BlockParams] = params.BlockParam
+			ctx.Vars[QueryKey_RequestId] = params.ReqId
 			cont(nil, nil)
 		},
 	}
+
 	getHeight := &query.CallStep{
 		Plan: BuildGetHeightByHashOrNumberSubPlan(p.GetLastHeight),
 		Bind: func(ctx *query.QueryContext, v any) {
@@ -38,17 +39,15 @@ func (p *TransactionCountQueryPlan) buildSteps() query.Step {
 			ctx.Vars[QueryKey_StateRoot] = v
 		},
 	}
-	getNonce := &query.CallStep{
-		Plan: BuildGetNonceSubPlan(),
-		Bind: func(ctx *query.QueryContext, v any) {
-			ctx.Vars[QueryKey_Nonce] = v
-		},
-	}
 
 	returnTx := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
-			nonce := ctx.Vars[QueryKey_Nonce]
-			cont(nonce, nil)
+			stateRoot := ctx.Vars[QueryKey_StateRoot]
+			reqId := ctx.Vars[QueryKey_RequestId]
+			cont(&mtypes.StateRootResponse{
+				Root:  stateRoot.([]byte),
+				ReqId: reqId.(string),
+			}, nil)
 		},
 	}
 
@@ -57,7 +56,6 @@ func (p *TransactionCountQueryPlan) buildSteps() query.Step {
 			params,
 			getHeight,
 			getState,
-			getNonce,
 			returnTx,
 		},
 	}

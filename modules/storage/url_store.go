@@ -18,10 +18,14 @@
 package storage
 
 import (
-	crdtcommon "github.com/arcology-network/common-lib/crdt/common"
-	strtyp "github.com/arcology-network/main/modules/storage/types"
+	"math/big"
+
 	mtypes "github.com/arcology-network/main/types"
+	statestore "github.com/arcology-network/state-engine"
+	proxy "github.com/arcology-network/state-engine/storage/proxy"
 	"github.com/arcology-network/streamer/actor"
+	"github.com/ethereum/go-ethereum/crypto"
+	ethmpt "github.com/ethereum/go-ethereum/trie"
 )
 
 const (
@@ -31,13 +35,12 @@ const (
 )
 
 type UrlStore struct {
-	store   crdtcommon.ReadOnlyStore
-	indexer *MetaIndexer
+	stateStore *statestore.StateStore
 }
 
 func NewUrlStore() actor.Business {
 	return &UrlStore{
-		indexer: NewMetaIndexer(),
+		// indexer: NewMetaIndexer(),
 	}
 }
 
@@ -66,8 +69,8 @@ func (us *UrlStore) RpcConfig() (string, int) {
 }
 
 func (us *UrlStore) Init(ctx *actor.ActionContext) error {
-	store := ctx.RPC.Request.(crdtcommon.ReadOnlyStore)
-	us.store = store
+	store := ctx.RPC.Request.(*statestore.StateStore)
+	us.stateStore = store
 	ctx.ExecCtx.SendRpcResponse("", nil)
 	return nil
 }
@@ -83,48 +86,87 @@ func (us *UrlStore) Get(ctx *actor.ActionContext) error {
 }
 
 func (us *UrlStore) GetNonce(ctx *actor.ActionContext) error {
-	address := ctx.RPC.Request.(string)
-	nonce, err := strtyp.GetNonce(us.store, address)
+	queryParam := ctx.RPC.Request.(*mtypes.QueryBlockParam)
+	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), us.stateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend())
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+		return nil
+	}
+
+	account, err := snapshot.GetAccount(queryParam.Address, &ethmpt.AccessListCache{})
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {
-		ctx.ExecCtx.SendRpcResponse("", nonce)
+		ctx.ExecCtx.SendRpcResponse("", account.Nonce)
 	}
 
 	return nil
 }
 
 func (us *UrlStore) GetBalance(ctx *actor.ActionContext) error {
-	address := ctx.RPC.Request.(string)
-	balance, err := strtyp.GetBalance(us.store, address)
+	queryParam := ctx.RPC.Request.(*mtypes.QueryBlockParam)
+
+	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), us.stateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend())
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+		return nil
+	}
+
+	account, err := snapshot.GetAccount(queryParam.Address, &ethmpt.AccessListCache{})
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {
-		ctx.ExecCtx.SendRpcResponse("", balance)
+		bal := big.NewInt(0)
+		if account != nil {
+			bal = account.Balance.ToBig()
+		}
+		ctx.ExecCtx.SendRpcResponse("", bal)
 	}
 
 	return nil
 }
 
 func (us *UrlStore) GetCode(ctx *actor.ActionContext) error {
-	address := ctx.RPC.Request.(string)
-	code, err := strtyp.GetCode(us.store, address)
+	queryParam := ctx.RPC.Request.(*mtypes.QueryBlockParam)
+	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), us.stateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend())
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+		return nil
+	}
+
+	account, err := snapshot.GetAccount(queryParam.Address, &ethmpt.AccessListCache{})
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {
-		ctx.ExecCtx.SendRpcResponse("", code)
+		if account == nil {
+			ctx.ExecCtx.SendRpcResponse("", []byte{})
+		} else {
+			ctx.ExecCtx.SendRpcResponse("", account.GetCode())
+		}
+
 	}
 
 	return nil
 }
 
 func (us *UrlStore) GetEthStorage(ctx *actor.ActionContext) error {
-	request := ctx.RPC.Request.(*mtypes.UrlEthStorageGetRequest)
-	value, err := strtyp.GetStorage(us.store, request.Address, request.Key)
+	queryParam := ctx.RPC.Request.(*mtypes.QueryBlockParam)
+	backend := us.stateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend()
+	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), backend)
+	if err != nil {
+		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
+		return nil
+	}
+
+	account, err := snapshot.GetAccount(queryParam.Address, &ethmpt.AccessListCache{})
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {
-		ctx.ExecCtx.SendRpcResponse("", value)
+		if account == nil {
+			ctx.ExecCtx.SendRpcResponse("", []byte{})
+		} else {
+			ctx.ExecCtx.SendRpcResponse("", account.GetState([32]byte(crypto.Keccak256(queryParam.Key))))
+		}
 	}
 
 	return nil
