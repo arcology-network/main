@@ -1,0 +1,17 @@
+settings:
+  prometheus_listen_addr: ":19012"
+  envs:
+    generate_apc_handle: block
+    generate_url_update: true
+    generate_acct_root: true
+    init_db: true
+    dbpath: ./case_pool2/urlfiles
+    cached: true
+    transactional: true
+
+actors:
+  pool_aggr_selector:
+    max_reap_size: 1000
+    obsolete_time: 100
+    close_check: true
+    chain_id: "__global__"

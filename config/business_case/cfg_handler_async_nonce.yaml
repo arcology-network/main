@@ -5,7 +5,7 @@ settings:
     generate_url_update: true
     generate_acct_root: false
     init_db: true
-    dbpath: "../arcology/urlfiles"
+    dbpath: "./handleAsyncNonce/urlfiles"
     cached: true
     transactional: true
 

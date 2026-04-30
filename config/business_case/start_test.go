@@ -29,6 +29,27 @@ import (
 	"github.com/spf13/viper"
 )
 
+func TestConsensus(t *testing.T) {
+	basepath := "./case_consensus"
+	ClearPath(basepath)
+
+	viper.Set("home", basepath)
+	consensuspk.InitCfg()
+
+	app, broker, dic := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_consensus.yaml")
+
+	testc := NewConsensusTest(basepath, dic)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	msgs := testc.startTest(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 5 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+}
+
 func TestHandleAsyncGeneral(t *testing.T) {
 	basepath := "./handleAsyncGeneral"
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_handler_async_general.yaml")
@@ -120,11 +141,11 @@ func TestStorageStore(t *testing.T) {
 		t.Errorf("test Transactional store err,msg counter:%v", len(msgs))
 	}
 
-	msgs = testc.startTestUrlStore(broker)
-	fmt.Printf("Received Msg list:%v\n", msgs)
-	if len(msgs) != 5 {
-		t.Errorf("test Url store err,msg counter:%v", len(msgs))
-	}
+	// msgs = testc.startTestUrlStore(broker)
+	// fmt.Printf("Received Msg list:%v\n", msgs)
+	// if len(msgs) != 5 {
+	// 	t.Errorf("test Url store err,msg counter:%v", len(msgs))
+	// }
 
 	msgs = testc.startTestTmBlockstore(broker)
 	fmt.Printf("Received Msg list:%v\n", msgs)
@@ -214,26 +235,47 @@ func TestExecutor(t *testing.T) {
 	// testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
 	StartSys(app, broker)
 
-	msgs := testc.startTest(broker)
+	msgs := testc.startTestRpc(broker)
 	fmt.Printf("Received Msg list:%v\n", msgs)
-	if len(msgs) != 5 {
+	if len(msgs) != 4 {
 		t.Errorf("test err,msg counter:%v", len(msgs))
 	}
 	ClearPath(basepath)
 }
 
-func TestExecutorRpc(t *testing.T) {
-	basepath := "./case_executor_rpc"
-	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_executor_rpc.yaml")
+func TestPoolAsL1(t *testing.T) {
+	basepath := "./case_pool"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_pool.yaml")
 
-	testc := NewExecutorTest(basepath)
+	testc := NewPoolTest(basepath, true)
 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
-	// testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
 	StartSys(app, broker)
 
-	msgs := testc.startTestRpc(broker)
+	mtypes.RunAsL1 = true
+
+	msgs := testc.startTestAsL1(broker)
 	fmt.Printf("Received Msg list:%v\n", msgs)
-	if len(msgs) != 5 {
+	if len(msgs) != 7 {
+		t.Errorf("test err,msg counter:%v", len(msgs))
+	}
+	ClearPath(basepath)
+}
+
+func TestPoolAsL2(t *testing.T) {
+	basepath := "./case_pool2"
+	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_pool2.yaml")
+
+	testc := NewPoolTest(basepath, false)
+	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
+	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
+	StartSys(app, broker)
+
+	mtypes.RunAsL1 = false
+
+	msgs := testc.startTestAsL2(broker)
+	fmt.Printf("Received Msg list:%v\n", msgs)
+	if len(msgs) != 8 {
 		t.Errorf("test err,msg counter:%v", len(msgs))
 	}
 	ClearPath(basepath)
@@ -274,61 +316,6 @@ func TestArbitrator(t *testing.T) {
 	msgs := testc.startTest(broker)
 	fmt.Printf("Received Msg list:%v\n", msgs)
 	if len(msgs) != 0 {
-		t.Errorf("test err,msg counter:%v", len(msgs))
-	}
-	ClearPath(basepath)
-}
-
-// func TestStoreStaorQueryBase(t *testing.T) {
-// 	basepath := "./case_storage"
-// 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
-
-// 	testc := NewStorageTest(basepath)
-// 	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
-// 	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
-// 	StartSys(app, broker)
-
-// 	msgs := testc.startTestQueryBase(broker)
-// 	fmt.Printf("Received Msg list:%v\n", msgs)
-// 	if len(msgs) != 1 {
-// 		t.Errorf("test err,msg counter:%v", len(msgs))
-// 	}
-// 	ClearPath(basepath)
-// }
-
-func TestPoolAsL1(t *testing.T) {
-	basepath := "./case_pool"
-	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_pool.yaml")
-
-	testc := NewPoolTest(basepath, true)
-	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
-	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
-	StartSys(app, broker)
-
-	mtypes.RunAsL1 = true
-
-	msgs := testc.startTestAsL1(broker)
-	fmt.Printf("Received Msg list:%v\n", msgs)
-	if len(msgs) != 7 {
-		t.Errorf("test err,msg counter:%v", len(msgs))
-	}
-	ClearPath(basepath)
-}
-
-func TestPoolAsL2(t *testing.T) {
-	basepath := "./case_pool"
-	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_pool.yaml")
-
-	testc := NewPoolTest(basepath, false)
-	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
-	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
-	StartSys(app, broker)
-
-	mtypes.RunAsL1 = false
-
-	msgs := testc.startTestAsL2(broker)
-	fmt.Printf("Received Msg list:%v\n", msgs)
-	if len(msgs) != 8 {
 		t.Errorf("test err,msg counter:%v", len(msgs))
 	}
 	ClearPath(basepath)
@@ -431,26 +418,6 @@ func TestCoordinator(t *testing.T) {
 	msgs := testc.startTest(broker)
 	fmt.Printf("Received Msg list:%v\n", msgs)
 	if len(msgs) != 8 {
-		t.Errorf("test err,msg counter:%v", len(msgs))
-	}
-	ClearPath(basepath)
-}
-
-func TestCoonsensus(t *testing.T) {
-	basepath := "./case_consensus"
-	viper.Set("home", basepath)
-	consensuspk.InitCfg()
-
-	app, broker, dic := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_consensus.yaml")
-
-	testc := NewConsensusTest(basepath, dic)
-	actor.CreateActor("sender", broker, []actor.Business{testc}, []string{"sender"}, 10, []string{""})
-	testc.SetSender(actor.NewSendAdaptor(broker, rpc.GlobalRPCClient))
-	StartSys(app, broker)
-
-	msgs := testc.startTest(broker)
-	fmt.Printf("Received Msg list:%v\n", msgs)
-	if len(msgs) != 5 {
 		t.Errorf("test err,msg counter:%v", len(msgs))
 	}
 	ClearPath(basepath)

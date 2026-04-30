@@ -10,6 +10,7 @@ import (
 	queryplan "github.com/arcology-network/main/modules/storage/query_plan"
 	mstypes "github.com/arcology-network/main/modules/storage/types"
 	mtypes "github.com/arcology-network/main/types"
+	"github.com/arcology-network/state-engine/storage/proxy"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/broker"
 	scommon "github.com/arcology-network/streamer/common"
@@ -106,22 +107,62 @@ func (st *StorageTest) startTest(ss *broker.StatefulStreamer) []string {
 
 func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []string {
 	st.msgs = []string{}
+	genesis, store, _ := MakeStateStore(st.basePath)
 
-	//----------------------------------------------
-	_, store, _ := MakeStateStore(st.basePath)
+	accthash = store.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Root()
 
-	_, err := st.sender.SendSync("urlstore", "Init", store.ReadOnlyStore(), 1, st.from)
+	mb, txhashes := MakeMonacoBlock()
+	block := BlockWithHeader(mb, genesis)
+	blockHash := evmCommon.BytesToHash(block.Blockhash)
+
+	//------------------------
+	_, err := st.sender.SendSync("blockstore", "Save", block, 10, st.from)
+	if err != nil {
+		fmt.Printf("******blockstore.Save err:%v\n", err)
+		return st.msgs
+	}
+	st.msgs = append(st.msgs, "blockstore.Save")
+
+	//---------------------------------------------------
+	keys := make([]string, len(txhashes))
+	for i := range keys {
+		keys[i] = string(txhashes[i].Bytes())
+	}
+	_, err = st.sender.SendSync("indexerstore", "Save", &storage.SaveIndexRequest{
+		Height: 10,
+		Keys:   keys,
+		Hash:   string(blockHash.Bytes()),
+		IsSave: true,
+	}, 10, st.from)
+	if err != nil {
+		fmt.Printf("******indexerstore.Save err:%v\n", err)
+		return st.msgs
+	}
+	st.msgs = append(st.msgs, "indexerstore.Save")
+
+	_, err = st.sender.SendSync("urlstore", "Init", store, 1, st.from)
 	if err != nil {
 		fmt.Printf("******urlstore.Init err:%v\n", err)
 		return st.msgs
 	}
 	st.msgs = append(st.msgs, "urlstore.Init")
+	//--------------------------------------------
+	_, err = st.sender.SendSync("storage", "InitHeight", uint64(10), 1, st.from)
+
+	if err != nil {
+		fmt.Printf("******storage.InitHeight err:%v\n", err)
+		return st.msgs
+	}
+	st.msgs = append(st.msgs, "storage.InitHeight")
 
 	//----------------------
 	bal, err := st.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Balance_Eth,
 		Data: &mtypes.RequestParameters{
 			Address: evmCommon.HexToAddress("0x9f9E0F23aFd5404b34006678c900629183c9A25d"),
+			BlockParams: &mtypes.BlockNumberOrHash{
+				BlockNumber: big.NewInt(10),
+			},
 		},
 	}, 1, st.from)
 
@@ -137,6 +178,9 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 		QueryType: mtypes.QueryType_TransactionCount,
 		Data: &mtypes.RequestParameters{
 			Address: evmCommon.HexToAddress("0x9f9E0F23aFd5404b34006678c900629183c9A25d"),
+			BlockParams: &mtypes.BlockNumberOrHash{
+				BlockNumber: big.NewInt(10),
+			},
 		},
 	}, 1, st.from)
 
@@ -146,15 +190,6 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 	}
 	fmt.Printf("-------storage.Query nonce:%v\n", bal.(*mtypes.QueryResult).Data.(uint64))
 	st.msgs = append(st.msgs, "QueryType_TransactionCount")
-
-	//--------------------------------------------
-	_, err = st.sender.SendSync("storage", "InitHeight", uint64(10), 1, st.from)
-
-	if err != nil {
-		fmt.Printf("******storage.InitHeight err:%v\n", err)
-		return st.msgs
-	}
-	st.msgs = append(st.msgs, "storage.InitHeight")
 
 	//--------------------------------------------
 	bal, err = st.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
@@ -173,6 +208,9 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 		QueryType: mtypes.QueryType_Code,
 		Data: &mtypes.RequestParameters{
 			Address: evmCommon.HexToAddress("0x9f9E0F23aFd5404b34006678c900629183c9A25d"),
+			BlockParams: &mtypes.BlockNumberOrHash{
+				BlockNumber: big.NewInt(10),
+			},
 		},
 	}, 1, st.from)
 
@@ -187,8 +225,11 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 	bal, err = st.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
 		QueryType: mtypes.QueryType_Storage,
 		Data: &mtypes.RequestStorage{
+			BlockParams: &mtypes.BlockNumberOrHash{
+				BlockNumber: big.NewInt(10),
+			},
 			Address: evmCommon.HexToAddress("0xa75Cd05BF16BbeA1759DE2A66c0472131BC5Bd8D"),
-			Key:     "0x0000000000000000000000000000000000000000000000000000000000000000",
+			Key:     evmCommon.Hex2Bytes("0x0000000000000000000000000000000000000000000000000000000000000000"),
 		},
 	}, 1, st.from)
 
@@ -198,17 +239,6 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 	}
 	fmt.Printf("-------storage.Query storage:%v\n", bal.(*mtypes.QueryResult).Data.([]byte))
 	st.msgs = append(st.msgs, "QueryType_Storage")
-
-	block, txhashes := MakeMonacoBlock()
-	blockHash := evmCommon.BytesToHash(block.Blockhash)
-
-	//------------------------
-	_, err = st.sender.SendSync("blockstore", "Save", block, 10, st.from)
-	if err != nil {
-		fmt.Printf("******blockstore.Save err:%v\n", err)
-		return st.msgs
-	}
-	st.msgs = append(st.msgs, "blockstore.Save")
 
 	//--------------------------------------------
 	bal, err = st.sender.SendSync("storage", "Query", &mtypes.QueryRequest{
@@ -238,28 +268,6 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 	}
 	fmt.Printf("-------storage.Query storage:%v\n", bal.(*mtypes.QueryResult).Data.(*evmTypes.Transaction))
 	st.msgs = append(st.msgs, "QueryType_TestTxByPosition")
-
-	//----------------------------------
-	// txhashes := []evmCommon.Hash{
-	// 	evmCommon.BytesToHash([]byte{1, 2, 3, 4, 5, 6, 7, 8}),
-	// 	evmCommon.BytesToHash([]byte{11, 12, 13, 14, 51, 16, 17, 18}),
-	// }
-
-	keys := make([]string, len(txhashes))
-	for i := range keys {
-		keys[i] = string(txhashes[i].Bytes())
-	}
-	_, err = st.sender.SendSync("indexerstore", "Save", &storage.SaveIndexRequest{
-		Height: 10,
-		Keys:   keys,
-		Hash:   string(blockHash.Bytes()),
-		IsSave: true,
-	}, 10, st.from)
-	if err != nil {
-		fmt.Printf("******indexerstore.Save err:%v\n", err)
-		return st.msgs
-	}
-	st.msgs = append(st.msgs, "indexerstore.Save")
 
 	//--------------------------------------------
 	hashes, err := st.sender.SendSync("storage", "Query", &mtypes.QueryRequest{

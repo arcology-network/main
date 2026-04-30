@@ -15,7 +15,6 @@ import (
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/broker"
-	scommon "github.com/arcology-network/streamer/common"
 
 	abci "github.com/arcology-network/consensus-engine/abci/types"
 	cfg "github.com/arcology-network/consensus-engine/config"
@@ -126,25 +125,6 @@ func (ss *StorageStore) startTestTransactional(broker *broker.StatefulStreamer) 
 	return ss.msgs
 }
 
-func (ss *StorageStore) startTestUrlStoreMuitiAddress(broker *broker.StatefulStreamer) []string {
-	ss.msgs = []string{}
-	_, store, _ := MakeStateStore(ss.basePath)
-
-	_, err := ss.sender.SendSync("urlstore", "Init", store.ReadOnlyStore(), 1, ss.from)
-	if err != nil {
-		fmt.Printf("******urlstore.Init err:%v\n", err)
-		return ss.msgs
-	}
-	ss.msgs = append(ss.msgs, "urlstore.Init")
-
-	m := scommon.NewMessageForStream("multiAddress", "")
-	m.Height = 10
-	broker.Send("multiAddress", m)
-	time.Sleep(5 * time.Second)
-
-	return ss.msgs
-}
-
 func (ss *StorageStore) startTestUrlStore(broker *broker.StatefulStreamer) []string {
 	ss.msgs = []string{}
 	_, store, _ := MakeStateStore(ss.basePath)
@@ -185,9 +165,9 @@ func (ss *StorageStore) startTestUrlStore(broker *broker.StatefulStreamer) []str
 	fmt.Printf("******urlstore.GetCode val:%x\n", code)
 	ss.msgs = append(ss.msgs, "urlstore.GetCode")
 
-	ret, err = ss.sender.SendSync("urlstore", "GetEthStorage", &mtypes.UrlEthStorageGetRequest{
-		Address: addr,
-		Key:     "0x0000000000000000000000000000000000000000000000000000000000000000",
+	ret, err = ss.sender.SendSync("urlstore", "GetEthStorage", &mtypes.QueryBlockParam{
+		Address: evmCommon.HexToAddress(addr),
+		Key:     []byte("0000000000000000000000000000000000000000000000000000000000000000"),
 	}, 1, ss.from)
 	if err != nil || ret == nil {
 		fmt.Printf("******urlstore.GetEthStorage err:%v\n", err)

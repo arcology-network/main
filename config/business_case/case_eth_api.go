@@ -110,7 +110,7 @@ func (et *EthApiTest) startTest(ss *broker.StatefulStreamer) []string {
 	ss.Send(scommon.MsgPendingBlock, m)
 	time.Sleep(1 * time.Second)
 
-	// time.Sleep(60 * time.Second)
+	time.Sleep(5 * time.Second)
 
 	params = []interface{}{
 		id,
@@ -131,9 +131,6 @@ func (et *EthApiTest) startTest(ss *broker.StatefulStreamer) []string {
 	m.Height = 10
 	ss.Send(scommon.MsgApcHandle, m)
 	time.Sleep(1 * time.Second)
-
-	// block, txhashes := MakeMonacoBlock()
-	// blockHash := evmCommon.BytesToHash(mblock.Blockhash)
 
 	//------------------------
 	mmb, tashes := MakeMonacoBlockFromGenesis(genesis)
@@ -162,6 +159,7 @@ func (et *EthApiTest) startTest(ss *broker.StatefulStreamer) []string {
 	}
 	et.msgs = append(et.msgs, "indexerstore.Save")
 
+	//---------------------------------------------------------------
 	// params = []interface{}{
 	// 	"0x21522c86A586e696961b68aa39632948D9F11170",
 	// 	[]interface{}{},

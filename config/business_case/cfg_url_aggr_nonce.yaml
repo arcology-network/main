@@ -6,8 +6,6 @@ settings:
     generate_acct_root: true
     init_db: true
     dbpath: ./urlAggrNonce/urlfiles
-    # cached: true
-    # transactional: true
 
 actors:
   "-nonce_url-stateless_euresult_aggr_selector4pool":
@@ -16,8 +14,6 @@ actors:
       generate_url_update: false
       init_db: false
       dbpath: ./urlAggrNonce/dbnonce
-      # cached: false
       object_cached: false
-      # transactional: false
     stateless_euresult_aggr_selector4pool:
       output: commitNonceUrl

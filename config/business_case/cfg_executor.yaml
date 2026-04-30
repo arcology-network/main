@@ -5,7 +5,7 @@ settings:
     generate_url_update: true
     generate_acct_root: true
     init_db: true
-    dbpath: "../arcology/urlfiles"
+    dbpath: "./case_executor/urlfiles"
     cached: true
     transactional: true
 
@@ -14,4 +14,41 @@ actors:
     chain_id: "__global__"
     idx: 0
 
+  storage:
+    log_cache_size: 1000
+    block_cache_size: 10
+    tx_cache_size: 10
+    chain_id: "__global__" 
+
+
+  storage.tmblockstore:
+    storage_tmblock_name: "tmblockstore"
+    storage_tmblock_dir: "./case_executor/"
+
+  storage.tmstatestore:
+    tm_state_store_dir: "./case_executor/"
+
+  storage.urlstore: {}
+
+  storage.receiptstore:
+    storage_receipt_path: "./case_executor/receiptfiles"
+    cache_receipt_size: 100
+    cache_exec_concurrency: 8
+
+  storage.blockstore:
+    storage_block_path: "./case_executor/blockfiles"
+    cache_block_size: 100
+
+  storage.statestore:
+    storage_state_path: "./case_executor/statefile"
+
+  storage.indexerstore:
+    storage_index_path: "./case_executor/indexfiles"
+    cache_index_size: 100
+    storage_index_shards: 128
+    storage_index_depts: 2
+
+  storage.transactionalstore:
+    root: "./case_executor/transactional/"
+    optimization: true
   

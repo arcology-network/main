@@ -11,20 +11,11 @@ settings:
 
 actors:
   storage:
-    # remote_caches: "__global__"
     log_cache_size: 1000
     block_cache_size: 10
     tx_cache_size: 10
-    # cache_svc_port: "6061"
     chain_id: "__global__" 
-    # prometheus_host: "http://50.99.150.71:3030"
-    # prometheus_fetch_frequency: 10
-    # prometheus_fetch_ahead: 300
-    # prometheus_fetch_step: "3"
-    # coefficient: 130
 
-  # storage.schdstore:
-  #   root: "./case_storage/schdstore/"
 
   storage.tmblockstore:
     storage_tmblock_name: "tmblockstore"

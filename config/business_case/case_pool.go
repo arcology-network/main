@@ -216,7 +216,7 @@ func (pt *PoolTest) startTestAsL2(ss *broker.StatefulStreamer) []string {
 	m = scommon.NewMessageForStream(scommon.MsgPendingBlock, BlockWithHeader(mblock, genesis))
 	m.Height = 10
 	ss.Send(scommon.MsgPendingBlock, m)
-	time.Sleep(1 * time.Second)
+	time.Sleep(2 * time.Second)
 
 	// //-----------------------------------------------------------
 	// m = scommon.NewMessageForStream("opRequest", "")
@@ -241,6 +241,7 @@ func (pt *PoolTest) startTestAsL2(ss *broker.StatefulStreamer) []string {
 		return pt.msgs
 	}
 	pt.msgs = append(pt.msgs, "pool.ReceivedMessages")
+	time.Sleep(2 * time.Second)
 
 	result := ret.(*mtypes.BlockResult)
 	log.Printf("call pool.ReceivedMessages result:%v", result)
