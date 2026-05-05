@@ -91,7 +91,6 @@ func (schd *Scheduler) Outputs() map[string]int {
 
 func (schd *Scheduler) Config(params map[string]interface{}) {
 	execBatchSize := params["batch_size"].(int)
-	schd.conflictFile = params["conflict_file"].(string)
 	jsonStr, _ := json.Marshal(params["executors"])
 	confs := []*mtypes.ExecutorConf{}
 	json.Unmarshal(jsonStr, &confs)
