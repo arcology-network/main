@@ -12,14 +12,12 @@ settings:
 actors:
   "-nonce_url-stateless_euresult_aggr_selector4pool":
     nonce_url:
-      generate_apc_handle: "__env__"
+      generate_apc_handle: block
       generate_url_update: false
       init_db: false
       dbpath: ../arcology/dbnonce
-      cached: false
       object_cached: false
-      transactional: false
-
+      generate_acct_root: false
     stateless_euresult_aggr_selector4pool:
       output: commitNonceUrl
 

@@ -36,9 +36,7 @@ import (
 	apihandler "github.com/arcology-network/eu/apihandler"
 	mtypes "github.com/arcology-network/main/types"
 
-	crdtcommon "github.com/arcology-network/common-lib/crdt/common"
 	eucommon "github.com/arcology-network/common-lib/types"
-	statestore "github.com/arcology-network/state-engine"
 	proxy "github.com/arcology-network/state-engine/storage/proxy"
 	evmCore "github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/eth/tracers"
@@ -60,7 +58,7 @@ type EstimateExecutor struct {
 
 	chainId *big.Int
 
-	store *statestore.StateStore
+	store *statecache.ExecutionStateStore
 
 	timestamp *big.Int
 
@@ -151,7 +149,7 @@ func (exec *EstimateExecutor) stateReady(ctx *actor.ActionContext) error {
 	return nil
 }
 func (exec *EstimateExecutor) updateApc(ctx *actor.ActionContext) error {
-	exec.store = ctx.Messages[0].Data.(*statestore.StateStore)
+	exec.store = ctx.Messages[0].Data.(*statecache.ExecutionStateStore)
 	return nil
 }
 
@@ -181,19 +179,18 @@ func (exec *EstimateExecutor) startExec(ctx *actor.ActionContext, reqId string) 
 
 func (exec *EstimateExecutor) onStateRoot(ctx *actor.ActionContext) error {
 	resp := ctx.RPC.Request.(*mtypes.QueryResult).Data.(*mtypes.StateRootResponse)
-
-	tri, err := proxy.NewEthStateSnapshot([32]byte(resp.Root), exec.store.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend())
+	tri, err := proxy.NewEthStateSnapshot([32]byte(resp.Root), exec.store.CommittedStore().(*proxy.StorageProxy).EthStore().TrieDB())
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 		return err
 	}
-	store := statestore.NewStateStore(tri)
+	store := statecache.NewDefaultExecutionStateStore(tri)
 
 	exec.process(ctx, resp.ReqId, store)
 	return nil
 }
 
-func (exec *EstimateExecutor) process(ctx *actor.ActionContext, reqId string, store *statestore.StateStore) error {
+func (exec *EstimateExecutor) process(ctx *actor.ActionContext, reqId string, store *statecache.ExecutionStateStore) error {
 	if request, ok := exec.requestStore[reqId]; ok {
 		delete(exec.requestStore, reqId)
 
@@ -258,7 +255,7 @@ func (exec *EstimateExecutor) newTask(
 	return task, tracer, nil
 }
 
-func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers, store crdtcommon.ReadOnlyStore) *evmCore.ExecutionResult {
+func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers, store *statecache.ExecutionStateStore) *evmCore.ExecutionResult {
 	pipeline := eu.ExecutionPipeline{
 		NumThreads: 1,
 		Config:     task.Config,
@@ -269,11 +266,11 @@ func (exec *EstimateExecutor) execute(task *exetyp.ExecMessagers, store crdtcomm
 		mempool.NewMempool(
 			16,
 			1,
-			func() *statecache.ExecutionStateCache {
+			func() *statecache.ExecutionStateStore {
 				// When creating a new writecache, use store as the backend.
-				return statecache.NewExecutionStateCache(store, 32, 1)
+				return statecache.NewExecutionStateStore(store, 32, 1)
 			},
-			func(cache *statecache.ExecutionStateCache) {
+			func(cache *statecache.ExecutionStateStore) {
 				cache.Clear()
 			}),
 	)

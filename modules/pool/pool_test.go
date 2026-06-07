@@ -28,7 +28,6 @@ import (
 	"github.com/arcology-network/common-lib/exp/mempool"
 	cmntyp "github.com/arcology-network/common-lib/types"
 	apihandler "github.com/arcology-network/eu/apihandler"
-	statestore "github.com/arcology-network/state-engine"
 	"github.com/arcology-network/state-engine/storage/proxy"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -38,11 +37,12 @@ import (
 
 	ethimpl "github.com/arcology-network/eu/ethadaptor"
 	statecache "github.com/arcology-network/state-engine/state/cache"
+	statecommitter "github.com/arcology-network/state-engine/state/committer"
 )
 
-func intDb(filepath string) *statestore.StateStore {
-	db := proxy.NewLevelDBStoreProxy(filepath, filepath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100})
-	return statestore.NewStateStore(db)
+func intDb(filepath string) *statecache.ExecutionStateStore {
+	db := proxy.NewPebbleDBProxy(filepath, filepath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100})
+	return statecache.NewDefaultExecutionStateStore(db)
 }
 
 func TestPoolWithUncheckedTx(t *testing.T) {
@@ -78,17 +78,17 @@ func TestPoolWithUncheckedTx(t *testing.T) {
 	}
 }
 
-func initAccounts(db *statestore.StateStore, from, to int) {
+func initAccounts(db *statecache.ExecutionStateStore, from, to int) {
 	ccRuntime := apihandler.NewConcurrentRuntime(
 		0, // concurrent runtime ID
 		mempool.NewMempool(
 			16,
 			1,
-			func() *statecache.ExecutionStateCache {
+			func() *statecache.ExecutionStateStore {
 				// When creating a new writecache, use store as the backend.
-				return statecache.NewExecutionStateCache(db, 32, 1)
+				return statecache.NewExecutionStateStore(db, 32, 1)
 			},
-			func(cache *statecache.ExecutionStateCache) {
+			func(cache *statecache.ExecutionStateStore) {
 				cache.Clear()
 			}),
 	)
@@ -102,16 +102,15 @@ func initAccounts(db *statestore.StateStore, from, to int) {
 		stateDB.SetBalance(address, uint256.NewInt(100))
 		stateDB.SetNonce(address, 0)
 	}
+	committer := statecommitter.NewStateCommitter(db.CommittedStore(), db.GetWriters())
+	transitions := db.Export(statecell.Sorter)
 
-	writeCache := db.ExecutionStateCache
-	transitions := writeCache.Export(statecell.Sorter)
-
-	db.Import(transitions)
-	db.DebugPrecommit([]uint64{0})
-	db.DebugCommit(0)
+	committer.Import(transitions)
+	committer.DebugPrecommit([]uint64{0})
+	committer.DebugCommit(0)
 }
 
-func increaseNonce(db *statestore.StateStore, txs []*cmntyp.StandardTransaction) {
+func increaseNonce(db *statecache.ExecutionStateStore, txs []*cmntyp.StandardTransaction) {
 	// api := apihandler.NewAPIHandler(mempool.NewMempool[*cache.WriteCache](16, 1, func() *cache.WriteCache {
 	// 	return cache.NewWriteCache(db, 32, 1)
 	// }, func(cache *cache.WriteCache) { cache.Clear() }))
@@ -122,11 +121,11 @@ func increaseNonce(db *statestore.StateStore, txs []*cmntyp.StandardTransaction)
 		mempool.NewMempool(
 			16,
 			1,
-			func() *statecache.ExecutionStateCache {
+			func() *statecache.ExecutionStateStore {
 				// When creating a new writecache, use store as the backend.
-				return statecache.NewExecutionStateCache(db, 32, 1)
+				return statecache.NewExecutionStateStore(db, 32, 1)
 			},
-			func(cache *statecache.ExecutionStateCache) {
+			func(cache *statecache.ExecutionStateStore) {
 				cache.Clear()
 			}),
 	)
@@ -137,11 +136,12 @@ func increaseNonce(db *statestore.StateStore, txs []*cmntyp.StandardTransaction)
 		address := evmCommon.BytesToAddress(txs[i].NativeMessage.From.Bytes())
 		stateDB.SetNonce(address, 0)
 	}
-	writeCache := db.ExecutionStateCache
-	transitions := writeCache.Export(statecell.Sorter)
-	db.Import(transitions)
-	db.DebugPrecommit([]uint64{0})
-	db.DebugCommit(0)
+	committer := statecommitter.NewStateCommitter(db.CommittedStore(), db.GetWriters())
+	transitions := db.Export(statecell.Sorter)
+
+	committer.Import(transitions)
+	committer.DebugPrecommit([]uint64{0})
+	committer.DebugCommit(0)
 }
 
 func genUncheckedTxs(from, to int) []*cmntyp.StandardTransaction {

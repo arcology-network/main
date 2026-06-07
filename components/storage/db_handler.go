@@ -25,22 +25,27 @@ import (
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
 
 	eushared "github.com/arcology-network/eu/shared"
-	statestore "github.com/arcology-network/state-engine"
 
 	statecell "github.com/arcology-network/common-lib/crdt/statecell"
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/state-engine/storage/proxy"
+
+	statecache "github.com/arcology-network/state-engine/state/cache"
+	statecommitter "github.com/arcology-network/state-engine/state/committer"
 )
 
 type DBOperation interface {
-	Init(stateStore *statestore.StateStore)
+	Init(stateStore *statecache.ExecutionStateStore)
 	InitAsync(ctx *actor.ActionContext)
 	Import(transitions []*statecell.StateCell)
 	PreCommit(ctx *actor.ActionContext, euResults []*eushared.EuResult, height uint64)
-	PreCommitCompleted(ctx *actor.ActionContext)
+	PreCommitCompleted(ctx *actor.ExecutionContext, height uint64) [32]byte
 	Commit(ctx *actor.ActionContext, height uint64)
 	Outputs() map[string]int
 	Config(params map[string]interface{})
+
+	PreCommitAsync(ctx *actor.ExecutionContext)
+	CommitAsync(ctx *actor.ExecutionContext, height uint64)
 
 	//for rpc async callback
 	AddMetas(ctx *actor.ActionContext)
@@ -48,41 +53,53 @@ type DBOperation interface {
 }
 
 type BasicDBOperation struct {
-	StateStore *statestore.StateStore
-	// MsgBroker  *actor.MessageWrapper
+	StateStore *statecache.ExecutionStateStore
+	Committer  *statecommitter.StateCommitter
 
 	Keys     []string
 	Values   []interface{}
 	AcctRoot [32]byte
 }
 
-func (op *BasicDBOperation) Init(stateStore *statestore.StateStore) {
+func (op *BasicDBOperation) Init(stateStore *statecache.ExecutionStateStore) {
 	op.StateStore = stateStore
+	op.Committer = statecommitter.NewStateCommitter(op.StateStore.CommittedStore(), op.StateStore.GetWriters())
 	op.Keys = []string{}
 	op.Values = []interface{}{}
 	op.AcctRoot = [32]byte{}
 }
 
 func (op *BasicDBOperation) Import(transitions []*statecell.StateCell) {
-	op.StateStore.Import(transitions)
+	op.Committer.Import(transitions)
 }
 
 func (op *BasicDBOperation) PreCommit(euResults []*eushared.EuResult, height uint64) {
-	op.StateStore.Finalize(GetTransitionIds(euResults))
-	op.StateStore.SyncPrecommit()
+	op.Committer.Finalize(GetTransitionIds(euResults))
+	op.Committer.SyncPrecommit()
 	op.Keys = []string{}
 	op.Values = []interface{}{}
 }
 
-func (op *BasicDBOperation) PreCommitCompleted() {
-
+func (op *BasicDBOperation) PreCommitCompleted(ctx *actor.ExecutionContext) [32]byte {
+	return op.StateStore.CommittedStore().(*proxy.StorageProxy).EthStore().Root()
 }
 func (op *BasicDBOperation) InitAsync() {
 
 }
 
+func (op *BasicDBOperation) PreCommitAsync(ctx *actor.ExecutionContext) {
+	ctx.LogDebug("Before PreCommit Async.")
+	op.Committer.AsyncPrecommit()
+	ctx.LogDebug("After PreCommit Async.")
+}
+func (op *BasicDBOperation) CommitAsync(ctx *actor.ExecutionContext, height uint64) {
+	ctx.LogDebug("Before Commit Async.")
+	op.Committer.AsyncCommit(height)
+	ctx.LogDebug("After Commit Async.")
+}
+
 func (op *BasicDBOperation) Commit(height uint64) {
-	op.StateStore.SyncCommit(height)
+	op.Committer.SyncCommit(height)
 }
 
 func (op *BasicDBOperation) Outputs() map[string]int {
@@ -91,6 +108,11 @@ func (op *BasicDBOperation) Outputs() map[string]int {
 
 func (op *BasicDBOperation) Config(params map[string]interface{}) {}
 
+type CommitTask struct {
+	Msg *scommon.Message
+	Ctx *actor.ExecutionContext
+}
+
 const (
 	dbStateUninit = iota
 	dbStateInit
@@ -98,7 +120,7 @@ const (
 )
 
 type DBHandler struct {
-	StateStore             *statestore.StateStore
+	StateStore             *statecache.ExecutionStateStore
 	state                  int
 	importMsg              string
 	commitMsg              string
@@ -107,6 +129,8 @@ type DBHandler struct {
 	op                     DBOperation
 
 	initDb bool
+
+	taskCh chan *CommitTask
 }
 
 func NewDBHandler(importMsg, commitMsg, generationCompletedMsg, finalizeMsg string, op DBOperation) *DBHandler {
@@ -118,6 +142,7 @@ func NewDBHandler(importMsg, commitMsg, generationCompletedMsg, finalizeMsg stri
 		finalizeMsg:            finalizeMsg,
 		op:                     op,
 		initDb:                 false,
+		taskCh:                 make(chan *CommitTask, 20),
 	}
 	return handler
 }
@@ -147,13 +172,29 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 	} else {
 		if !v.(bool) {
 
-			handler.StateStore = statestore.NewStateStore(proxy.NewLevelDBStoreProxy(dbpath, dbpath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100}))
+			handler.StateStore = statecache.NewDefaultExecutionStateStore(proxy.NewPebbleDBProxy(dbpath, dbpath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100}))
 
 			handler.op.Init(handler.StateStore)
 			handler.initDb = true
 		}
 	}
 	handler.op.Config(params)
+
+	go func() {
+		for {
+			task := <-handler.taskCh
+
+			switch task.Msg.Name {
+			case handler.commitMsg:
+				handler.op.PreCommitAsync(task.Ctx)
+			case handler.generationCompletedMsg:
+				handler.op.PreCommitCompleted(task.Ctx, task.Msg.Height)
+			case handler.finalizeMsg:
+				handler.op.CommitAsync(task.Ctx, task.Msg.Height)
+			}
+
+		}
+	}()
 }
 
 func (handler *DBHandler) RegisterActions(reg actor.ActionRegistrar) {
@@ -171,7 +212,7 @@ func (handler *DBHandler) AddMetas(ctx *actor.ActionContext) error {
 }
 func (handler *DBHandler) sendAsyncUrlUpdate(ctx *actor.ActionContext) error {
 	handler.op.sendAsyncUrlUpdate(ctx)
-	ctx.ExecCtx.LogDebug("After PreCommit.")
+
 	return nil
 }
 func (handler *DBHandler) Initialization(ctx *actor.ActionContext) error {
@@ -216,13 +257,25 @@ func (handler *DBHandler) startCommit(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("Before PreCommit.")
 	handler.op.PreCommit(ctx, data, msg.Height)
 
+	handler.AddAsyncTask(ctx)
+
 	return nil
 }
 
 func (handler *DBHandler) generationComplete(ctx *actor.ActionContext) error {
-	handler.op.PreCommitCompleted(ctx)
 	handler.state = dbStateDone
 	ctx.ExecCtx.LogDebug("change into dbStateDone")
+
+	handler.AddAsyncTask(ctx)
+
+	return nil
+}
+
+func (handler *DBHandler) AddAsyncTask(ctx *actor.ActionContext) error {
+	handler.taskCh <- &CommitTask{
+		Msg: ctx.Messages[0],
+		Ctx: ctx.ExecCtx.Fork(),
+	}
 	return nil
 }
 
@@ -233,6 +286,8 @@ func (handler *DBHandler) finalize(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("After Commit.")
 	handler.state = dbStateInit
 	ctx.ExecCtx.LogDebug("change into dbStateInit")
+
+	handler.AddAsyncTask(ctx)
 	return nil
 }
 
@@ -247,7 +302,6 @@ func (handler *DBHandler) GetFSMRules() map[int]actor.FSMRule {
 			handler.generationCompletedMsg,
 		}},
 		dbStateDone: {Accept: []string{
-			// actor.MsgEuResults,
 			handler.finalizeMsg,
 		}},
 	}

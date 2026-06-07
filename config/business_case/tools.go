@@ -39,11 +39,11 @@ import (
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 
 	eushared "github.com/arcology-network/eu/shared"
-	statestore "github.com/arcology-network/state-engine"
+	statecache "github.com/arcology-network/state-engine/state/cache"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 )
 
-func MakeStateStore(basePath string) (*evmcore.Genesis, *statestore.StateStore, []*statecell.StateCell) {
+func MakeStateStore(basePath string) (*evmcore.Genesis, *statecache.ExecutionStateStore, []*statecell.StateCell) {
 	gen := storage.ReadGenesis("./genesis.json")
 	store, _, uinvalues := storage.InitGenesisAccounts(basePath+"/db", gen, 0)
 

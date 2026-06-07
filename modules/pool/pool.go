@@ -28,7 +28,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 
 	apihandler "github.com/arcology-network/eu/apihandler"
-	statestore "github.com/arcology-network/state-engine"
 
 	ethimpl "github.com/arcology-network/eu/ethadaptor"
 	statecache "github.com/arcology-network/state-engine/state/cache"
@@ -61,17 +60,17 @@ type Pool struct {
 	ClearList        []string
 }
 
-func NewPool(db *statestore.StateStore, obsoleteTime uint64, closeCheck bool) *Pool {
+func NewPool(db *statecache.ExecutionStateStore, obsoleteTime uint64, closeCheck bool) *Pool {
 	ccRuntime := apihandler.NewConcurrentRuntime(
 		0, // concurrent runtime ID
 		mempool.NewMempool(
 			16,
 			1,
-			func() *statecache.ExecutionStateCache {
+			func() *statecache.ExecutionStateStore {
 				// When creating a new writecache, use store as the backend.
-				return statecache.NewExecutionStateCache(db, 32, 1)
+				return statecache.NewExecutionStateStore(db, 32, 1)
 			},
-			func(cache *statecache.ExecutionStateCache) {
+			func(cache *statecache.ExecutionStateStore) {
 				cache.Clear()
 			}),
 	)
@@ -81,9 +80,6 @@ func NewPool(db *statestore.StateStore, obsoleteTime uint64, closeCheck bool) *P
 	return &Pool{
 		ObsoleteTime: obsoleteTime,
 		CloseCheck:   closeCheck,
-		// TxBySender:   ccmap.NewConcurrentMap(),
-		// TxByHash:     ccmap.NewConcurrentMap(),
-		// TxUnchecked:  ccmap.NewConcurrentMap(),
 		TxBySender: ccmap.NewConcurrentMap[string, *TxSender](
 			16,
 			func(v *TxSender) bool { return v == nil },
@@ -125,7 +121,7 @@ func (p *Pool) Add(txs []*cmntyp.StandardTransaction, src cmntyp.TxSource, heigh
 		}
 	}
 
-	p.TxUnchecked.BatchSet(uncheckedHashes, uncheckedValues)
+	p.TxUnchecked.SetBatch(uncheckedHashes, uncheckedValues)
 
 	senders := make([]string, 0, len(bySender))
 	updates := make([][]*cmntyp.StandardTransaction, 0, len(bySender))
@@ -168,7 +164,7 @@ func (p *Pool) Add(txs []*cmntyp.StandardTransaction, src cmntyp.TxSource, heigh
 			values = append(values, updated[i])
 		}
 	}
-	p.TxByHash.BatchSet(hashes, values)
+	p.TxByHash.SetBatch(hashes, values)
 
 	removed := make([]string, 0, len(txs))
 	for _, r := range replaced {
@@ -177,7 +173,7 @@ func (p *Pool) Add(txs []*cmntyp.StandardTransaction, src cmntyp.TxSource, heigh
 		}
 	}
 	values = make([]*cmntyp.StandardTransaction, len(removed))
-	p.TxByHash.BatchSet(removed, values)
+	p.TxByHash.SetBatch(removed, values)
 
 	return p.checkWaitingList(txs)
 }
@@ -200,7 +196,7 @@ func (p *Pool) Reap(limit int) []*cmntyp.StandardTransaction {
 	// unchecked
 	keys := p.TxUnchecked.Keys()
 	if len(keys) > 0 {
-		values, found := p.TxUnchecked.BatchGet(
+		values, found := p.TxUnchecked.GetBatch(
 			keys[:cmncmn.Min(limit-len(results), len(keys))],
 		)
 		for i, ok := range found {
@@ -221,7 +217,7 @@ func (p *Pool) QueryByHash(hash evmCommon.Hash) *cmntyp.StandardTransaction {
 	// 	return nil
 	// }
 
-	values, found := p.TxByHash.BatchGet(keys)
+	values, found := p.TxByHash.GetBatch(keys)
 	if found[0] {
 		return values[0]
 	}
@@ -237,7 +233,7 @@ func (p *Pool) CherryPick(hashes []evmCommon.Hash) []*cmntyp.StandardTransaction
 	}
 
 	p.ClearList = keys
-	txs, _ := p.TxByHash.BatchGet(keys)
+	txs, _ := p.TxByHash.GetBatch(keys)
 	for i, tx := range txs {
 		if tx != nil {
 			p.CherryPickResult[i] = tx
@@ -288,13 +284,13 @@ func (p *Pool) Clean(height uint64) {
 
 	if len(hashes) > 0 {
 		values := make([]*cmntyp.StandardTransaction, len(hashes))
-		p.TxByHash.BatchSet(hashes, values)
+		p.TxByHash.SetBatch(hashes, values)
 	}
 
 	if len(p.ClearList) > 0 {
 		values := make([]*cmntyp.StandardTransaction, len(p.ClearList))
-		p.TxByHash.BatchSet(p.ClearList, values)
-		p.TxUnchecked.BatchSet(p.ClearList, values)
+		p.TxByHash.SetBatch(p.ClearList, values)
+		p.TxUnchecked.SetBatch(p.ClearList, values)
 	}
 }
 

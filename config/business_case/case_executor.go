@@ -124,16 +124,16 @@ func (et *ExecutorTest) rpcTestStart(ctx *actor.ActionContext) error {
 	//--------------------------------------
 	mblock, txhashes := MakeMonacoBlock()
 	stdMsgs, _ := Transfer(mblock.Txs, txhashes)
-	js := workload.JobSequence{}
+	js := &workload.JobSequence{}
 	for i := range stdMsgs {
-		js.AddJob(stdMsgs[i])
+		js = js.AddMsgFromJob(stdMsgs[i])
 	}
 	toExecute := &mtypes.ExecutorRequest{
 		Timestamp:     et.timestamp,
 		GenerationIdx: 0,
 		ExecId:        0,
 		Height:        10,
-		JobSequences:  []*workload.JobSequence{&js},
+		JobSequences:  []*workload.JobSequence{js},
 	}
 	et.txhashes = txhashes
 	// ctx.ExecCtx.Send(scommon.MsgTxsToExecute, toExecute, 10)

@@ -248,7 +248,6 @@ func (dm *DecisionMaker) receivedExtTxBlocks(ctx *actor.ActionContext) error {
 	return nil
 }
 func (dm *DecisionMaker) receivedAppHash(ctx *actor.ActionContext) error {
-	ctx.ExecCtx.LogDebug("**************start send MsgExtAppHash")
 	ctx.ExecCtx.Send(scommon.MsgExtAppHash, ctx.Messages[0].Data)
 	return nil
 }

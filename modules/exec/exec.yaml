@@ -16,9 +16,8 @@ actors:
       generate_url_update: "__env__"
       init_db: "__env__"
       dbpath: "__env__"
-      cached: "__env__"
       object_cached: true
-      transactional: "__env__"
+      generate_acct_root: "__env__"
     stateless_euresult_aggr_selector:
       output: executed
 

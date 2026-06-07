@@ -25,7 +25,8 @@ import (
 
 	"github.com/arcology-network/common-lib/types"
 	mtypes "github.com/arcology-network/main/types"
-	statestore "github.com/arcology-network/state-engine"
+
+	statecache "github.com/arcology-network/state-engine/state/cache"
 	"github.com/arcology-network/streamer/actor"
 	scommon "github.com/arcology-network/streamer/common"
 	"github.com/arcology-network/streamer/logger"
@@ -138,7 +139,7 @@ func (a *AggrSelector) ReceivedOpCommand(ctx *actor.ActionContext) error {
 }
 func (a *AggrSelector) ReceivedNonceReady(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
-	a.nonceReady(ctx, msg.Data.(*statestore.StateStore), msg.Height)
+	a.nonceReady(ctx, msg.Data.(*statecache.ExecutionStateStore), msg.Height)
 	return nil
 }
 func (a *AggrSelector) ReceivedInitialization(ctx *actor.ActionContext) error {
@@ -151,7 +152,7 @@ func (a *AggrSelector) ReceivedInitialization(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("change into poolStateReap,ready")
 	return nil
 }
-func (a *AggrSelector) nonceReady(ctx *actor.ActionContext, store *statestore.StateStore, heght uint64) {
+func (a *AggrSelector) nonceReady(ctx *actor.ActionContext, store *statecache.ExecutionStateStore, heght uint64) {
 	if a.pool == nil {
 		a.pool = NewPool(store, a.obsoleteTime, a.closeCheck)
 	} else {

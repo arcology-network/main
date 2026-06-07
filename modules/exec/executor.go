@@ -39,8 +39,6 @@ import (
 	mtypes "github.com/arcology-network/main/types"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 
-	statestore "github.com/arcology-network/state-engine"
-
 	scommon "github.com/arcology-network/streamer/common"
 
 	"github.com/arcology-network/eu/eu"
@@ -78,7 +76,7 @@ type Executor struct {
 
 	chainId *big.Int
 
-	store     *statestore.StateStore
+	store     *statecache.ExecutionStateStore
 	stateInit bool
 
 	euCount int
@@ -180,7 +178,7 @@ func (exec *Executor) waitBlockStart(ctx *actor.ActionContext) error {
 }
 func (exec *Executor) waitGenerationReady(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
-	exec.store = msg.Data.(*statestore.StateStore)
+	exec.store = msg.Data.(*statecache.ExecutionStateStore)
 	exec.ChangeState(ctx, execStateReady, "execStateReady")
 	return nil
 }
@@ -290,17 +288,16 @@ func (exec *Executor) startExec() {
 					NumThreads: uint32(exec.euCount),
 					Config:     task.Config,
 				}
-
 				ccRuntime := apihandler.NewConcurrentRuntime(
 					0, // concurrent runtime ID
 					mempool.NewMempool(
 						16,
 						1,
-						func() *statecache.ExecutionStateCache {
+						func() *statecache.ExecutionStateStore {
 							// When creating a new writecache, use store as the backend.
-							return statecache.NewExecutionStateCache(exec.store, 32, 1)
+							return statecache.NewExecutionStateStore(exec.store, 32, 1)
 						},
-						func(cache *statecache.ExecutionStateCache) {
+						func(cache *statecache.ExecutionStateStore) {
 							cache.Clear()
 						}),
 				)

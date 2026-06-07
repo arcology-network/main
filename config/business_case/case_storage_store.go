@@ -129,7 +129,7 @@ func (ss *StorageStore) startTestUrlStore(broker *broker.StatefulStreamer) []str
 	ss.msgs = []string{}
 	_, store, _ := MakeStateStore(ss.basePath)
 
-	_, err := ss.sender.SendSync("urlstore", "Init", store.ReadOnlyStore(), 1, ss.from)
+	_, err := ss.sender.SendSync("urlstore", "Init", store, 1, ss.from)
 	if err != nil {
 		fmt.Printf("******urlstore.Init err:%v\n", err)
 		return ss.msgs

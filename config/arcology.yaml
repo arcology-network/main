@@ -60,9 +60,8 @@ actors:
       generate_url_update: "__env__"
       init_db: "__env__"
       dbpath: "__env__"
-      cached: "__env__"
       object_cached: true
-      transactional: "__env__"
+      generate_acct_root: "__env__"
     stateless_euresult_aggr_selector:
       output: executed
   
@@ -90,9 +89,8 @@ actors:
       generate_url_update: false
       init_db: false
       dbpath: ../arcology/dbnonce
-      cached: false
       object_cached: false
-      transactional: false
+      generate_acct_root: false
     stateless_euresult_aggr_selector4pool:
       output: commitNonceUrl
   
@@ -169,11 +167,11 @@ actors:
     "root": "./transactional/"
     "optimization": true
 
-  nonce_url_async:
-    generate_acct_root: false
+  # nonce_url_async:
+  #   generate_acct_root: false
 
-  general_url_async:
-    generate_acct_root: "__env__"
+  # general_url_async:
+  #   generate_acct_root: "__env__"
 
 
   #tpp

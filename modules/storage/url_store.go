@@ -21,9 +21,11 @@ import (
 	"math/big"
 
 	mtypes "github.com/arcology-network/main/types"
-	statestore "github.com/arcology-network/state-engine"
+	statecache "github.com/arcology-network/state-engine/state/cache"
 	proxy "github.com/arcology-network/state-engine/storage/proxy"
 	"github.com/arcology-network/streamer/actor"
+	scommon "github.com/arcology-network/streamer/common"
+	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	ethmpt "github.com/ethereum/go-ethereum/trie"
 )
@@ -35,7 +37,7 @@ const (
 )
 
 type UrlStore struct {
-	stateStore *statestore.StateStore
+	stateStore *statecache.ExecutionStateStore
 }
 
 func NewUrlStore() actor.Business {
@@ -45,7 +47,9 @@ func NewUrlStore() actor.Business {
 }
 
 func (us *UrlStore) Inputs() ([]string, bool) {
-	return []string{}, false
+	return []string{
+		scommon.MsgApcHandle,
+	}, false
 }
 
 func (us *UrlStore) Outputs() map[string]int {
@@ -62,14 +66,20 @@ func (us *UrlStore) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register("GetEthStorage", us.GetEthStorage)
 	reg.Register("ApplyData", us.ApplyData)
 	reg.Register("RewriteMeta", us.RewriteMeta)
+	reg.Register(scommon.MsgApcHandle, us.updateApc)
 }
 
 func (us *UrlStore) RpcConfig() (string, int) {
 	return "urlstore", 20
 }
 
+func (us *UrlStore) updateApc(ctx *actor.ActionContext) error {
+	us.stateStore = ctx.Messages[0].Data.(*statecache.ExecutionStateStore)
+	return nil
+}
+
 func (us *UrlStore) Init(ctx *actor.ActionContext) error {
-	store := ctx.RPC.Request.(*statestore.StateStore)
+	store := ctx.RPC.Request.(*statecache.ExecutionStateStore)
 	us.stateStore = store
 	ctx.ExecCtx.SendRpcResponse("", nil)
 	return nil
@@ -87,7 +97,7 @@ func (us *UrlStore) Get(ctx *actor.ActionContext) error {
 
 func (us *UrlStore) GetNonce(ctx *actor.ActionContext) error {
 	queryParam := ctx.RPC.Request.(*mtypes.QueryBlockParam)
-	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), us.stateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend())
+	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), us.stateStore.CommittedStore().(*proxy.StorageProxy).EthStore().TrieDB())
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 		return nil
@@ -97,7 +107,11 @@ func (us *UrlStore) GetNonce(ctx *actor.ActionContext) error {
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {
-		ctx.ExecCtx.SendRpcResponse("", account.Nonce)
+		nonce := uint64(0)
+		if account != nil {
+			nonce = account.Nonce
+		}
+		ctx.ExecCtx.SendRpcResponse("", nonce)
 	}
 
 	return nil
@@ -106,7 +120,7 @@ func (us *UrlStore) GetNonce(ctx *actor.ActionContext) error {
 func (us *UrlStore) GetBalance(ctx *actor.ActionContext) error {
 	queryParam := ctx.RPC.Request.(*mtypes.QueryBlockParam)
 
-	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), us.stateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend())
+	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), us.stateStore.CommittedStore().(*proxy.StorageProxy).EthStore().TrieDB())
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 		return nil
@@ -128,7 +142,7 @@ func (us *UrlStore) GetBalance(ctx *actor.ActionContext) error {
 
 func (us *UrlStore) GetCode(ctx *actor.ActionContext) error {
 	queryParam := ctx.RPC.Request.(*mtypes.QueryBlockParam)
-	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), us.stateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend())
+	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), us.stateStore.CommittedStore().(*proxy.StorageProxy).EthStore().TrieDB())
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 		return nil
@@ -151,7 +165,7 @@ func (us *UrlStore) GetCode(ctx *actor.ActionContext) error {
 
 func (us *UrlStore) GetEthStorage(ctx *actor.ActionContext) error {
 	queryParam := ctx.RPC.Request.(*mtypes.QueryBlockParam)
-	backend := us.stateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Backend()
+	backend := us.stateStore.CommittedStore().(*proxy.StorageProxy).EthStore().TrieDB()
 	snapshot, err := proxy.NewEthStateSnapshot([32]byte(queryParam.Root), backend)
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
@@ -163,7 +177,8 @@ func (us *UrlStore) GetEthStorage(ctx *actor.ActionContext) error {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {
 		if account == nil {
-			ctx.ExecCtx.SendRpcResponse("", []byte{})
+			nilhash := evmCommon.Hash{}
+			ctx.ExecCtx.SendRpcResponse("", nilhash.Bytes())
 		} else {
 			ctx.ExecCtx.SendRpcResponse("", account.GetState([32]byte(crypto.Keccak256(queryParam.Key))))
 		}

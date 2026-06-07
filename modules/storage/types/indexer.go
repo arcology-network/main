@@ -82,7 +82,7 @@ func (indexer *Indexer) QueryBlockHashHeight(hash string) *big.Int {
 	if err != nil || data == nil {
 		return big.NewInt(-1)
 	}
-	hashHeight := uint64(codec.Uint64(0).Decode(data).(codec.Uint64))
+	hashHeight := uint64(codec.Uint64(0).Decode(data.([]byte)).(codec.Uint64))
 	indexer.AddBlockHashHeight(hashHeight, hash, false)
 	return new(big.Int).SetUint64(hashHeight)
 }
@@ -100,8 +100,12 @@ func (indexer *Indexer) QueryPosition(hash string) *Position {
 		return position.(*Position)
 	}
 
-	data, err := indexer.Db.Get(hash)
-	if err != nil || len(data) == 0 {
+	obj_data, err := indexer.Db.Get(hash)
+	if err != nil {
+		return nil
+	}
+	data := obj_data.([]byte)
+	if len(data) == 0 {
 		return nil
 	}
 	p := &Position{}
@@ -132,7 +136,7 @@ func (indexer *Indexer) Add(height uint64, keys []string, isSave bool) {
 	indexer.Caches.Add(height, keys, positions)
 
 	if isSave {
-		indexer.Db.BatchSet(keys, data)
+		indexer.Db.SetBatch(keys, data)
 		indexer.Db.Set(indexer.GetHashesInBlockKey(height), hashs)
 	}
 }
@@ -145,11 +149,11 @@ func (indexer *Indexer) GetHashHeightKey(hash string) string {
 }
 
 func (indexer *Indexer) GetBlockHashesByHeightFromDb(height uint64) []string {
-	data, err := indexer.Db.Get(indexer.GetHashesInBlockKey(height))
+	obj_data, err := indexer.Db.Get(indexer.GetHashesInBlockKey(height))
 	if err != nil {
 		return []string{}
 	}
-
+	data := obj_data.([]byte)
 	counter := len(data) / evmCommon.HashLength
 	hashes := make([]string, counter)
 	for i := range hashes {

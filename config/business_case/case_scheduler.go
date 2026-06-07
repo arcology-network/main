@@ -8,7 +8,7 @@ import (
 	mtypes "github.com/arcology-network/main/types"
 	"github.com/arcology-network/scheduler/conflictor"
 
-	statestore "github.com/arcology-network/state-engine"
+	statecache "github.com/arcology-network/state-engine/state/cache"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/broker"
 	scommon "github.com/arcology-network/streamer/common"
@@ -120,7 +120,7 @@ func (me *MockExecutor) startExecute(ctx *actor.ActionContext) error {
 type SchedulerTest struct {
 	basePath string
 	msgs     []string
-	store    *statestore.StateStore
+	store    *statecache.ExecutionStateStore
 	unis     []*statecell.StateCell
 
 	sender actor.OutboundSender

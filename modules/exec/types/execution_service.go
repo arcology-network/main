@@ -18,16 +18,16 @@
 package types
 
 import (
-	crdtcommon "github.com/arcology-network/common-lib/crdt/common"
 	"github.com/arcology-network/eu/eu"
 	eushared "github.com/arcology-network/eu/shared"
 	workload "github.com/arcology-network/scheduler/workload"
+	statecache "github.com/arcology-network/state-engine/state/cache"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 )
 
 type ExecMessagers struct {
-	Snapshot *crdtcommon.ReadOnlyStore
+	Snapshot *statecache.ExecutionStateStore
 	Config   *eu.Config
 	Sequence *workload.JobSequence
 }

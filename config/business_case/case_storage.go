@@ -109,7 +109,7 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 	st.msgs = []string{}
 	genesis, store, _ := MakeStateStore(st.basePath)
 
-	accthash = store.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Root()
+	accthash = store.CommittedStore().(*proxy.StorageProxy).EthStore().Root()
 
 	mb, txhashes := MakeMonacoBlock()
 	block := BlockWithHeader(mb, genesis)

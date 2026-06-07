@@ -1,18 +1,18 @@
 package types
 
 import (
-	statestore "github.com/arcology-network/state-engine"
+	// statestore "github.com/arcology-network/state-engine"
+	stateengine "github.com/arcology-network/state-engine/state/cache"
 	"github.com/arcology-network/streamer/actor"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
 )
 
 type Initialization struct {
-	Store             *statestore.StateStore
+	Store             *stateengine.ExecutionStateStore
 	BlockStart        *actor.BlockStart
 	ChainConfig       *params.ChainConfig
 	ParentInformation *ParentInfo
-	// ScheduleState     []SchdState
 }
 
 type SchdState struct {

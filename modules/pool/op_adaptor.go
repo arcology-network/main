@@ -167,7 +167,7 @@ func (oa *OpAdaptor) Calculate() (bool, *mtypes.BlockResult) {
 	for i, tx := range *oa.Opcaches {
 		txs[i] = tx.NativeTransaction
 	}
-	// block := evmTypes.NewBlockWithWithdrawals(&header, txs, []*evmTypes.Header{}, *r.Receipts, r.Withdrawals, trie.NewStackTrie(nil))
+
 	block := evmTypes.NewBlockWithHeader(&header)
 	block.AttachBody(txs, []*evmTypes.Header{}, oa.Withdrawals)
 	return true, &mtypes.BlockResult{

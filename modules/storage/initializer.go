@@ -44,14 +44,13 @@ import (
 	"github.com/arcology-network/common-lib/exp/mempool"
 	"github.com/arcology-network/common-lib/exp/slice"
 	mtypes "github.com/arcology-network/main/types"
-	statestore "github.com/arcology-network/state-engine"
+
 	"github.com/arcology-network/state-engine/storage/proxy"
 	scommon "github.com/arcology-network/streamer/common"
 
 	ethimpl "github.com/arcology-network/eu/ethadaptor"
-
-	stateengine "github.com/arcology-network/state-engine"
 	statecache "github.com/arcology-network/state-engine/state/cache"
+	statecommitter "github.com/arcology-network/state-engine/state/committer"
 )
 
 type Initializer struct {
@@ -76,7 +75,6 @@ func (i *Initializer) Outputs() map[string]int {
 	return map[string]int{
 		scommon.MsgLocalParentInfo: 1,
 		scommon.MsgInitialization:  1,
-		// scommon.MsgInitScheduletate: 1,
 	}
 }
 
@@ -107,7 +105,7 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 	}
 
 	parentinfo := &mtypes.ParentInfo{}
-	var store *statestore.StateStore
+	var store *statecache.ExecutionStateStore
 	var rootHash evmCommon.Hash
 	if height == 0 {
 		// Make place holder for recover functions.
@@ -117,9 +115,6 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 		transactional.RegisterRecoverFunc("parentinfo", func(interface{}, []byte) error {
 			return nil
 		})
-		// transactional.RegisterRecoverFunc("schdstate", func(interface{}, []byte) error {
-		// 	return nil
-		// })
 
 		store, rootHash, _ = InitGenesisAccounts(i.storage_db_path, genesis, uint64(height))
 
@@ -152,10 +147,9 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 			BlobGasUsed:   blobGasUsed,
 		}
 	} else {
-		db := proxy.NewLevelDBStoreProxy(i.storage_db_path, i.storage_db_path, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100}) //.EnableCache()
-		// db.Inject(RootPrefix, commutative.NewPath())
-		store = statestore.NewStateStore(db)
+		db := proxy.NewPebbleDBProxy(i.storage_db_path, i.storage_db_path, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100}) //.EnableCache()
 
+		store = statecache.NewDefaultExecutionStateStore(db)
 		// Register recover function.
 		transactional.RegisterRecoverFunc("urlupdate", func(_ interface{}, bs []byte) error {
 			return nil
@@ -178,22 +172,9 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 			logger.Log.Debug(context.Background(), i.from, "[storage.Initializer] Recover parentinfo", logger.F("pi", pi))
 			return nil
 		})
-		// transactional.RegisterRecoverFunc("schdstate", func(_ interface{}, bs []byte) error {
-		// 	var state mtypes.SchdState
-		// 	if err := gob.NewDecoder(bytes.NewBuffer(bs)).Decode(&state); err != nil {
-		// 		logger.Log.Error(context.Background(), i.from, "Error decoding SchdState", logger.F("err", err))
-		// 		return err
-		// 	}
 
-		// 	// var na int
-		// 	i.sender.SendSync("schdstore", "DirectWrite", &state, uint64(height), i.from)
-		// 	logger.Log.Debug(context.Background(), i.from, "[storage.Initializer] Recover schdstate.")
-		// 	return nil
-		// })
 		// Recover.
 		txID := fmt.Sprintf("%d", height)
-		// var na int
-		// fmt.Printf("[storage.Initializer] Recover transactional store to height: %s\n", txID)
 		logger.Log.Debug(context.Background(), i.from, "[storage.Initializer] Recover transactional store", logger.F("height", txID))
 		_, err := i.sender.SendSync("transactionalstore", "Recover", txID, uint64(height), i.from)
 		if err != nil {
@@ -210,12 +191,6 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 	i.sender.SendSync("urlstore", "Init", store, uint64(height), i.from)
 	i.sender.SendSync("storage", "InitHeight", uint64(height), uint64(height), i.from)
 
-	// ret, err = i.sender.SendSync("schdstore", "Load", "", uint64(height), i.from)
-	// if err != nil {
-	// 	panic(fmt.Sprintf("load conflication err : %v\n", err))
-	// }
-	// states := ret.([]mtypes.SchdState)
-
 	return []*scommon.Message{
 		{
 			Name:   scommon.MsgLocalParentInfo,
@@ -223,12 +198,6 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 			Data:   parentinfo,
 			From:   i.from,
 		},
-		// {
-		// 	Name:   scommon.MsgInitScheduletate,
-		// 	Height: uint64(height),
-		// 	Data:   states,
-		// 	From:   i.from,
-		// },
 		{
 			Name:   scommon.MsgInitialization,
 			Height: uint64(height),
@@ -245,36 +214,37 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 func (i *Initializer) RegisterActions(reg actor.ActionRegistrar) {
 
 }
-func InitGenesisAccounts(dbpath string, genesis *evmcore.Genesis, height uint64) (*statestore.StateStore, evmCommon.Hash, []*statecell.StateCell) {
-	db := proxy.NewLevelDBStoreProxy(dbpath, dbpath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100})
-	stateStore := statestore.NewStateStore(db)
+func InitGenesisAccounts(dbpath string, genesis *evmcore.Genesis, height uint64) (*statecache.ExecutionStateStore, evmCommon.Hash, []*statecell.StateCell) {
+	db := proxy.NewPebbleDBProxy(dbpath, dbpath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100})
+	stateStore := statecache.NewDefaultExecutionStateStore(db)
 
-	transitions := createTransitions(db, genesis.Alloc)
+	committer := statecommitter.NewStateCommitter(stateStore.CommittedStore(), stateStore.GetWriters())
+	transitions := createTransitions(genesis.Alloc)
 
-	stateStore.Import(slice.Clone(transitions))
-	stateStore.DebugPrecommit([]uint64{0})
-	stateStore.DebugCommit(height)
+	committer.Import(slice.Clone(transitions))
+	committer.DebugPrecommit([]uint64{0})
+	committer.DebugCommit(height)
 
 	return stateStore, evmCommon.Hash{}, transitions
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-func createTransitions(db *proxy.StorageProxy, genesisAlloc evmcore.GenesisAlloc) []*statecell.StateCell {
+func createTransitions(genesisAlloc evmcore.GenesisAlloc) []*statecell.StateCell {
 	batch := 10
 	addresses := make([]evmCommon.Address, 0, batch)
 	index := 0
 	transitions := make([]*statecell.StateCell, 0, len(genesisAlloc)*10)
 	for addr, _ := range genesisAlloc {
 		if index%batch == 0 && index > 0 {
-			transitions = append(transitions, getTransition(db, addresses, genesisAlloc)...)
+			transitions = append(transitions, getTransition(addresses, genesisAlloc)...)
 			addresses = make([]evmCommon.Address, 0, batch)
 		}
 		addresses = append(addresses, addr)
 		index++
 	}
 	if len(addresses) > 0 {
-		transitions = append(transitions, getTransition(db, addresses, genesisAlloc)...)
+		transitions = append(transitions, getTransition(addresses, genesisAlloc)...)
 	}
 	return transitions
 }
@@ -285,19 +255,19 @@ type dummyEU struct{}
 
 func (dummyEU) ID() uint64 { return 0 }
 
-func getTransition(db *proxy.StorageProxy, addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []*statecell.StateCell {
-	store := stateengine.NewStateStore(db)
+func getTransition(addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAlloc) []*statecell.StateCell {
+	store := statecache.NewDefaultExecutionStateStore(proxy.NewMemDBStoreProxy())
 
 	ccRuntime := apihandler.NewConcurrentRuntime(
 		0, // concurrent runtime ID
 		mempool.NewMempool(
 			16,
 			1,
-			func() *statecache.ExecutionStateCache {
+			func() *statecache.ExecutionStateStore {
 				// When creating a new writecache, use store as the backend.
-				return statecache.NewExecutionStateCache(store, 32, 1)
+				return statecache.NewExecutionStateStore(store, 32, 1)
 			},
-			func(cache *statecache.ExecutionStateCache) {
+			func(cache *statecache.ExecutionStateStore) {
 				cache.Clear()
 			}),
 	)
@@ -306,7 +276,7 @@ func getTransition(db *proxy.StorageProxy, addresses []evmCommon.Address, genesi
 	ccRuntime.SetEU(dummyEU)
 
 	stateDB := ethimpl.NewImplStateDB(ccRuntime)
-	// stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
+
 	for _, addr := range addresses {
 		acct := genesisAlloc[addr]
 		stateDB.CreateAccount(addr)
@@ -333,7 +303,6 @@ func getTransition(db *proxy.StorageProxy, addresses []evmCommon.Address, genesi
 // the initialized Genesis structure
 func ReadGenesis(genesisPath string) *evmcore.Genesis {
 	// Make sure we have a valid genesis JSON
-	//genesisPath := ctx.Args().First()
 	if len(genesisPath) == 0 {
 		utils.Fatalf("Must supply path to genesis JSON file")
 	}

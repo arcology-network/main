@@ -15,5 +15,6 @@ actors:
       init_db: false
       dbpath: ./urlAggrNonce/dbnonce
       object_cached: false
+      generate_acct_root: false
     stateless_euresult_aggr_selector4pool:
       output: commitNonceUrl

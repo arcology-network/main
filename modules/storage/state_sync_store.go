@@ -345,7 +345,7 @@ func (store *StateSyncStore) InitSyncPoint(ctx *actor.ActionContext) error {
 		} else {
 			var urlUpdate storage.UrlUpdate
 			gob.NewDecoder(bytes.NewBuffer(response.Data)).Decode(&urlUpdate)
-			store.spDB.BatchSet(urlUpdate.Keys, urlUpdate.EncodedValues)
+			store.spDB.SetBatch(urlUpdate.Keys, urlUpdate.EncodedValues)
 			count += len(urlUpdate.Keys)
 		}
 	}
@@ -380,8 +380,10 @@ func (store *StateSyncStore) deleteSlice(slice *mtypes.SyncDataRequest) error {
 func (store *StateSyncStore) readSliceFromSyncPointDB(request *mtypes.SyncDataRequest) (*mtypes.SyncDataResponse, error) {
 	// TODO: check request.To & request.From
 	keys, values, err := store.spDB.Query(fmt.Sprintf("%s%02x", RootPrefix, []byte{byte(request.Slice)}), nil)
-	if err != nil {
-		return nil, err
+	for i := range err {
+		if err[i] != nil {
+			return nil, err[i]
+		}
 	}
 
 	// TODO: Calculate slice hash.
@@ -489,7 +491,7 @@ func (store *StateSyncStore) makeSyncPoint(ctx *actor.ActionContext, from, to ui
 
 		var urlUpdate storage.UrlUpdate
 		gob.NewDecoder(bytes.NewBuffer(response.Data)).Decode(&urlUpdate)
-		store.spDB.BatchSet(urlUpdate.Keys, urlUpdate.EncodedValues)
+		store.spDB.SetBatch(urlUpdate.Keys, urlUpdate.EncodedValues)
 
 		err = store.deleteSlice(&mtypes.SyncDataRequest{
 			From:  i,

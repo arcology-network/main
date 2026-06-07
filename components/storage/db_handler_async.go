@@ -20,7 +20,8 @@ package storage
 import (
 	"github.com/arcology-network/streamer/actor"
 
-	statestore "github.com/arcology-network/state-engine"
+	statecache "github.com/arcology-network/state-engine/state/cache"
+	statecommitter "github.com/arcology-network/state-engine/state/committer"
 	"github.com/arcology-network/state-engine/storage/proxy"
 	scommon "github.com/arcology-network/streamer/common"
 )
@@ -36,7 +37,8 @@ type DBTask struct {
 }
 
 type DBHandlerAsync struct {
-	StateStore             *statestore.StateStore
+	StateStore             *statecache.ExecutionStateStore
+	committer              *statecommitter.StateCommitter
 	state                  int
 	dbhandle               string
 	precommitMsg           string
@@ -88,19 +90,20 @@ func (handler *DBHandlerAsync) Config(params map[string]interface{}) {
 
 			switch task.Msg.Name {
 			case handler.precommitMsg:
-				task.ExecCtx.LogDebug("Before Precommit Async.")
-				handler.StateStore.AsyncPrecommit()
-				task.ExecCtx.LogDebug("After Precommit Async.")
+				task.ExecCtx.LogDebug("Before PreCommit Async.")
+				handler.committer.AsyncPrecommit()
+				task.ExecCtx.LogDebug("After PreCommit Async.")
 			case handler.generationCompletedMsg:
 				if handler.generateAcctRoot {
-					acchash := handler.StateStore.ReadOnlyStore().(*proxy.StorageProxy).EthStore().Root()
+					task.ExecCtx.LogDebug("Before GenerationCompleted Async.")
+					acchash := handler.StateStore.CommittedStore().(*proxy.StorageProxy).EthStore().Root()
 					task.ExecCtx.Send(scommon.MsgAcctHash, acchash, task.Msg.Height)
-					// task.ExecCtx.LogDebug("send accthash", logger.F("accHash", acchash))
+					task.ExecCtx.LogDebug("After GenerationCompleted Async.")
 				}
 				task.ExecCtx.LogDebug("change into dbStateCommit")
 			case handler.commitMsg:
 				task.ExecCtx.LogDebug("Before Commit Async.")
-				handler.StateStore.AsyncCommit(task.Msg.Height)
+				handler.committer.AsyncCommit(task.Msg.Height)
 				task.ExecCtx.LogDebug("After Commit Async.")
 				task.ExecCtx.LogDebug("change into dbStatePrecommit")
 			}
@@ -117,7 +120,9 @@ func (handler *DBHandlerAsync) RegisterActions(reg actor.ActionRegistrar) {
 }
 
 func (handler *DBHandlerAsync) Initialization(ctx *actor.ActionContext) error {
-	handler.StateStore = ctx.Messages[0].Data.(*statestore.StateStore)
+	obj := ctx.Messages[0].Data.(*InitAsyncObj)
+	handler.StateStore = obj.StateStore
+	handler.committer = obj.Committer
 	handler.state = dbStateCommit
 	ctx.ExecCtx.LogDebug("change into dbStatePrecommit,ready")
 	return nil

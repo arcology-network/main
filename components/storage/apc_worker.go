@@ -21,7 +21,15 @@ import (
 	"github.com/arcology-network/common-lib/common"
 	statecell "github.com/arcology-network/common-lib/crdt/statecell"
 	eushared "github.com/arcology-network/eu/shared"
+
+	statecache "github.com/arcology-network/state-engine/state/cache"
+	statecommitter "github.com/arcology-network/state-engine/state/committer"
 )
+
+type InitAsyncObj struct {
+	StateStore *statecache.ExecutionStateStore
+	Committer  *statecommitter.StateCommitter
+}
 
 func GetTransitionIds(euresults []*eushared.EuResult) []uint64 {
 	txIds := make([]uint64, len(euresults))

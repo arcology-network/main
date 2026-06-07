@@ -199,8 +199,8 @@ func (schd *Scheduler) onArbResult(ctx *actor.ActionContext) error {
 	currentGen.onArbitrateResult(ctx.ExecCtx, collisionSummary)
 	collisionSummary.MarkRollbackJobs(currentGen.gen)
 	if !collisionSummary.IsEmpty() {
-		schd.schdEngine.Precommit(collisionSummary)
-		schd.schdEngine.Commit()
+		scheduler.DebugPrecommit(schd.schdEngine, collisionSummary)
+		scheduler.DebugCommit(schd.schdEngine)
 	}
 	list := currentGen.CollectGenerationResult()
 

@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	mtypes "github.com/arcology-network/main/types"
-	statestore "github.com/arcology-network/state-engine"
 	opadapter "github.com/arcology-network/state-engine/op"
+	statecache "github.com/arcology-network/state-engine/state/cache"
 	ethstg "github.com/arcology-network/state-engine/storage/ethstorage"
 	"github.com/arcology-network/state-engine/storage/proxy"
 	"github.com/arcology-network/streamer/actor"
@@ -59,8 +59,8 @@ func (sq *StateQuery) RegisterActions(reg actor.ActionRegistrar) {
 }
 
 func (sq *StateQuery) updateApchandle(ctx *actor.ActionContext) error {
-	ddb := ctx.Messages[0].Data.(*statestore.StateStore)
-	cache := ethstg.NewMerkleProofCache(2, ddb.ReadOnlyStore().(*proxy.StorageProxy).EthStore().EthDB())
+	ddb := ctx.Messages[0].Data.(*statecache.ExecutionStateStore)
+	cache := ethstg.NewMerkleProofCache(2, ddb.CommittedStore().(*proxy.StorageProxy).EthStore().EthDB())
 	sq.ProofCache = cache
 
 	return nil

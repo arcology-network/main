@@ -16,5 +16,6 @@ actors:
       init_db: "__env__"
       dbpath: "__env__"
       object_cached: true
+      generate_acct_root: "__env__"
     stateless_euresult_aggr_selector:
       output: executed

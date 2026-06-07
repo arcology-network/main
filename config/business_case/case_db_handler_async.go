@@ -3,6 +3,8 @@ package businessCase
 import (
 	"time"
 
+	"github.com/arcology-network/main/components/storage"
+	statecommitter "github.com/arcology-network/state-engine/state/committer"
 	"github.com/arcology-network/streamer/actor"
 	"github.com/arcology-network/streamer/broker"
 	scommon "github.com/arcology-network/streamer/common"
@@ -58,8 +60,11 @@ func (handler *DBHandlerAsyncTest) receivedMsgs(ctx *actor.ActionContext) error 
 
 func (handler *DBHandlerAsyncTest) startTest(ss *broker.StatefulStreamer) []string {
 	_, store, _ := MakeStateStore(handler.basePath)
-
-	m := scommon.NewMessageForStream(handler.dbhandle, store)
+	obj := &storage.InitAsyncObj{
+		StateStore: store,
+		Committer:  statecommitter.NewStateCommitter(store.CommittedStore(), store.GetWriters()),
+	}
+	m := scommon.NewMessageForStream(handler.dbhandle, obj)
 	m.Height = 1
 	ss.Send(handler.dbhandle, m)
 	time.Sleep(1 * time.Second)
