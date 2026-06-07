@@ -2,50 +2,59 @@ module github.com/arcology-network/main
 
 go 1.22
 
-toolchain go1.22.5
-
 replace google.golang.org/grpc => google.golang.org/grpc v1.29.0
 
-replace github.com/deliveroo/jsonrpc-go => github.com/arcology-network/jsonrpc-go v0.0.0-20251024134102-a907d9a0d7e2
+replace github.com/deliveroo/jsonrpc-go => github.com/arcology-network/jsonrpc-go v0.0.0-20260221071345-d817e7edee1d
 
-// replace github.com/arcology-network/streamer => ../streamer/
+// replace github.com/deliveroo/jsonrpc-go => ../jsonrpc-go
 
-// replace github.com/arcology-network/scheduler => ../scheduler/
+// replace github.com/arcology-network/streamer => ../streamer
 
-// replace github.com/arcology-network/common-lib => ../common-lib/
+// replace github.com/arcology-network/scheduler => ../scheduler
+
+// replace github.com/arcology-network/common-lib => ../common-lib
 
 // replace github.com/arcology-network/consensus-engine => ../consensus-engine/
 
-replace github.com/ethereum/go-ethereum v1.14.8 => github.com/arcology-network/concurrent-evm v0.0.0-20250714082425-8009ff40403f
+replace github.com/ethereum/go-ethereum v1.14.8 => github.com/arcology-network/concurrent-evm v0.0.0-20260606134708-2b2a978d283f
+
+// replace github.com/ethereum/go-ethereum v1.14.8 => ../concurrent-evm
 
 // replace github.com/arcology-network/eu => ../eu
 
-// replace github.com/arcology-network/storage-committer => ../storage-committer/
+// replace github.com/arcology-network/state-engine => ../state-engine
 
 require (
 	github.com/BurntSushi/toml v1.3.2
 	github.com/go-kit/kit v0.10.0
-	github.com/go-zookeeper/zk v1.0.2
 	github.com/golang-jwt/jwt/v4 v4.5.0
+	github.com/nats-io/nats-server/v2 v2.10.7 // indirect
 	github.com/prometheus/client_golang v1.17.0
 	github.com/rs/cors v1.7.0
 	github.com/spf13/cobra v1.6.1
 	github.com/spf13/viper v1.14.0
 	github.com/tendermint/tm-db v0.6.4
-	go.uber.org/zap v1.21.0
+	go.uber.org/zap v1.21.0 // indirect
 	golang.org/x/crypto v0.22.0
 )
 
+require github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845
+
 require (
-	github.com/arcology-network/common-lib v1.9.1-0.20251112075051-e3046bddd333
-	github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845
-	github.com/arcology-network/eu v0.0.0-20251114133829-738e3fdeabb8
-	github.com/arcology-network/scheduler v0.0.0-20251112083325-a533092eabf1
-	github.com/arcology-network/storage-committer v1.9.1-0.20251112080202-1f75b95ce882
-	github.com/arcology-network/streamer v0.0.0-20251114134926-8b51b13e064f
+	github.com/arcology-network/common-lib v1.9.1-0.20260606140601-ac5107cbdcb0
+	github.com/arcology-network/eu v0.0.0-20260606142436-e909b95c6687
+	github.com/arcology-network/scheduler v0.0.0-20260606142028-1503ab1dfaec
+	github.com/arcology-network/state-engine v1.9.1-0.20260606141159-ebd548b7881d
+	github.com/arcology-network/streamer v0.0.0-20260607023308-74337fe1f534
+	github.com/ethereum/go-ethereum v1.14.8
 )
 
-require github.com/ethereum/go-ethereum v1.14.8
+require (
+	github.com/hashicorp/hcl v1.0.0 // indirect
+	github.com/magiconair/properties v1.8.6 // indirect
+	github.com/pelletier/go-toml v1.9.5 // indirect
+	github.com/spf13/jwalterweatherman v1.1.0 // indirect
+)
 
 require (
 	github.com/AndreasBriese/bbloom v0.0.0-20190825152654-46b345b51c96 // indirect
@@ -95,7 +104,7 @@ require (
 	github.com/facebookgo/clock v0.0.0-20150410010913-600d898af40a // indirect
 	github.com/fatih/color v1.13.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
-	github.com/fsnotify/fsnotify v1.6.0 // indirect
+	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/gballet/go-libpcsclite v0.0.0-20190607065134-2772fd86a8ff // indirect
 	github.com/getsentry/sentry-go v0.27.0 // indirect
 	github.com/go-critic/go-critic v0.4.1 // indirect
@@ -144,7 +153,6 @@ require (
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/go-rootcerts v1.0.2 // indirect
 	github.com/hashicorp/golang-lru v0.5.5-0.20210104140557-80c98217689d // indirect
-	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/hashicorp/serf v0.9.8 // indirect
 	github.com/holiman/bloomfilter/v2 v2.0.3 // indirect
 	github.com/holiman/uint256 v1.3.1
@@ -170,7 +178,6 @@ require (
 	github.com/lestrrat/go-strftime v0.0.0-20180220042222-ba3bf9c1d042 // indirect
 	github.com/libp2p/go-buffer-pool v0.0.2 // indirect
 	github.com/lucas-clemente/quic-go v0.15.5 // indirect
-	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/maratori/testpackage v1.0.1 // indirect
 	github.com/marten-seemann/qtls v0.9.1 // indirect
 	github.com/matoous/godox v0.0.0-20190911065817-5d6d842e92eb // indirect
@@ -179,7 +186,7 @@ require (
 	github.com/mattn/go-runewidth v0.0.15 // indirect
 	github.com/miekg/dns v1.1.41 // indirect
 	github.com/mimoo/StrobeGo v0.0.0-20181016162300-f8f6d4d2b643 // indirect
-	github.com/minio/highwayhash v1.0.1 // indirect
+	github.com/minio/highwayhash v1.0.2 // indirect
 	github.com/mitchellh/go-homedir v1.1.0 // indirect
 	github.com/mitchellh/mapstructure v1.5.0 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
@@ -192,8 +199,7 @@ require (
 	github.com/nxadm/tail v1.4.8 // indirect
 	github.com/olekukonko/tablewriter v0.0.5 // indirect
 	github.com/opentracing/opentracing-go v1.1.0 // indirect
-	github.com/pelletier/go-toml v1.9.5 // indirect
-	github.com/pelletier/go-toml/v2 v2.0.5 // indirect
+	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/petermattis/goid v0.0.0-20180202154549-b0b1615b78e5 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
@@ -216,13 +222,12 @@ require (
 	github.com/soheilhy/cmux v0.1.4 // indirect
 	github.com/sourcegraph/go-diff v0.5.1 // indirect
 	github.com/spf13/afero v1.9.2 // indirect
-	github.com/spf13/cast v1.5.0 // indirect
-	github.com/spf13/jwalterweatherman v1.1.0 // indirect
-	github.com/spf13/pflag v1.0.5 // indirect
+	github.com/spf13/cast v1.10.0 // indirect
+	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/status-im/keycard-go v0.2.0 // indirect
 	github.com/stretchr/objx v0.5.2 // indirect
-	github.com/stretchr/testify v1.9.0 // indirect
-	github.com/subosito/gotenv v1.4.1 // indirect
+	github.com/stretchr/testify v1.11.1 // indirect
+	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/syndtr/goleveldb v1.0.1-0.20210819022825-2ae1ddf74ef7 // indirect
 	github.com/tatsushid/go-fastping v0.0.0-20160109021039-d7bb493dee3e // indirect
 	github.com/tecbot/gorocksdb v0.0.0-20191217155057-f0fad39f321c // indirect
@@ -249,7 +254,7 @@ require (
 	golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb // indirect
 	golang.org/x/mod v0.14.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
+	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.16.0 // indirect
 	google.golang.org/appengine v1.6.7 // indirect
@@ -270,8 +275,8 @@ require (
 )
 
 require (
-	github.com/Shopify/sarama v1.24.1
-	github.com/bsm/sarama-cluster v2.1.15+incompatible
+	github.com/Shopify/sarama v1.24.1 // indirect
+	github.com/bsm/sarama-cluster v2.1.15+incompatible // indirect
 	github.com/deliveroo/jsonrpc-go v0.0.0-00010101000000-000000000000
 	github.com/eapache/go-resiliency v1.2.0 // indirect
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb // indirect
@@ -299,13 +304,16 @@ require (
 	github.com/crate-crypto/go-ipa v0.0.0-20231025140028-3c0104f4b233 // indirect
 	github.com/crate-crypto/go-kzg-4844 v0.7.0 // indirect
 	github.com/deepmap/oapi-codegen v1.6.0 // indirect
-	github.com/emirpasic/gods/v2 v2.0.0-alpha // indirect
+	github.com/dlclark/regexp2 v1.7.0 // indirect
+	github.com/dop251/goja v0.0.0-20230806174421-c933cf95e127 // indirect
 	github.com/ethereum-optimism/superchain-registry/superchain v0.0.0-20240603085035-9c8f6081266e // indirect
 	github.com/ethereum/c-kzg-4844 v1.0.0 // indirect
 	github.com/ferranbt/fastssz v0.1.2 // indirect
 	github.com/fjl/memsize v0.0.2 // indirect
 	github.com/gballet/go-verkle v0.1.1-0.20231031103413-a67434b50f46 // indirect
+	github.com/go-sourcemap/sourcemap v2.1.3+incompatible // indirect
 	github.com/golang/glog v0.0.0-20160126235308-23def4e6c14b // indirect
+	github.com/google/pprof v0.0.0-20230207041349-798e818bf904 // indirect
 	github.com/graph-gophers/graphql-go v1.3.0 // indirect
 	github.com/hashicorp/go-bexpr v0.1.10 // indirect
 	github.com/hashicorp/go-memdb v1.3.4 // indirect
@@ -317,6 +325,10 @@ require (
 	github.com/minio/sha256-simd v1.0.0 // indirect
 	github.com/mitchellh/pointerstructure v1.2.0 // indirect
 	github.com/mmcloughlin/addchain v0.4.0 // indirect
+	github.com/nats-io/jwt/v2 v2.5.3 // indirect
+	github.com/nats-io/nats.go v1.36.0 // indirect
+	github.com/nats-io/nkeys v0.4.7 // indirect
+	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/peterh/liner v1.1.1-0.20190123174540-a2c9a5303de7 // indirect
 	github.com/rivo/uniseg v0.4.4 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
@@ -324,7 +336,7 @@ require (
 	github.com/urfave/cli/v2 v2.25.7 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
-	golang.org/x/time v0.3.0 // indirect
+	golang.org/x/time v0.5.0 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
