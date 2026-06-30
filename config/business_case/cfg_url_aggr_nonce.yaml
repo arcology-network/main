@@ -18,3 +18,5 @@ actors:
       generate_acct_root: false
     stateless_euresult_aggr_selector4pool:
       output: commitNonceUrl
+  
+  conflict_assistant: {}

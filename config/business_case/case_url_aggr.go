@@ -164,6 +164,11 @@ func (ua *UrlAggrSelector) startTest(ss *broker.StatefulStreamer) []string {
 	}
 	time.Sleep(1 * time.Second)
 
+	m = scommon.NewMessageForStream(scommon.MsgConflictTransitions, []*statecell.StateCell{})
+	m.Height = 1
+	ss.Send(scommon.MsgConflictTransitions, m)
+	time.Sleep(1 * time.Second)
+
 	m = scommon.NewMessageForStream(ua.listMsg, list)
 	m.Height = 1
 	ss.Send(ua.listMsg, m)

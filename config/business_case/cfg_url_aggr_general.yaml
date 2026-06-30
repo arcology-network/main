@@ -19,3 +19,5 @@ actors:
       generate_acct_root: "__env__"
     stateless_euresult_aggr_selector:
       output: executed
+
+  conflict_assistant: {}
