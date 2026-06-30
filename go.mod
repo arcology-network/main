@@ -18,8 +18,6 @@ replace github.com/deliveroo/jsonrpc-go => github.com/arcology-network/jsonrpc-g
 
 replace github.com/ethereum/go-ethereum v1.14.8 => github.com/arcology-network/concurrent-evm v0.0.0-20260606134708-2b2a978d283f
 
-// replace github.com/ethereum/go-ethereum v1.14.8 => ../concurrent-evm
-
 // replace github.com/arcology-network/eu => ../eu
 
 // replace github.com/arcology-network/state-engine => ../state-engine
@@ -38,14 +36,16 @@ require (
 	golang.org/x/crypto v0.22.0
 )
 
-require github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845
+require (
+	github.com/arcology-network/common-lib v1.9.1-0.20260618021700-0214ff3b2803
+	github.com/arcology-network/consensus-engine v1.9.1-0.20240526090943-17da73f27845
+	github.com/arcology-network/eu v0.0.0-20260630084628-0f86cc6b6a2d
+	github.com/arcology-network/scheduler v0.0.0-20260630083412-4402b379f31b
+	github.com/arcology-network/streamer v0.0.0-20260630091427-11dc97b7ce98
+)
 
 require (
-	github.com/arcology-network/common-lib v1.9.1-0.20260606140601-ac5107cbdcb0
-	github.com/arcology-network/eu v0.0.0-20260606142436-e909b95c6687
-	github.com/arcology-network/scheduler v0.0.0-20260606142028-1503ab1dfaec
-	github.com/arcology-network/state-engine v1.9.1-0.20260606141159-ebd548b7881d
-	github.com/arcology-network/streamer v0.0.0-20260607023308-74337fe1f534
+	github.com/arcology-network/state-engine v1.9.1-0.20260630082036-293370bad172
 	github.com/ethereum/go-ethereum v1.14.8
 )
 
