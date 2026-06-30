@@ -51,15 +51,6 @@ func NewModulesGuard() *modulesGuard {
 	return mg
 }
 
-// func (tg *modulesGuard) Config(params map[string]interface{}) {
-// 	locknames := params["locknames"].(string)
-// 	locks := strings.Split(locknames, ",")
-// 	for i := range locks {
-// 		tg.mlocks[locks[i]] = &sync.Mutex{}
-// 		fmt.Printf("----main/components/storage/module_guard.go------lock init name:%v\n", locks[i])
-// 	}
-// }
-
 func (tg *modulesGuard) Lock(ctx context.Context, request *LockRequest, locked *bool) error {
 	fmt.Printf("-------components/storage/module_guard.go----Lock--name:%v---from:%v\n", request.LockName, request.LockFrom)
 	tg.mlocks[request.LockName].Lock()

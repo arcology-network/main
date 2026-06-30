@@ -26,10 +26,14 @@ func init() {
 	actor.Factory.Register("gc", NewGc)
 	actor.Factory.Register("general_url", func() actor.Business {
 		return NewDBHandler(scommon.MsgEuResults, scommon.MsgExecuted, scommon.MsgGenerationReapingCompleted, scommon.MsgBlockEnd,
-			NewGeneralUrl(scommon.MsgApcHandle, scommon.MsgGeneralDB, scommon.MsgGeneralCompleted, scommon.MsgGeneralPrecommit, scommon.MsgGeneralCommit))
+			NewGeneralUrl(scommon.MsgApcHandle, scommon.MsgGeneralDB, scommon.MsgGeneralCompleted, scommon.MsgGeneralPrecommit, scommon.MsgGeneralCommit), true)
 	})
 	actor.Factory.Register("general_url_async", func() actor.Business {
 		return NewDBHandlerAsync(scommon.MsgGeneralDB, scommon.MsgGeneralPrecommit, scommon.MsgGeneralCommit, scommon.MsgGeneralCompleted)
+	})
+
+	actor.Factory.Register("conflict_assistant", func() actor.Business {
+		return NewConflictAssistant(scommon.MsgExecuted)
 	})
 
 	// intf.Factory.Register("global_lock", func(int, string) interface{} {

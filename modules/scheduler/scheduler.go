@@ -22,6 +22,7 @@ import (
 	"encoding/json"
 	"fmt"
 
+	"github.com/arcology-network/common-lib/crdt/statecell"
 	types "github.com/arcology-network/common-lib/types"
 
 	mtypes "github.com/arcology-network/main/types"
@@ -86,6 +87,7 @@ func (schd *Scheduler) Outputs() map[string]int {
 		scommon.MsgGenerationReapingList:      1,
 		scommon.MsgGenerationReapingCompleted: 1,
 		scommon.MsgExecGeneration:             1,
+		scommon.MsgConflictTransitions:        1,
 	}
 }
 
@@ -127,7 +129,8 @@ func (schd *Scheduler) RegisterActions(reg actor.ActionRegistrar) {
 
 func (schd *Scheduler) InitSchedule(ctx *actor.ActionContext) error {
 	store := ctx.Messages[0].Data.(*mtypes.Initialization).Store
-	scheduler, err := scheduler.NewScheduler(profile.NewProfileManager(store, 1024))
+	manager := profile.NewProfileStore(store.CommittedStore())
+	scheduler, err := scheduler.NewScheduler(manager)
 	if err != nil {
 		panic(err)
 	}
@@ -198,15 +201,33 @@ func (schd *Scheduler) onArbResult(ctx *actor.ActionContext) error {
 
 	currentGen.onArbitrateResult(ctx.ExecCtx, collisionSummary)
 	collisionSummary.MarkRollbackJobs(currentGen.gen)
-	if !collisionSummary.IsEmpty() {
-		scheduler.DebugPrecommit(schd.schdEngine, collisionSummary)
-		scheduler.DebugCommit(schd.schdEngine)
-	}
+
+	ctx.ExecCtx.Send(scommon.MsgConflictTransitions, schd.GetConflictTransitions(ctx, collisionSummary))
+
 	list := currentGen.CollectGenerationResult()
 
 	ctx.ExecCtx.Send(scommon.MsgGenerationReapingList, list, schd.context.height)
 	schd.ChangeState(ctx, scheduleStateApc, "scheduleStateApc")
 	return nil
+}
+
+func (schd *Scheduler) GetConflictTransitions(ctx *actor.ActionContext, collisionSummary *conflictor.CollisionSummary) []*statecell.StateCell {
+	transitions := []*statecell.StateCell{}
+	if !collisionSummary.IsEmpty() {
+		schd.schdEngine.ImportCollisions(collisionSummary)
+		if err := schd.schdEngine.WriteToExeStore(); err != nil {
+			ctx.ExecCtx.LogErr("Failed to Write conflict info :", logger.F("err", err))
+			return transitions
+		}
+
+		transitions = schd.schdEngine.ProfileStore.ExecStore().Export(statecell.Sorter)
+		if len(transitions) == 0 {
+			ctx.ExecCtx.LogErr("Failed to export collision info from state store")
+			return transitions
+		}
+		schd.schdEngine.Clear()
+	}
+	return transitions
 }
 
 func (schd *Scheduler) waitingApc(ctx *actor.ActionContext) error {

@@ -128,12 +128,12 @@ type DBHandler struct {
 	finalizeMsg            string
 	op                     DBOperation
 
-	initDb bool
-
-	taskCh chan *CommitTask
+	initDb          bool
+	saveConfliction bool
+	taskCh          chan *CommitTask
 }
 
-func NewDBHandler(importMsg, commitMsg, generationCompletedMsg, finalizeMsg string, op DBOperation) *DBHandler {
+func NewDBHandler(importMsg, commitMsg, generationCompletedMsg, finalizeMsg string, op DBOperation, saveConflictions bool) *DBHandler {
 	handler := &DBHandler{
 		state:                  dbStateUninit,
 		importMsg:              importMsg,
@@ -143,15 +143,17 @@ func NewDBHandler(importMsg, commitMsg, generationCompletedMsg, finalizeMsg stri
 		op:                     op,
 		initDb:                 false,
 		taskCh:                 make(chan *CommitTask, 20),
+		saveConfliction:        saveConflictions,
 	}
 	return handler
 }
 
 func (handler *DBHandler) Inputs() ([]string, bool) {
-	msgs := []string{handler.importMsg, handler.commitMsg, handler.generationCompletedMsg, handler.finalizeMsg}
+	msgs := []string{handler.importMsg, handler.generationCompletedMsg, handler.finalizeMsg}
 	if handler.state == dbStateUninit {
 		msgs = append(msgs, scommon.MsgInitialization)
 	}
+	msgs = append(msgs, actor.CombinedName(handler.commitMsg, scommon.MsgConflictTransitions))
 	return msgs, false
 }
 
@@ -185,7 +187,7 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 			task := <-handler.taskCh
 
 			switch task.Msg.Name {
-			case handler.commitMsg:
+			case actor.CombinedName(handler.commitMsg, scommon.MsgConflictTransitions):
 				handler.op.PreCommitAsync(task.Ctx)
 			case handler.generationCompletedMsg:
 				handler.op.PreCommitCompleted(task.Ctx, task.Msg.Height)
@@ -200,7 +202,7 @@ func (handler *DBHandler) Config(params map[string]interface{}) {
 func (handler *DBHandler) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgInitialization, handler.Initialization)
 	reg.Register(handler.importMsg, handler.importData)
-	reg.Register(handler.commitMsg, handler.startCommit)
+	reg.Register(actor.CombinedName(handler.commitMsg, scommon.MsgConflictTransitions), handler.startCommit)
 	reg.Register(handler.generationCompletedMsg, handler.generationComplete)
 	reg.Register(handler.finalizeMsg, handler.finalize)
 	reg.Register("AddMetas", handler.AddMetas)
@@ -244,18 +246,30 @@ func (handler *DBHandler) importData(ctx *actor.ActionContext) error {
 
 func (handler *DBHandler) startCommit(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
+	combined := msg.Data.(*actor.CombinerElements)
+	commitData := combined.Get(handler.commitMsg)
+	conflictData := combined.Get(scommon.MsgConflictTransitions)
+
 	var data []*eushared.EuResult
-	if msg.Data != nil {
-		for _, item := range msg.Data.([]interface{}) {
+	if commitData.Data != nil {
+		for _, item := range commitData.Data.([]interface{}) {
 			data = append(data, item.(*eushared.EuResult))
 		}
 	}
-	if msg.Height == 0 {
+	if commitData.Height == 0 {
 		_, transitions := GetTransitions(data)
 		handler.op.Import(transitions)
 	}
+
+	if handler.saveConfliction {
+		conflictInfo := conflictData.Data.([]*statecell.StateCell)
+		if len(conflictInfo) > 0 {
+			handler.op.Import(conflictInfo)
+		}
+	}
+
 	ctx.ExecCtx.LogDebug("Before PreCommit.")
-	handler.op.PreCommit(ctx, data, msg.Height)
+	handler.op.PreCommit(ctx, data, commitData.Height)
 
 	handler.AddAsyncTask(ctx)
 
@@ -298,7 +312,7 @@ func (handler *DBHandler) GetFSMRules() map[int]actor.FSMRule {
 		}},
 		dbStateInit: {Accept: []string{
 			scommon.MsgEuResults,
-			handler.commitMsg,
+			actor.CombinedName(handler.commitMsg, scommon.MsgConflictTransitions),
 			handler.generationCompletedMsg,
 		}},
 		dbStateDone: {Accept: []string{

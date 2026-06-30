@@ -76,7 +76,10 @@ func (rs *RpcService) receivedEuResultSelected(ctx *actor.ActionContext) error {
 
 	if resultSelected != nil {
 		ctx.ExecCtx.LogInfo("Before detectConflict", logger.F("tx nums", len(resultSelected)))
-		summery, _, _ := rs.arbitrator.DebugInsertAndDetect(resultSelected)
+
+		rs.arbitrator.Insert(resultSelected)
+		collision, _, _ := rs.arbitrator.Detect()
+		summery := conflictor.NewCollisionSummary(resultSelected, collision)
 
 		ctx.ExecCtx.SendRpcResponse("", summery)
 		ctx.ExecCtx.LogInfo("arbitrate return results", logger.F("Collisions", len(summery.Collisions)))

@@ -28,7 +28,7 @@ func init() {
 	actor.Factory.Register("pool_aggr_selector", NewAggrSelector)
 	actor.Factory.Register("nonce_url", func() actor.Business {
 		return storage.NewDBHandler(scommon.MsgNonceEuResults, scommon.MsgCommitNonceUrl, scommon.MsgGenerationReapingCompleted, scommon.MsgBlockEnd,
-			storage.NewGeneralUrl(scommon.MsgNonceReady, scommon.MsgNonceDB, scommon.MsgNonceCompleted, scommon.MsgNoncePrecommit, scommon.MsgNonceCommit))
+			storage.NewGeneralUrl(scommon.MsgNonceReady, scommon.MsgNonceDB, scommon.MsgNonceCompleted, scommon.MsgNoncePrecommit, scommon.MsgNonceCommit), false)
 	})
 
 	actor.Factory.Register("nonce_url_async", func() actor.Business {
