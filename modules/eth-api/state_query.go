@@ -65,6 +65,7 @@ func (sq *StateQuery) updateApchandle(ctx *actor.ActionContext) error {
 
 	return nil
 }
+
 func (sq *StateQuery) RpcConfig() (string, int) {
 	return "state_query", 20
 }

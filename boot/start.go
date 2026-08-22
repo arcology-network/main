@@ -97,8 +97,9 @@ func initApp(
 		}
 	}
 
-	for _, msg := range appConfig.StartMsgs {
-		broker.Send(msg.Name, &msg)
+	for i := range appConfig.StartMsgs {
+		msg := &appConfig.StartMsgs[i]
+		broker.Send(msg.Name, msg)
 	}
 
 	return broker, workers

@@ -82,7 +82,7 @@ func (ct *ConsensusTest) startTest(ss *broker.StatefulStreamer) []string {
 	ss.Send(scommon.MsgInitialization, m)
 	time.Sleep(3 * time.Second)
 
-	mb, tashes := MakeMonacoBlock()
+	mb, tashes := MakeArcologyBlock()
 
 	m = scommon.NewMessageForStream(scommon.MsgTxLocals, [][]byte{
 		mb.Txs[0][1:],

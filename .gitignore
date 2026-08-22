@@ -24,11 +24,24 @@ config/schdstore/
 config/sync_point/
 config/tmroot/log/
 modules/pool/testdata/
+/modules/pool/TestPoolWithUncheckedTx/
 modules/scheduler/log/
 modules/storage/schdstore/
 modules/storage/slices/
 modules/storage/sync_point/
+/modules/storage/types/indexer/
+/modules/storage/types/testdata/
 test/statesync/data/
 *.tar
 log/
 rpc.log
+
+# Generated test/runtime data
+*.log
+/arcology/dbnonce/
+/config/business_case/**/db/
+/config/business_case/**/dbnonce/
+/config/business_case/case_consensus/config/
+/config/business_case/case_consensus/data/
+/config/business_case/case_consensus/transactional/
+/config/logs/

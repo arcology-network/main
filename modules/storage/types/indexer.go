@@ -86,6 +86,7 @@ func (indexer *Indexer) QueryBlockHashHeight(hash string) *big.Int {
 	indexer.AddBlockHashHeight(hashHeight, hash, false)
 	return new(big.Int).SetUint64(hashHeight)
 }
+
 func (indexer *Indexer) AddBlockHashHeight(height uint64, hash string, isSave bool) {
 	indexer.CachesHeight.Add(height, []string{hash}, []interface{}{height})
 	if isSave {
@@ -144,6 +145,7 @@ func (indexer *Indexer) Add(height uint64, keys []string, isSave bool) {
 func (indexer *Indexer) GetHashesInBlockKey(height uint64) string {
 	return fmt.Sprintf("hashesInBlock-%v", height)
 }
+
 func (indexer *Indexer) GetHashHeightKey(hash string) string {
 	return fmt.Sprintf("hashHeight-%v", hash)
 }

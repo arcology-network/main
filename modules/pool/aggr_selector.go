@@ -128,6 +128,7 @@ func (a *AggrSelector) RegisterActions(reg actor.ActionRegistrar) {
 
 	reg.Register("Query", a.Query)
 }
+
 func (a *AggrSelector) ReceivedOpCommand(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	oprequest := msg.Data.(*mtypes.OpRequest)
@@ -137,11 +138,13 @@ func (a *AggrSelector) ReceivedOpCommand(ctx *actor.ActionContext) error {
 	}
 	return nil
 }
+
 func (a *AggrSelector) ReceivedNonceReady(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	a.nonceReady(ctx, msg.Data.(*statecache.ExecutionStateStore), msg.Height)
 	return nil
 }
+
 func (a *AggrSelector) ReceivedInitialization(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	initialization := msg.Data.(*mtypes.Initialization)
@@ -152,6 +155,7 @@ func (a *AggrSelector) ReceivedInitialization(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("change into poolStateReap,ready")
 	return nil
 }
+
 func (a *AggrSelector) nonceReady(ctx *actor.ActionContext, store *statecache.ExecutionStateStore, heght uint64) {
 	if a.pool == nil {
 		a.pool = NewPool(store, a.obsoleteTime, a.closeCheck)
@@ -164,11 +168,13 @@ func (a *AggrSelector) nonceReady(ctx *actor.ActionContext, store *statecache.Ex
 	a.ChangeState(ctx, poolStateReap, "poolStateReap")
 	a.height = heght + 1
 }
+
 func (a *AggrSelector) ChangeState(ctx *actor.ActionContext, state int, stateName string) error {
 	a.state = state
 	ctx.ExecCtx.LogDebug("****** " + ctx.ExecCtx.WorkCtx.BusinassName + " state change into " + stateName)
 	return nil
 }
+
 func (a *AggrSelector) ReceivedMessage(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 
@@ -198,9 +204,10 @@ func (a *AggrSelector) ReceivedReapCommand(ctx *actor.ActionContext) error {
 			Transactions: []*types.StandardTransaction{},
 		}, a.height)
 		ctx.ExecCtx.Send(scommon.MsgBlockParams, &mtypes.BlockParams{
-			Random:     evmCommon.Hash{},
-			BeaconRoot: &evmCommon.Hash{},
-			Times:      0,
+			Random:      evmCommon.Hash{},
+			BeaconRoot:  &evmCommon.Hash{},
+			Times:       0,
+			ChainConfig: a.opAdaptor.config,
 		}, a.height)
 		ctx.ExecCtx.Send(scommon.MsgWithDrawHash, &evmTypes.EmptyWithdrawalsHash, a.height)
 	}
@@ -234,7 +241,7 @@ func (a *AggrSelector) ReceivedSelectedReceipts(ctx *actor.ActionContext) error 
 
 func (a *AggrSelector) ReceivedPendingBlock(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
-	block := msg.Data.(*mtypes.MonacoBlock)
+	block := msg.Data.(*mtypes.ArcologyBlock)
 	if ok, result := a.opAdaptor.AddBlock(block); ok {
 		a.returnResult(ctx, result)
 	}
@@ -264,7 +271,8 @@ func (a *AggrSelector) send(ctx *actor.ActionContext, reaped []*types.StandardTr
 				Native: msgs[i].NativeMessage,
 				Source: msgs[i].Source,
 			}
-			sendMsgs[i].Native.SkipAccountChecks = true
+			sendMsgs[i].Native.SkipNonceChecks = true
+			sendMsgs[i].Native.SkipFromEOACheck = true
 			hashList[i] = msgs[i].TxHash
 		}
 		ctx.ExecCtx.Send(scommon.MsgMessagersReaped, sendMsgs, height)
@@ -305,6 +313,7 @@ func (a *AggrSelector) GetFSMRules() map[int]actor.FSMRule {
 		}},
 	}
 }
+
 func (a *AggrSelector) GetCurrentState() int {
 	return a.state
 }
@@ -319,8 +328,10 @@ func (a *AggrSelector) Height() uint64 {
 func (a *AggrSelector) RpcConfig() (string, int) {
 	return "pool", 20
 }
+
 func (a *AggrSelector) ReceivedMessages(ctx *actor.ActionContext) error {
 	request := ctx.RPC.Request.(*mtypes.OpRequest)
+	request.BlockParam.ChainConfig = a.opAdaptor.config
 	ctx.ExecCtx.Send(scommon.MsgBlockParams, request.BlockParam, a.height)
 	ctx.ExecCtx.Send(scommon.MsgOpCommand, request, a.height)
 
@@ -339,6 +350,7 @@ func (a *AggrSelector) ReceivedMessages(ctx *actor.ActionContext) error {
 
 	return nil
 }
+
 func (a *AggrSelector) Query(ctx *actor.ActionContext) error {
 	request := ctx.RPC.Request.(*mtypes.QueryRequest)
 	switch request.QueryType {

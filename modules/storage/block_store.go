@@ -57,14 +57,14 @@ func (bs *BlockStore) RpcConfig() (string, int) {
 }
 
 func (bs *BlockStore) Save(ctx *actor.ActionContext) error {
-	block := ctx.RPC.Request.(*mtypes.MonacoBlock)
+	block := ctx.RPC.Request.(*mtypes.ArcologyBlock)
 	bs.db.Save(block.Height, block)
 	ctx.ExecCtx.SendRpcResponse("", nil)
 	return nil
 }
 
 // func (bs *BlockStore) SavePendingBlock(ctx *actor.ActionContext) error {
-// 	block := ctx.RPC.Request.(*mtypes.MonacoBlock)
+// 	block := ctx.RPC.Request.(*mtypes.ArcologyBlock)
 // 	bs.db.CacheOnly(block.Height, block)
 // 	ctx.ExecCtx.SendRpcResponse("", nil)
 // 	return nil

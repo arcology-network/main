@@ -25,14 +25,14 @@ import (
 const (
 	TxSourceLocal = iota
 	TxSourceConsensus
-	TxSourceMonacoP2p
+	TxSourceArcologyP2p
 )
 
 var (
 	SourceTypeStr = map[int]string{
-		TxSourceLocal:     "loc",
-		TxSourceConsensus: "con",
-		TxSourceMonacoP2p: "p2p",
+		TxSourceLocal:       "loc",
+		TxSourceConsensus:   "con",
+		TxSourceArcologyP2p: "p2p",
 	}
 )
 
@@ -43,11 +43,11 @@ func NewTxSource(typ int, id string) TxSource {
 }
 
 func (src TxSource) BypassRepeatCheck() bool {
-	return strings.HasPrefix(string(src), SourceTypeStr[TxSourceMonacoP2p])
+	return strings.HasPrefix(string(src), SourceTypeStr[TxSourceArcologyP2p])
 }
 
 func (src TxSource) IsForWaitingList() bool {
-	return strings.HasPrefix(string(src), SourceTypeStr[TxSourceMonacoP2p])
+	return strings.HasPrefix(string(src), SourceTypeStr[TxSourceArcologyP2p])
 }
 
 type IncomingTxs struct {

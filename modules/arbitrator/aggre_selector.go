@@ -76,6 +76,7 @@ func (a *EuResultsAggreSelector) ReceivedBlockCompleted(ctx *actor.ActionContext
 	ctx.ExecCtx.LogInfo("clear pool", logger.F("remainingQuantity", remainingQuantity))
 	return nil
 }
+
 func (a *EuResultsAggreSelector) ReceivedArbitrateReapinglist(ctx *actor.ActionContext) error {
 	reapinglist := ctx.Messages[0].Data.(*ctypes.ReapingList)
 	// a.reqId = ctx.ExecCtx.GetReqID()

@@ -20,7 +20,7 @@ package types
 import (
 	"fmt"
 	"os"
-	"strings"
+	"path/filepath"
 )
 
 const (
@@ -46,28 +46,19 @@ func (rf *RawFile) GetFilename(height uint64) string {
 	level2 := height / filenum % filenum
 	leaf := height
 
-	return fmt.Sprintf("%v/%v/%v", level1, level2, leaf)
+	return filepath.Join(fmt.Sprint(level1), fmt.Sprint(level2), fmt.Sprint(leaf))
 }
 
 func (rf *RawFile) Write(filename string, value []byte) error {
-	file := rf.basepath + "/" + filename
+	file := filepath.Join(rf.basepath, filename)
 	if _, err := os.Stat(file); err == nil {
 		os.Remove(file)
 	}
-	dirs := strings.Split(filename, "/")
-	serchDir := rf.basepath
-	for _, dir := range dirs[:len(dirs)-1] {
-		serchDir = serchDir + "/" + dir
-		_, err := os.Stat(serchDir)
-		if os.IsNotExist(err) {
-			os.MkdirAll(serchDir, os.ModePerm)
-		}
-
-	}
+	os.MkdirAll(filepath.Dir(file), os.ModePerm)
 	return os.WriteFile(file, value, os.ModePerm)
 }
 
 func (rf *RawFile) Read(filename string) ([]byte, error) {
-	file := rf.basepath + "/" + filename
+	file := filepath.Join(rf.basepath, filename)
 	return os.ReadFile(file)
 }

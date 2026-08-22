@@ -24,7 +24,7 @@ import (
 	"fmt"
 
 	"github.com/arcology-network/common-lib/common"
-	badgerpk "github.com/arcology-network/common-lib/storage/badger"
+	pebbledb "github.com/arcology-network/common-lib/storage/pebble"
 	"github.com/arcology-network/common-lib/storage/transactional"
 	"github.com/arcology-network/main/components/storage"
 	mtypes "github.com/arcology-network/main/types"
@@ -55,7 +55,7 @@ const (
 type StateSyncStore struct {
 	state      int
 	sliceDB    KvDB
-	spDB       *badgerpk.ParaBadgerDB
+	spDB       *pebbledb.ParaPebbleDB
 	spInterval uint64
 	status     *mtypes.SyncStatus
 	sp         *mtypes.SyncPoint
@@ -84,7 +84,7 @@ func NewStateSyncStore() actor.Business {
 // 	return store
 // }
 
-// func (store *StateSyncStore) TestOnlyGetSyncPointDB() *badgerpk.ParaBadgerDB {
+// func (store *StateSyncStore) TestOnlyGetSyncPointDB() *pebbledb.ParaPebbleDB {
 // 	return store.spDB
 // }
 
@@ -107,7 +107,12 @@ func (store *StateSyncStore) RpcConfig() (string, int) {
 
 func (store *StateSyncStore) Config(params map[string]interface{}) {
 	store.sliceDB = transactional.NewSimpleFileDB(params["slice_db_root"].(string))
-	store.spDB = badgerpk.NewParaBadgerDB(params["sync_point_root"].(string), common.Remainder)
+
+	spDB, err := pebbledb.NewParaPebbleDB(params["sync_point_root"].(string), common.Remainder)
+	if err != nil {
+		panic(err)
+	}
+	store.spDB = spDB
 	store.spInterval = uint64(params["sync_point_interval"].(int))
 }
 

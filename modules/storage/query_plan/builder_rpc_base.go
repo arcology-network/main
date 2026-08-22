@@ -45,6 +45,7 @@ func BuildGetBalanceSubPlan() query.Step {
 		},
 	}
 }
+
 func BuildGetNonceSubPlan() query.Step {
 	getNonce := &query.RpcStep{
 		Call: func(ctx *query.QueryContext, cont query.Continuation) {
@@ -326,6 +327,7 @@ func BuildGetReceiptsByHeightSubPlan() query.Step {
 		},
 	}
 }
+
 func BuildGetReceiptByPositionSubPlan() query.Step {
 	getReceipt := &query.RpcStep{
 		Call: func(ctx *query.QueryContext, cont query.Continuation) {

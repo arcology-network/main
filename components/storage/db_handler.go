@@ -83,6 +83,7 @@ func (op *BasicDBOperation) PreCommit(euResults []*eushared.EuResult, height uin
 func (op *BasicDBOperation) PreCommitCompleted(ctx *actor.ExecutionContext) [32]byte {
 	return op.StateStore.CommittedStore().(*proxy.StorageProxy).EthStore().Root()
 }
+
 func (op *BasicDBOperation) InitAsync() {
 
 }
@@ -92,6 +93,7 @@ func (op *BasicDBOperation) PreCommitAsync(ctx *actor.ExecutionContext) {
 	op.Committer.AsyncPrecommit()
 	ctx.LogDebug("After PreCommit Async.")
 }
+
 func (op *BasicDBOperation) CommitAsync(ctx *actor.ExecutionContext, height uint64) {
 	ctx.LogDebug("Before Commit Async.")
 	op.Committer.AsyncCommit(height)
@@ -208,15 +210,18 @@ func (handler *DBHandler) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register("AddMetas", handler.AddMetas)
 	reg.Register("sendAsyncUrlUpdate", handler.sendAsyncUrlUpdate)
 }
+
 func (handler *DBHandler) AddMetas(ctx *actor.ActionContext) error {
 	handler.op.AddMetas(ctx)
 	return nil
 }
+
 func (handler *DBHandler) sendAsyncUrlUpdate(ctx *actor.ActionContext) error {
 	handler.op.sendAsyncUrlUpdate(ctx)
 
 	return nil
 }
+
 func (handler *DBHandler) Initialization(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	if !handler.initDb {

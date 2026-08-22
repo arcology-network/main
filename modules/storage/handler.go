@@ -96,6 +96,7 @@ func getTimeStr(timestamp *big.Int) string {
 	}
 	return "0 seconds ago"
 }
+
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	body, err := ioutil.ReadAll(r.Body)
 	if err != nil {
@@ -230,8 +231,8 @@ func (h *Handler) timerQuery() {
 var (
 	dic = map[string]string{
 		"height": "tendermint_consensus_height",
-		"totals": "consensus_processed_txs_total{job=~\"monaco\"}",
-		"tps":    "consensus_real_time_tps{job=~\"monaco\"}",
+		"totals": "consensus_processed_txs_total{job=~\"arcology\"}",
+		"tps":    "consensus_real_time_tps{job=~\"arcology\"}",
 	}
 )
 

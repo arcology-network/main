@@ -81,7 +81,7 @@ func (gtt *GatewayTppTest) startTest(ss *broker.StatefulStreamer) []string {
 	ss.Send(scommon.MsgSignerType, m)
 	time.Sleep(1 * time.Second)
 
-	mblock, _ := MakeMonacoBlock()
+	mblock, _ := MakeArcologyBlock()
 	txblocks := &types.IncomingTxs{
 		Txs:       mblock.Txs,
 		Src:       types.NewTxSource(types.TxSourceConsensus, "proposer"),
@@ -103,7 +103,7 @@ func (gtt *GatewayTppTest) startTestLocalSingle(ss *broker.StatefulStreamer) []s
 	ss.Send(scommon.MsgSignerType, m)
 	time.Sleep(1 * time.Second)
 
-	mblock, _ := MakeMonacoBlock()
+	mblock, _ := MakeArcologyBlock()
 	response, err := gtt.sender.SendSync("gateway", "SendRawTransaction", &mtypes.RawTransactionArgs{
 		Tx: mblock.Txs[0][1:],
 	}, 0)
@@ -124,7 +124,7 @@ func (gtt *GatewayTppTest) startTestLocalBatch(ss *broker.StatefulStreamer) []st
 	ss.Send(scommon.MsgSignerType, m)
 	time.Sleep(1 * time.Second)
 
-	mblock, _ := MakeMonacoBlock()
+	mblock, _ := MakeArcologyBlock()
 	rawTxs := make([][]byte, len(mblock.Txs))
 	for i := range rawTxs {
 		rawTxs[i] = mblock.Txs[i][1:]

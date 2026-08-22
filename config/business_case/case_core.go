@@ -86,7 +86,7 @@ func (mct *MakeCoreTest) startTest(ss *broker.StatefulStreamer) []string {
 	ss.Send(scommon.MsgBlockStart, m)
 	time.Sleep(1 * time.Second)
 
-	mb, tashes := MakeMonacoBlock()
+	mb, tashes := MakeArcologyBlock()
 	selectTxs := &mtypes.SelectedTxsInfo{
 		Txs:      mb.Txs,
 		HashList: tashes,

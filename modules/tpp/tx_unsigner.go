@@ -64,12 +64,14 @@ func (c *TxUnsigner) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgSignerType, c.ReceivedSIgnType)
 	reg.Register(scommon.MsgCheckingTxs, c.ReceivedTxs)
 }
+
 func (c *TxUnsigner) ReceivedSIgnType(ctx *actor.ActionContext) error {
 	c.SignerType = ctx.Messages[0].Data.(uint8)
 	signer := mtypes.MakeSigner(c.SignerType, c.chainID)
 	c.Signer = &signer
 	return nil
 }
+
 func (c *TxUnsigner) ReceivedTxs(ctx *actor.ActionContext) error {
 
 	stdPack := ctx.Messages[0].Data.(*types.StdTransactionPack)

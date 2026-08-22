@@ -27,7 +27,6 @@ import (
 	scommon "github.com/arcology-network/streamer/common"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
-	ethmpt "github.com/ethereum/go-ethereum/trie"
 )
 
 const (
@@ -103,7 +102,7 @@ func (us *UrlStore) GetNonce(ctx *actor.ActionContext) error {
 		return nil
 	}
 
-	account, err := snapshot.GetAccount(queryParam.Address, &ethmpt.AccessListCache{})
+	account, err := snapshot.GetAccount(queryParam.Address, nil)
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {
@@ -126,7 +125,7 @@ func (us *UrlStore) GetBalance(ctx *actor.ActionContext) error {
 		return nil
 	}
 
-	account, err := snapshot.GetAccount(queryParam.Address, &ethmpt.AccessListCache{})
+	account, err := snapshot.GetAccount(queryParam.Address, nil)
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {
@@ -148,7 +147,7 @@ func (us *UrlStore) GetCode(ctx *actor.ActionContext) error {
 		return nil
 	}
 
-	account, err := snapshot.GetAccount(queryParam.Address, &ethmpt.AccessListCache{})
+	account, err := snapshot.GetAccount(queryParam.Address, nil)
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {
@@ -172,7 +171,7 @@ func (us *UrlStore) GetEthStorage(ctx *actor.ActionContext) error {
 		return nil
 	}
 
-	account, err := snapshot.GetAccount(queryParam.Address, &ethmpt.AccessListCache{})
+	account, err := snapshot.GetAccount(queryParam.Address, nil)
 	if err != nil {
 		ctx.ExecCtx.SendRpcResponse(err.Error(), nil)
 	} else {

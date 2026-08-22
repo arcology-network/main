@@ -16,6 +16,7 @@ func (p *TestBlockByHeightQueryPlan) Start(
 	root := p.buildSteps()
 	query.StartStep(ctx, root, cont)
 }
+
 func (p *TestBlockByHeightQueryPlan) buildSteps() query.Step {
 	params := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
@@ -26,13 +27,13 @@ func (p *TestBlockByHeightQueryPlan) buildSteps() query.Step {
 	getBlock := &query.CallStep{
 		Plan: BuildGetBlockByHeightSubPlan(),
 		Bind: func(ctx *query.QueryContext, v any) {
-			ctx.Vars[QueryKey_MonacoBlock] = v
+			ctx.Vars[QueryKey_ArcologyBlock] = v
 		},
 	}
 
 	returnTx := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
-			mblock := ctx.Vars[QueryKey_MonacoBlock]
+			mblock := ctx.Vars[QueryKey_ArcologyBlock]
 			cont(mblock, nil)
 		},
 	}

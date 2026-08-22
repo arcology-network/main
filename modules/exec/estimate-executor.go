@@ -94,6 +94,7 @@ func (exec *EstimateExecutor) Config(params map[string]interface{}) {
 	exec.chainId = params["chain_id"].(*big.Int)
 	exec.euCount = params["eus"].(int)
 }
+
 func (exec *EstimateExecutor) RpcConfig() (string, int) {
 	return "estimate-executor", 20
 }
@@ -107,6 +108,7 @@ func (exec *EstimateExecutor) GetFSMRules() map[int]actor.FSMRule {
 		estmigateExecStateInit: {Accept: []string{scommon.MsgInitialization}},
 	}
 }
+
 func (exec *EstimateExecutor) GetCurrentState() int {
 	return exec.state
 }
@@ -118,6 +120,7 @@ func (exec *EstimateExecutor) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register("DebugExecTxs", exec.DebugExecTxs)
 	reg.Register("onStateRoot", exec.onStateRoot)
 }
+
 func (exec *EstimateExecutor) stateInit(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	initialization := msg.Data.(*mtypes.Initialization)
@@ -135,6 +138,7 @@ func (exec *EstimateExecutor) stateInit(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("state change into estmigateExecStateReady")
 	return nil
 }
+
 func (exec *EstimateExecutor) stateReady(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	combined := msg.Data.(*actor.CombinerElements)
@@ -148,6 +152,7 @@ func (exec *EstimateExecutor) stateReady(ctx *actor.ActionContext) error {
 	exec.timestamp = combined.Get(scommon.MsgBlockStart).Data.(*actor.BlockStart).Timestamp
 	return nil
 }
+
 func (exec *EstimateExecutor) updateApc(ctx *actor.ActionContext) error {
 	exec.store = ctx.Messages[0].Data.(*statecache.ExecutionStateStore)
 	return nil
@@ -227,24 +232,28 @@ func (exec *EstimateExecutor) process(ctx *actor.ActionContext, reqId string, st
 func (exec *EstimateExecutor) newTask(
 	request *mtypes.ExecutorDebugRequest,
 	stdmsg *eucommon.StandardMessage,
-) (*exetyp.ExecMessagers, tracers.Tracer, error) {
+) (*exetyp.ExecMessagers, *tracers.Tracer, error) {
 	config := exetyp.MainConfig(exec.chainId)
 	config.Coinbase = exec.execParams.Coinbase
 	config.BlockNumber = new(big.Int).SetUint64(exec.height)
 	config.Time = exec.timestamp
 	config.ParentHash = evmCommon.BytesToHash(exec.execParams.ParentInfo.ParentHash.Bytes())
-	var tracer tracers.Tracer
+	var tracer *tracers.Tracer
 	if request.Config != nil {
-
 		var err error
-		tracer = logger.NewStructLogger(request.Config.Config)
+		structLogger := logger.NewStructLogger(request.Config.Config)
+		tracer = &tracers.Tracer{
+			Hooks:     structLogger.Hooks(),
+			GetResult: structLogger.GetResult,
+			Stop:      structLogger.Stop,
+		}
 		if request.Config.Tracer != nil {
-			tracer, err = tracers.DefaultDirectory.New(*request.Config.Tracer, request.Ctx, request.Config.TracerConfig)
+			tracer, err = tracers.DefaultDirectory.New(*request.Config.Tracer, request.Ctx, request.Config.TracerConfig, config.ChainConfig)
 			if err != nil {
 				return nil, nil, err
 			}
 		}
-		config.VMConfig.Tracer = tracer
+		config.VMConfig.Tracer = tracer.Hooks
 		config.VMConfig.NoBaseFee = true
 	}
 	task := &exetyp.ExecMessagers{

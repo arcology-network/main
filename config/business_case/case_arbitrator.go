@@ -55,7 +55,7 @@ func (at *ArbitratorTest) receivedMsgs(ctx *actor.ActionContext) error {
 
 func (at *ArbitratorTest) startTest(ss *broker.StatefulStreamer) []string {
 	_, _, unis := MakeStateStore(at.basePath)
-	_, txhashes := MakeMonacoBlock()
+	_, txhashes := MakeArcologyBlock()
 	ids := make([]uint64, len(txhashes))
 	for i := range txhashes {
 		ids[i] = uint64(i + 1)

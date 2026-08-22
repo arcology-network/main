@@ -21,6 +21,7 @@ import (
 	"bufio"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -59,7 +60,7 @@ func (ss *SchdStore) Config(params map[string]interface{}) {
 	}
 
 	var err error
-	if ss.f, err = os.OpenFile(ss.root+"schd.txt", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err != nil {
+	if ss.f, err = os.OpenFile(filepath.Join(ss.root, "schd.txt"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644); err != nil {
 		panic(err)
 	}
 }
@@ -90,17 +91,20 @@ func (ss *SchdStore) Save(ctx *actor.ActionContext) error {
 	}, "SaveBack")
 	return nil
 }
+
 func (ss *SchdStore) SaveBack(ctx *actor.ActionContext) error {
 	// ctx.ExecCtx.EndCasecade()
 	ctx.ExecCtx.SendRpcResponse("", "")
 	return nil
 }
+
 func (ss *SchdStore) DirectWrite(ctx *actor.ActionContext) error {
 	stat := ctx.RPC.Request.(*mtypes.SchdState)
 	ss.writeToFile(stat)
 	ctx.ExecCtx.SendRpcResponse("", "")
 	return nil
 }
+
 func (ss *SchdStore) Load(ctx *actor.ActionContext) error {
 	states := &[]mtypes.SchdState{}
 	ss.readFromFile(states)
@@ -119,7 +123,7 @@ func (ss *SchdStore) writeToFile(state *mtypes.SchdState) error {
 }
 
 func (ss *SchdStore) readFromFile(states *[]mtypes.SchdState) error {
-	f, err := os.Open(ss.root + "schd.txt")
+	f, err := os.Open(filepath.Join(ss.root, "schd.txt"))
 	if err != nil {
 		return err
 	}

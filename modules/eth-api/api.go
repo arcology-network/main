@@ -55,10 +55,10 @@ type Options struct {
 	Port            uint64 `short:"p" long:"port" description:"Service port" default:"7545"`
 	Debug           bool   `short:"d" long:"debug" description:"Enable debug mode"`
 	Waits           int    `short:"w" long:"waits" description:"wait seconds when query receipt" default:"60"`
-	Coinbase        string `short:"cb" long:"coinbase" description:"coinbase address of node`
-	ProtocolVersion int    `short:"pv" long:"protocolVersion" description:"Protocol Version`
-	Hashrate        int    `short:"hr" long:hashrate" description:"hash rate`
-	ExecId          string `short:"EID" long:ExecID" description:"Exector instance id `
+	Coinbase        string `short:"cb" long:"coinbase" description:"coinbase address of node"`
+	ProtocolVersion int    `short:"pv" long:"protocolVersion" description:"Protocol Version"`
+	Hashrate        int    `short:"hr" long:"hashrate" description:"hash rate"`
+	ExecId          string `short:"EID" long:"ExecID" description:"Exector instance id"`
 	AuthPort        uint64 `short:"ap" long:"authport" description:"auth Service port" default:"8551"`
 	JwtFile         string `short:"j" long:"jwtfile" description:"Jwt file path" default:"./jwt.txt"`
 }
@@ -187,6 +187,7 @@ func RPCMarshalHeader(head *ethtyp.Header, size uint64) map[string]interface{} {
 	}
 	return result
 }
+
 func parseBlock(block *mtypes.RPCBlock, isTransaction bool) interface{} {
 	if block.Header == nil {
 		return nil
@@ -390,6 +391,7 @@ func getTransactionReceipt(ctx context.Context, params []interface{}) (interface
 
 	return marshalReceipt(receipt, tx), nil
 }
+
 func marshalReceipt(receipt *ethtyp.Receipt, tx *mtypes.RPCTransaction) map[string]interface{} {
 	fields := map[string]interface{}{
 		"blockHash":         receipt.BlockHash,
@@ -450,6 +452,7 @@ func sendRawTransaction(ctx context.Context, params []interface{}) (interface{},
 	}
 	return hash.Hex(), nil
 }
+
 func sendRawTransactions(ctx context.Context, params []interface{}) (interface{}, error) {
 	txs := make([][]byte, len(params))
 	for i := range params {
@@ -543,6 +546,7 @@ func getTransactionByBlockHashAndIndex(ctx context.Context, params []interface{}
 	}
 	return ToTransactionResponse(tx, options.ChainID), nil
 }
+
 func getTransactionByBlockNumberAndIndex(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
@@ -559,6 +563,7 @@ func getTransactionByBlockNumberAndIndex(ctx context.Context, params []interface
 	}
 	return ToTransactionResponse(tx, options.ChainID), nil
 }
+
 func getUncleCountByBlockHash(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
@@ -571,6 +576,7 @@ func getUncleCountByBlockHash(ctx context.Context, params []interface{}) (interf
 	}
 	return NumberToHex(txsNum), nil
 }
+
 func getUncleCountByBlockNumber(ctx context.Context, params []interface{}) (interface{}, error) {
 	number, err := ToBlockNumber(params[0])
 	if err != nil {
@@ -592,6 +598,7 @@ func submitWork(ctx context.Context) (interface{}, error) {
 	// }
 	return fmt.Sprintf("%v", true), nil
 }
+
 func submitHashrate(ctx context.Context) (interface{}, error) {
 
 	// ok, err := backend.SubmitHashrate()
@@ -600,6 +607,7 @@ func submitHashrate(ctx context.Context) (interface{}, error) {
 	// }
 	return fmt.Sprintf("%v", true), nil
 }
+
 func hashrate(ctx context.Context) (interface{}, error) {
 
 	// hashrate, err := backend.Hashrate()
@@ -608,6 +616,7 @@ func hashrate(ctx context.Context) (interface{}, error) {
 	// }
 	return NumberToHex(options.Hashrate), nil
 }
+
 func getWork(ctx context.Context) (interface{}, error) {
 
 	// works, err := backend.GetWork()
@@ -616,6 +625,7 @@ func getWork(ctx context.Context) (interface{}, error) {
 	// }
 	return []string{}, nil
 }
+
 func protocolVersion(ctx context.Context) (interface{}, error) {
 
 	// version, err := backend.ProtocolVersion()
@@ -624,6 +634,7 @@ func protocolVersion(ctx context.Context) (interface{}, error) {
 	// }
 	return fmt.Sprintf("%v", options.ProtocolVersion), nil
 }
+
 func coinbase(ctx context.Context) (interface{}, error) {
 	return options.Coinbase, nil
 }
@@ -655,6 +666,7 @@ func signTransaction(ctx context.Context, params []interface{}) (interface{}, er
 	}
 	return NumberToHex(rawTx), nil
 }
+
 func feeHistory(ctx context.Context) (interface{}, error) {
 	nilbig := (*hexutil.Big)(big.NewInt(0))
 	results := mtypes.FeeHistoryResult{
@@ -667,6 +679,7 @@ func feeHistory(ctx context.Context) (interface{}, error) {
 	}
 	return results, nil
 }
+
 func syncing(ctx context.Context) (interface{}, error) {
 	ok, err := backend.Syncing()
 	if err != nil {
@@ -674,6 +687,7 @@ func syncing(ctx context.Context) (interface{}, error) {
 	}
 	return fmt.Sprintf("%v", ok), nil
 }
+
 func mining(ctx context.Context) (interface{}, error) {
 	ok, err := backend.Proposer()
 	if err != nil {
@@ -702,6 +716,7 @@ func newBlockFilter(ctx context.Context, params []interface{}) (interface{}, err
 	}
 	return id, nil
 }
+
 func newPendingTransactionFilter(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := backend.NewPendingTransactionFilter()
 	if err != nil {
@@ -709,6 +724,7 @@ func newPendingTransactionFilter(ctx context.Context, params []interface{}) (int
 	}
 	return id, nil
 }
+
 func uninstallFilter(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := ToID(params[0])
 	if err != nil {
@@ -732,6 +748,7 @@ func getFilterChanges(ctx context.Context, params []interface{}) (interface{}, e
 	}
 	return results, nil
 }
+
 func getFilterLogs(ctx context.Context, params []interface{}) (interface{}, error) {
 	id, err := ToID(params[0])
 	if err != nil {
@@ -757,6 +774,7 @@ func txpoolContent(ctx context.Context) (interface{}, error) {
 	}
 	return blockResult, nil
 }
+
 func traceTransaction(ctx context.Context, params []interface{}) (interface{}, error) {
 	hash, err := ToHash(params[0])
 	if err != nil {
@@ -773,9 +791,11 @@ func traceTransaction(ctx context.Context, params []interface{}) (interface{}, e
 	}
 	return backend.TraceTransaction(hash, tracer)
 }
+
 func maxPriorityFeePerGas(ctx context.Context) (interface{}, error) {
 	return big.NewInt(1), nil
 }
+
 func forkchoiceUpdatedV2(ctx context.Context, params []interface{}) (interface{}, error) {
 	update, err := ParseJsonParam[engine.ForkchoiceStateV1](params[0], "ForkchoiceStateV1")
 	if err != nil {
@@ -790,6 +810,7 @@ func forkchoiceUpdatedV2(ctx context.Context, params []interface{}) (interface{}
 	}
 	return backend.ForkchoiceUpdatedV2(*update, payloadAttributes, options.ChainID)
 }
+
 func forkchoiceUpdatedV3(ctx context.Context, params []interface{}) (interface{}, error) {
 	update, err := ParseJsonParam[engine.ForkchoiceStateV1](params[0], "ForkchoiceStateV1")
 	if err != nil {
@@ -875,6 +896,7 @@ func newPayloadV2(ctx context.Context, params []interface{}) (interface{}, error
 	}
 	return backend.NewPayloadV2(*payload)
 }
+
 func exchangeTransitionConfigurationV1(ctx context.Context, params []interface{}) (interface{}, error) {
 	signal, err := ParseJsonParam[catalyst.SuperchainSignal](params[0], "SuperchainSignal")
 	if err != nil {
@@ -907,6 +929,7 @@ func getProof(ctx context.Context, params []interface{}) (interface{}, error) {
 	}
 	return backend.GetProof(request)
 }
+
 func ToKeys(param interface{}) ([]common.Hash, error) {
 	if params, ok := param.([]interface{}); !ok {
 		return []common.Hash{}, errors.New("unexpected data type given,address")
@@ -950,7 +973,7 @@ func startJsonRpc(sender actor.OutboundSender) {
 	if options.Debug {
 		backend = internal.NewEthereumAPIMock(new(big.Int).SetUint64(options.ChainID))
 	} else {
-		backend = internal.NewMonaco(filters, sender)
+		backend = internal.NewArcology(filters, sender)
 	}
 
 	wallet = wal.NewWallet(new(big.Int).SetUint64(options.ChainID), privateKeys)

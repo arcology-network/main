@@ -45,6 +45,7 @@ func NewGenerationContext(generation *generation, Id int, sequences []*workload.
 		execResponses: map[evmCommon.Hash]*mtypes.ExecuteResponse{},
 	}
 }
+
 func (gc *generationContext) execIssue(execId int, cap int, batchSize int) (requests []*workload.JobSequence, finish bool) {
 	singleTx := 0
 	ColllectIdx := -1
@@ -104,10 +105,12 @@ func (gc *generationContext) execIssue(execId int, cap int, batchSize int) (requ
 	gc.execIssued[execId] = true
 	return
 }
+
 func (gc *generationContext) onExecResult(resp *mtypes.ExecResponses) {
 	execId := int(resp.ExecId)
 	gc.execReceived[execId] = append(gc.execReceived[execId], resp.Resp...)
 }
+
 func (gc *generationContext) isExecCompleted() bool {
 	if len(gc.remaining) > 0 {
 		return false
@@ -121,6 +124,7 @@ func (gc *generationContext) isExecCompleted() bool {
 
 	return true
 }
+
 func (gc *generationContext) CollectExecResults() {
 	responses := make(map[evmCommon.Hash]*mtypes.ExecuteResponse, mtypes.MaxBlockSize)
 	contractAddress := make([]evmCommon.Address, 0, mtypes.MaxBlockSize)

@@ -35,13 +35,13 @@ func (p *TxNumsByHashQueryPlan) build() query.Step {
 	getBlock := &query.CallStep{
 		Plan: BuildGetBlockByHeightSubPlan(),
 		Bind: func(ctx *query.QueryContext, v any) {
-			ctx.Vars[QueryKey_MonacoBlock] = v
+			ctx.Vars[QueryKey_ArcologyBlock] = v
 		},
 	}
 
 	txCounter := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
-			mblock := ctx.Vars[QueryKey_MonacoBlock].(*mtypes.MonacoBlock)
+			mblock := ctx.Vars[QueryKey_ArcologyBlock].(*mtypes.ArcologyBlock)
 			if mblock == nil {
 				ctx.Vars[QueryKey_TransactionCount] = 0
 			} else {

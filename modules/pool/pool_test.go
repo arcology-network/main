@@ -22,6 +22,7 @@ package pool
 import (
 	"math"
 	"math/big"
+	"path/filepath"
 	"testing"
 
 	"github.com/arcology-network/common-lib/crdt/statecell"
@@ -31,6 +32,7 @@ import (
 	"github.com/arcology-network/state-engine/storage/proxy"
 	evmCommon "github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	evmTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/holiman/uint256"
@@ -40,14 +42,21 @@ import (
 	statecommitter "github.com/arcology-network/state-engine/state/committer"
 )
 
-func intDb(filepath string) *statecache.ExecutionStateStore {
-	db := proxy.NewPebbleDBProxy(filepath, filepath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100})
+func intDb(root string) *statecache.ExecutionStateStore {
+	db := proxy.NewPebbleDBProxy(filepath.Join(root, "eth"), filepath.Join(root, "exec"), math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100})
 	return statecache.NewDefaultExecutionStateStore(db)
 }
 
 func TestPoolWithUncheckedTx(t *testing.T) {
 
-	db := intDb("TestPoolWithUncheckedTx")
+	db := intDb(t.TempDir())
+	t.Cleanup(func() {
+		if closer, ok := db.CommittedStore().(interface{ Close() error }); ok {
+			if err := closer.Close(); err != nil {
+				t.Errorf("close pool test database: %v", err)
+			}
+		}
+	})
 
 	n := 500
 	txs := genUncheckedTxs(0, n)
@@ -100,7 +109,7 @@ func initAccounts(db *statecache.ExecutionStateStore, from, to int) {
 		address := evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)})
 		stateDB.CreateAccount(address)
 		stateDB.SetBalance(address, uint256.NewInt(100))
-		stateDB.SetNonce(address, 0)
+		stateDB.SetNonce(address, 0, tracing.NonceChangeGenesis)
 	}
 	committer := statecommitter.NewStateCommitter(db.CommittedStore(), db.GetWriters())
 	transitions := db.Export(statecell.Sorter)
@@ -134,7 +143,7 @@ func increaseNonce(db *statecache.ExecutionStateStore, txs []*cmntyp.StandardTra
 	// stateDB.PrepareFormer(evmCommon.Hash{}, evmCommon.Hash{}, 0)
 	for i := range txs {
 		address := evmCommon.BytesToAddress(txs[i].NativeMessage.From.Bytes())
-		stateDB.SetNonce(address, 0)
+		stateDB.SetNonce(address, 0, tracing.NonceChangeUnspecified)
 	}
 	committer := statecommitter.NewStateCommitter(db.CommittedStore(), db.GetWriters())
 	transitions := db.Export(statecell.Sorter)
@@ -153,17 +162,11 @@ func genUncheckedTxs(from, to int) []*cmntyp.StandardTransaction {
 	}
 	for i := from; i < to; i++ {
 		hash := evmCommon.BytesToHash([]byte{byte(i / 256), byte(i % 256)})
-		msg := core.NewMessage(
-			evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)}),
-			nil,
-			0,
-			nil,
-			0,
-			nil,
-			nil,
-			nil,
-			false,
-		)
+		msg := core.Message{
+			From:             evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)}),
+			SkipNonceChecks:  true,
+			SkipFromEOACheck: true,
+		}
 
 		rtxs[i-from] = &cmntyp.StandardTransaction{
 			TxHash:            hash,
@@ -186,17 +189,11 @@ func genCheckedTxs(from, to int, nonce uint64, gasPrice uint64) []*cmntyp.Standa
 	}
 	for i := from; i < to; i++ {
 		hash := evmCommon.BytesToHash([]byte{byte(i / 256), byte(i % 256), byte(nonce), byte(gasPrice % 256)})
-		msg := core.NewMessage(
-			evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)}),
-			nil,
-			nonce,
-			nil,
-			0,
-			new(big.Int).SetUint64(gasPrice),
-			nil,
-			nil,
-			true,
-		)
+		msg := core.Message{
+			From:     evmCommon.BytesToAddress([]byte{byte(i / 256), byte(i % 256)}),
+			Nonce:    nonce,
+			GasPrice: new(big.Int).SetUint64(gasPrice),
+		}
 		rtxs[i-from] = &cmntyp.StandardTransaction{
 			TxHash:            hash,
 			NativeMessage:     &msg,

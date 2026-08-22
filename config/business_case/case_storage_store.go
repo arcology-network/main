@@ -58,6 +58,7 @@ func (ss *StorageStore) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register("multiAddress", ss.multiAddress)
 	reg.Register("multiAddressResult", ss.multiAddressResult)
 }
+
 func (ss *StorageStore) SetSender(sender actor.OutboundSender) {
 	ss.sender = sender
 }
@@ -185,7 +186,7 @@ func (ss *StorageStore) startTestBlockStore(broker *broker.StatefulStreamer) []s
 	sername := "blockstore"
 
 	//--------------------
-	mblock, _ := MakeMonacoBlock()
+	mblock, _ := MakeArcologyBlock()
 	_, err := ss.sender.SendSync(sername, "Save", mblock, 10, ss.from)
 	if err != nil {
 		fmt.Printf("******%v.Save err:%v\n", sername, err)
@@ -199,7 +200,7 @@ func (ss *StorageStore) startTestBlockStore(broker *broker.StatefulStreamer) []s
 		fmt.Printf("******%v.GetByHeight err:%v\n", sername, err)
 		return ss.msgs
 	}
-	block := b.(*mtypes.MonacoBlock)
+	block := b.(*mtypes.ArcologyBlock)
 	fmt.Printf("******%v.GetByHeight val:%v\n", sername, block)
 	ss.msgs = append(ss.msgs, sername+".GetByHeight")
 
@@ -224,7 +225,7 @@ func (ss *StorageStore) startTestIndexStore(broker *broker.StatefulStreamer) []s
 	sername := "indexerstore"
 
 	//--------------------
-	mblock, txhashes := MakeMonacoBlock()
+	mblock, txhashes := MakeArcologyBlock()
 	blockHeight := big.NewInt(10).SetUint64(mblock.Height)
 	keys := make([]string, len(txhashes))
 	for i := range keys {
@@ -282,7 +283,7 @@ func (ss *StorageStore) startTestReceiptStore(broker *broker.StatefulStreamer) [
 
 	blockHeight := big.NewInt(10)
 	//--------------------
-	_, txhashes := MakeMonacoBlock()
+	_, txhashes := MakeArcologyBlock()
 	receipts := MakeReceipts(txhashes)
 	_, err := ss.sender.SendSync(sername, "Save", &storage.SaveReceiptsRequest{
 		Height:   10,
@@ -717,11 +718,20 @@ func randVoteSet(
 }
 
 func makeBlockIDRandom() contyp.BlockID {
+	// Tendermint's block test fixture uses 123 as an arbitrary nonzero part count.
+	const testBlockPartCount uint32 = 123
+
 	var (
 		blockHash   = make([]byte, tmhash.Size)
 		partSetHash = make([]byte, tmhash.Size)
 	)
 	rand.Read(blockHash)   //nolint: errcheck // ignore errcheck for read
 	rand.Read(partSetHash) //nolint: errcheck // ignore errcheck for read
-	return contyp.BlockID{blockHash, contyp.PartSetHeader{123, partSetHash}}
+	return contyp.BlockID{
+		Hash: blockHash,
+		PartSetHeader: contyp.PartSetHeader{
+			Total: testBlockPartCount,
+			Hash:  partSetHash,
+		},
+	}
 }

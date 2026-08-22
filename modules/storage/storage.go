@@ -19,6 +19,7 @@ package storage
 
 import (
 	"math/big"
+	"sync/atomic"
 	"time"
 
 	"github.com/arcology-network/common-lib/common"
@@ -56,7 +57,7 @@ type Storage struct {
 
 	//save context
 	receipts   []*evmTypes.Receipt
-	block      *mtypes.MonacoBlock
+	block      *mtypes.ArcologyBlock
 	inclusive  *types.InclusiveList
 	parentinfo *mtypes.ParentInfo
 	height     uint64
@@ -71,7 +72,7 @@ type Storage struct {
 	observer   *query.MockObserver
 }
 
-// return a Subscriber struct
+// NewStorage creates the storage actor and registers its query plans.
 func NewStorage() actor.Business {
 	s := &Storage{
 		dispatcher: query.NewDispatcher(),
@@ -82,6 +83,7 @@ func NewStorage() actor.Business {
 	return s
 }
 
+// Inputs returns the messages required to persist a completed block.
 func (s *Storage) Inputs() ([]string, bool) {
 	return []string{
 		scommon.MsgParentInfo,
@@ -90,18 +92,23 @@ func (s *Storage) Inputs() ([]string, bool) {
 		scommon.MsgConflictInclusive,
 	}, true
 }
+
+// RpcConfig returns the storage RPC service name and worker capacity.
 func (s *Storage) RpcConfig() (string, int) {
 	return "storage", 20
 }
 
+// Outputs reports that storage does not publish actor messages.
 func (s *Storage) Outputs() map[string]int {
 	return map[string]int{}
 }
 
+// PrimaryMsg identifies the pending block as the storage trigger.
 func (s *Storage) PrimaryMsg() string {
 	return scommon.MsgPendingBlock
 }
 
+// Config initializes the storage caches and chain identifier.
 func (s *Storage) Config(params map[string]interface{}) {
 	// mstypes.CreateDB(params)
 	s.caches = mstypes.NewLogCaches(params["log_cache_size"].(int))
@@ -118,12 +125,14 @@ func (s *Storage) Config(params map[string]interface{}) {
 	// go http.ListenAndServe(":"+s.cacheSvcPort, c.Handler(NewHandler(s.scanCache, s.params)))
 }
 
+// InitHeight restores the last persisted block height.
 func (s *Storage) InitHeight(ctx *actor.ActionContext) error {
 	s.lastHeight = ctx.RPC.Request.(uint64)
 	ctx.ExecCtx.SendRpcResponse("", "")
 	return nil
 }
 
+// RegisterActions binds storage messages and RPC continuations to handlers.
 func (s *Storage) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgParentInfo, s.startSave)
 	reg.Register(scommon.MsgSelectedReceipts, s.startSave)
@@ -140,6 +149,7 @@ func (s *Storage) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register("InitHeight", s.InitHeight)
 }
 
+// startSave gathers block inputs and starts the persistence pipeline.
 func (s *Storage) startSave(ctx *actor.ActionContext) error {
 	for _, v := range ctx.Messages {
 		switch v.Name {
@@ -148,7 +158,7 @@ func (s *Storage) startSave(ctx *actor.ActionContext) error {
 		case scommon.MsgSelectedReceipts:
 			s.receipts = v.Data.([]*evmTypes.Receipt)
 		case scommon.MsgPendingBlock:
-			s.block = v.Data.(*mtypes.MonacoBlock)
+			s.block = v.Data.(*mtypes.ArcologyBlock)
 			s.height = v.Height
 		case scommon.MsgConflictInclusive:
 			s.inclusive = v.Data.(*types.InclusiveList)
@@ -167,11 +177,15 @@ func (s *Storage) startSave(ctx *actor.ActionContext) error {
 
 	return nil
 }
+
+// saveBlock persists the block after its state has been saved.
 func (s *Storage) saveBlock(ctx *actor.ActionContext) error {
 	s.startTime = time.Now()
 	ctx.ExecCtx.InvokeRPC("blockstore", "Save", s.block, "saveReceipt")
 	return nil
 }
+
+// saveReceipt finalizes receipt metadata and persists the receipts.
 func (s *Storage) saveReceipt(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("block save", logger.F("time", time.Since(s.startTime)))
 
@@ -184,7 +198,6 @@ func (s *Storage) saveReceipt(ctx *actor.ActionContext) error {
 	s.scanCache.BlockReceived(s.block, blockHash, mapReceipts)
 
 	s.startTime = time.Now()
-
 	conflictTxs := map[evmCommon.Hash]int{}
 	if s.inclusive != nil {
 		for i, hash := range s.inclusive.HashList {
@@ -194,19 +207,17 @@ func (s *Storage) saveReceipt(ctx *actor.ActionContext) error {
 		}
 	}
 
-	failed := 0
+	var failed atomic.Uint64
 	keys := make([]string, len(s.receipts))
 	worker := func(start, end int, idx int, args ...interface{}) {
 		for i := start; i < end; i++ {
 			txhash := s.receipts[i].TxHash
-
 			if _, ok := conflictTxs[txhash]; ok {
 				s.receipts[i].Status = 0
-				s.receipts[i].GasUsed = 0
 			}
 
 			if s.receipts[i].Status == 0 {
-				failed = failed + 1
+				failed.Add(1)
 			}
 
 			s.receipts[i].BlockHash = evmCommon.BytesToHash(blockHash)
@@ -228,7 +239,7 @@ func (s *Storage) saveReceipt(ctx *actor.ActionContext) error {
 
 	s.keys = keys
 	s.blockHash = blockHash
-	s.failed = failed
+	s.failed = int(failed.Load())
 
 	ctx.ExecCtx.InvokeRPC("receiptstore", "Save", &SaveReceiptsRequest{
 		Height:   s.height,
@@ -236,6 +247,8 @@ func (s *Storage) saveReceipt(ctx *actor.ActionContext) error {
 	}, "indexerSave")
 	return nil
 }
+
+// indexerSave stores the transaction index after receipt persistence.
 func (s *Storage) indexerSave(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.InvokeRPC("indexerstore", "Save", &SaveIndexRequest{
 		Height: s.height,
@@ -245,6 +258,8 @@ func (s *Storage) indexerSave(ctx *actor.ActionContext) error {
 	}, "saveCache")
 	return nil
 }
+
+// saveCache publishes the persisted receipts to the in-memory cache.
 func (s *Storage) saveCache(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("receipt save", logger.F("total", len(s.receipts)), logger.F("failed", s.failed), logger.F("time", time.Since(s.startTime)))
 	s.caches.Add(s.height, s.receipts)
@@ -254,6 +269,7 @@ func (s *Storage) saveCache(ctx *actor.ActionContext) error {
 
 //-----------------------for query---------
 
+// Query dispatches a storage query through its registered query plan.
 func (a *Storage) Query(ctx *actor.ActionContext) error {
 	req := ctx.RPC.Request.(*mtypes.QueryRequest)
 
@@ -289,6 +305,7 @@ func (a *Storage) Query(ctx *actor.ActionContext) error {
 	return nil
 }
 
+// QueryContinuationAction resumes a deferred query from an actor message.
 func (a *Storage) QueryContinuationAction(ctx *actor.ActionContext) error {
 	if len(ctx.Messages) == 0 {
 		ctx.ExecCtx.LogErr("no messages")
@@ -308,6 +325,7 @@ func (a *Storage) QueryContinuationAction(ctx *actor.ActionContext) error {
 	return nil
 }
 
+// RegisterQuery registers the query plans served by storage.
 func RegisterQuery(s *Storage) {
 	s.dispatcher.Register(mtypes.QueryType_RawBlock, &queryplan.GetRawBlockQueryPlan{})
 	//--------------------------------
@@ -453,6 +471,8 @@ func RegisterQuery(s *Storage) {
 		},
 	)
 }
+
+// getQueryHeight resolves negative block numbers to the latest height.
 func (rs *Storage) getQueryHeight(number int64) int64 {
 	queryHeight := int64(0)
 	if number < 0 {

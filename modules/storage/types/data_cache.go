@@ -43,6 +43,7 @@ func NewDataCache(size int) *DataCache {
 		Indexer:     map[uint64][]string{},
 	}
 }
+
 func (caches *DataCache) Query(hash string) interface{} {
 	caches.lock.Lock()
 	defer caches.lock.Unlock()

@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"fmt"
 	"math/big"
-	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 
@@ -60,6 +60,7 @@ func TestEncodeDecode(t *testing.T) {
 	}
 	compareReceipt(receipt, &receiptobj, "receipt encode and  decode Error", t)
 }
+
 func compareReceipt(a, b *evmTypes.Receipt, errString string, t *testing.T) {
 	aobj, err := a.MarshalBinary()
 	if err != nil {
@@ -75,13 +76,14 @@ func compareReceipt(a, b *evmTypes.Receipt, errString string, t *testing.T) {
 }
 
 func TestReceiptCache(t *testing.T) {
-	filedb, err := filedb.NewFileDB("index", 16, 2)
+	root := t.TempDir()
+	filedb, err := filedb.NewFileDB(filepath.Join(root, "index"), 16, 2)
 	if err != nil {
 		panic("create filedb err!:" + err.Error())
 	}
 	cacheSize := 2
 	indexer := NewIndexer(filedb, cacheSize)
-	cache := NewReceiptCaches("receiptfiles", cacheSize, 8)
+	cache := NewReceiptCaches(filepath.Join(root, "receiptfiles"), cacheSize, 8)
 
 	receipts1 := make([]*evmTypes.Receipt, 2)
 
@@ -177,6 +179,4 @@ func TestReceiptCache(t *testing.T) {
 		t.Error("indexer.GetBlockHashesByHeightFromCache Error")
 		return
 	}
-	os.RemoveAll("index")
-	os.RemoveAll("receiptfiles")
 }

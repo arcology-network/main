@@ -37,7 +37,7 @@ import (
 type MakeBlock struct {
 	ParentTime  uint64
 	currentinfo *mtypes.ParentInfo
-	block       *mtypes.MonacoBlock
+	block       *mtypes.ArcologyBlock
 	header      *evmTypes.Header
 }
 
@@ -190,8 +190,6 @@ func OrderTxs(selectedInfo *mtypes.SelectedTxsInfo, inclusivelist []evmCommon.Ha
 }
 
 func (m *MakeBlock) CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, blockstart *actor.BlockStart, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, blockParams *mtypes.BlockParams, bloom evmTypes.Bloom, withdrawhash *evmCommon.Hash) *evmTypes.Header {
-	excessBlobGas := eip4844.CalcExcessBlobGas(parentinfo.ExcessBlobGas, parentinfo.BlobGasUsed)
-
 	headtime := blockstart.Timestamp.Uint64()
 	if blockParams.Times > 0 {
 		headtime = blockParams.Times
@@ -199,6 +197,11 @@ func (m *MakeBlock) CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, b
 			headtime = m.ParentTime + 1
 		}
 	}
+	parentHeader := &evmTypes.Header{
+		ExcessBlobGas: &parentinfo.ExcessBlobGas,
+		BlobGasUsed:   &parentinfo.BlobGasUsed,
+	}
+	excessBlobGas := eip4844.CalcExcessBlobGas(blockParams.ChainConfig, parentHeader, headtime)
 
 	header := evmTypes.Header{
 		ParentHash: parentinfo.ParentHash,
@@ -235,7 +238,7 @@ func (m *MakeBlock) CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, b
 	return &header
 }
 
-func CreateBlock(header *evmTypes.Header, txSelected [][]byte, SignerType uint8) (*mtypes.MonacoBlock, error) {
+func CreateBlock(header *evmTypes.Header, txSelected [][]byte, SignerType uint8) (*mtypes.ArcologyBlock, error) {
 	ethHeader, err := header.MarshalJSON()
 	if err != nil {
 		return nil, err
@@ -249,7 +252,7 @@ func CreateBlock(header *evmTypes.Header, txSelected [][]byte, SignerType uint8)
 
 	headers = append(headers, ethHeaders)
 
-	block := &mtypes.MonacoBlock{
+	block := &mtypes.ArcologyBlock{
 		Blockhash: header.Hash().Bytes(),
 		Height:    header.Number.Uint64(),
 		Headers:   headers,

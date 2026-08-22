@@ -197,12 +197,14 @@ func (dm *DecisionMaker) fastSyncCountdown(ctx *actor.ActionContext) {
 	delete(dm.fastSyncMessageTypes, msg.Name)
 	dm.updateFSM = true
 }
+
 func (dm *DecisionMaker) changeStateFromFastSync(ctx *actor.ActionContext) {
 	// FIXME
 	if len(dm.fastSyncMessageTypes) == 3 {
 		dm.ChangeState(ctx, dmStateBlockSyncWaiting, "dmStateBlockSyncWaiting")
 	}
 }
+
 func (dm *DecisionMaker) receivedExtBlockEnd(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	switch dm.state {
@@ -243,10 +245,12 @@ func (dm *DecisionMaker) receivedStateSyncDone(ctx *actor.ActionContext) error {
 	dm.ChangeState(ctx, dmStateBlockSync, "dmStateBlockSync")
 	return nil
 }
+
 func (dm *DecisionMaker) receivedExtTxBlocks(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.Send(scommon.MsgTxBlocks, ctx.Messages[0].Data)
 	return nil
 }
+
 func (dm *DecisionMaker) receivedAppHash(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.Send(scommon.MsgExtAppHash, ctx.Messages[0].Data)
 	return nil

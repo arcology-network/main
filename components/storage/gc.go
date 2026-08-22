@@ -45,6 +45,7 @@ func (gc *Gc) Outputs() map[string]int {
 func (gc *Gc) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgGc, gc.gc)
 }
+
 func (gc *Gc) gc(ctx *actor.ActionContext) error {
 	t := time.Now()
 	runtime.GC()

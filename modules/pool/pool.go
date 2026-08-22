@@ -113,7 +113,7 @@ func (p *Pool) Add(txs []*cmntyp.StandardTransaction, src cmntyp.TxSource, heigh
 	uncheckedHashes := make([]string, 0, len(txs))
 	uncheckedValues := make([]*cmntyp.StandardTransaction, 0, len(txs))
 	for i := range txs {
-		if !txs[i].NativeMessage.SkipAccountChecks && !p.CloseCheck {
+		if !txs[i].NativeMessage.SkipNonceChecks && !p.CloseCheck {
 			bySender[string(txs[i].NativeMessage.From.Bytes())] = append(bySender[string(txs[i].NativeMessage.From.Bytes())], txs[i])
 		} else {
 			uncheckedHashes = append(uncheckedHashes, string(txs[i].TxHash.Bytes()))
@@ -207,6 +207,7 @@ func (p *Pool) Reap(limit int) []*cmntyp.StandardTransaction {
 	}
 	return results
 }
+
 func (p *Pool) QueryByHash(hash evmCommon.Hash) *cmntyp.StandardTransaction {
 	keys := make([]string, 1)
 	// keys[0] = string(hash.Bytes())

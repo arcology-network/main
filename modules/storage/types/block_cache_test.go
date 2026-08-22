@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"math"
 	"math/big"
-	"os"
 	"reflect"
 	"testing"
 
@@ -32,7 +31,7 @@ import (
 	evmRlp "github.com/ethereum/go-ethereum/rlp"
 )
 
-func newBlock(height uint64, idx int) (*mtypes.MonacoBlock, []evmCommon.Hash) {
+func newBlock(height uint64, idx int) (*mtypes.ArcologyBlock, []evmCommon.Hash) {
 	header := &evmTypes.Header{
 		ParentHash:  evmCommon.BytesToHash([]byte{byte(1 + idx), byte(2 + idx), byte(3 + idx), byte(4 + idx), 5, 6, 7, 8, 9, 10}),
 		Number:      big.NewInt(common.Uint64ToInt64(height)),
@@ -65,7 +64,7 @@ func newBlock(height uint64, idx int) (*mtypes.MonacoBlock, []evmCommon.Hash) {
 		txhashes[i] = evmCommon.HexToHash(hashes[idx+i])
 	}
 
-	block := &mtypes.MonacoBlock{
+	block := &mtypes.ArcologyBlock{
 		Blockhash: header.Hash().Bytes(),
 		Height:    height,
 		Headers:   headers,
@@ -94,7 +93,7 @@ var (
 )
 
 func TestBlockCache(t *testing.T) {
-	cache := NewBlockCaches("blockfiles", 2)
+	cache := NewBlockCaches(t.TempDir(), 2)
 	block1, _ := newBlock(1, 0)
 	cache.Save(block1.Height, block1)
 
@@ -160,5 +159,4 @@ func TestBlockCache(t *testing.T) {
 		t.Error("cache save get transaction Error")
 	}
 
-	os.RemoveAll("blockfiles")
 }

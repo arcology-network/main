@@ -16,6 +16,7 @@ func (p *TestHashesByHeightQueryPlan) Start(
 	root := p.buildSteps()
 	query.StartStep(ctx, root, cont)
 }
+
 func (p *TestHashesByHeightQueryPlan) buildSteps() query.Step {
 	params := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {

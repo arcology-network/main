@@ -16,6 +16,7 @@ func (p *BalanceEthQueryPlan) Start(
 	root := p.buildSteps()
 	query.StartStep(ctx, root, cont)
 }
+
 func (p *BalanceEthQueryPlan) buildSteps() query.Step {
 	params := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {

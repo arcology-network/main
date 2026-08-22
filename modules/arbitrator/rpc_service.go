@@ -38,9 +38,11 @@ func NewRpcService() actor.Business {
 	rs.arbitrator = conflictor.NewConflictor()
 	return &rs
 }
+
 func (rs *RpcService) RpcConfig() (string, int) {
 	return "arbitrator", 20
 }
+
 func (rs *RpcService) Inputs() ([]string, bool) {
 	return []string{
 		scommon.MsgAccessRecordSelected,

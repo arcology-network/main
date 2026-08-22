@@ -118,7 +118,7 @@ func (cr *CalculateRoothash) gatherReceipts(inclusiveList *types.InclusiveList, 
 
 	if len(selectedReceipts) > 0 {
 		receiptHash = evmTypes.DeriveSha(evmTypes.Receipts(selectedReceipts), trie.NewStackTrie(nil))
-		bloom = evmTypes.CreateBloom(receipts)
+		bloom = evmTypes.MergeBloom(evmTypes.Receipts(selectedReceipts))
 	}
 	return receiptHash, bloom, gasused, successfulTxs
 }

@@ -19,6 +19,7 @@ package businessCase
 
 import (
 	"fmt"
+	"os"
 	"testing"
 
 	consensuspk "github.com/arcology-network/main/modules/consensus"
@@ -29,8 +30,18 @@ import (
 	"github.com/spf13/viper"
 )
 
+func newTestRuntimeDir(t *testing.T) string {
+	t.Helper()
+	dir, err := os.MkdirTemp("", "arcology-main-business-case-*")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dir) })
+	return dir
+}
+
 func TestConsensus(t *testing.T) {
-	basepath := "./case_consensus"
+	basepath := newTestRuntimeDir(t)
 	ClearPath(basepath)
 
 	viper.Set("home", basepath)
@@ -86,7 +97,7 @@ func TestConsensus(t *testing.T) {
 // }
 
 func TestUrlAggrGeneral(t *testing.T) {
-	basepath := "./urlAggrGeneral"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_url_aggr_general.yaml")
 
 	testc := NewUrlAggrSelector(basepath, scommon.MsgEuResults, scommon.MsgExecuted, scommon.MsgGenerationReapingCompleted, scommon.MsgBlockEnd,
@@ -106,7 +117,7 @@ func TestUrlAggrGeneral(t *testing.T) {
 }
 
 func TestUrlAggrNonce(t *testing.T) {
-	basepath := "./urlAggrNonce"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_url_aggr_nonce.yaml")
 
 	testc := NewUrlAggrSelector(basepath, scommon.MsgNonceEuResults, scommon.MsgCommitNonceUrl, scommon.MsgGenerationReapingCompleted, scommon.MsgBlockEnd,
@@ -125,7 +136,7 @@ func TestUrlAggrNonce(t *testing.T) {
 }
 
 func TestStorageStore(t *testing.T) {
-	basepath := "./case_storage_store"
+	basepath := newTestRuntimeDir(t)
 
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage_store.yaml")
 
@@ -193,7 +204,7 @@ func TestStorageStore(t *testing.T) {
 }
 
 func TestStorage(t *testing.T) {
-	basepath := "./case_storage"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
 
 	testc := NewStorageTest(basepath)
@@ -210,7 +221,7 @@ func TestStorage(t *testing.T) {
 }
 
 func TestStorageQuery(t *testing.T) {
-	basepath := "./case_storage"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_storage.yaml")
 
 	testc := NewStorageTest(basepath)
@@ -227,7 +238,7 @@ func TestStorageQuery(t *testing.T) {
 }
 
 func TestExecutor(t *testing.T) {
-	basepath := "./case_executor"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_executor.yaml")
 
 	testc := NewExecutorTest(basepath)
@@ -244,7 +255,7 @@ func TestExecutor(t *testing.T) {
 }
 
 func TestPoolAsL1(t *testing.T) {
-	basepath := "./case_pool"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_pool.yaml")
 
 	testc := NewPoolTest(basepath, true)
@@ -263,7 +274,7 @@ func TestPoolAsL1(t *testing.T) {
 }
 
 func TestPoolAsL2(t *testing.T) {
-	basepath := "./case_pool2"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_pool2.yaml")
 
 	testc := NewPoolTest(basepath, false)
@@ -282,7 +293,7 @@ func TestPoolAsL2(t *testing.T) {
 }
 
 func TestScheduler(t *testing.T) {
-	basepath := "./cfg_scheduler"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_scheduler.yaml")
 
 	arbi := NewMockArbitrator(basepath)
@@ -305,7 +316,7 @@ func TestScheduler(t *testing.T) {
 }
 
 func TestArbitrator(t *testing.T) {
-	basepath := "./cfg_arbitrator"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_arbitrator.yaml")
 
 	testc := NewArbitratorTest(basepath)
@@ -322,7 +333,7 @@ func TestArbitrator(t *testing.T) {
 }
 
 func TestReceiptHashing(t *testing.T) {
-	basepath := "./case_receipt-hashing"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_receipt-hashing.yaml")
 
 	testc := NewReceiptHashingTest(basepath)
@@ -339,7 +350,7 @@ func TestReceiptHashing(t *testing.T) {
 }
 
 func TestGatewayTppTxBlock(t *testing.T) {
-	basepath := "./case_gateway_tpp"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_gateway_tpp.yaml")
 
 	testc := NewGatewayTppTest(basepath)
@@ -356,7 +367,7 @@ func TestGatewayTppTxBlock(t *testing.T) {
 }
 
 func TestGatewayTppLocalSingle(t *testing.T) {
-	basepath := "./case_gateway_tpp"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_gateway_tpp.yaml")
 
 	testc := NewGatewayTppTest(basepath)
@@ -373,7 +384,7 @@ func TestGatewayTppLocalSingle(t *testing.T) {
 }
 
 func TestGatewayTppLocalBatch(t *testing.T) {
-	basepath := "./case_gateway_tpp"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_gateway_tpp.yaml")
 
 	testc := NewGatewayTppTest(basepath)
@@ -390,7 +401,7 @@ func TestGatewayTppLocalBatch(t *testing.T) {
 }
 
 func TestCore(t *testing.T) {
-	basepath := "./case_core"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_core.yaml")
 
 	testc := NewMakeCoreTest(basepath)
@@ -407,7 +418,7 @@ func TestCore(t *testing.T) {
 }
 
 func TestCoordinator(t *testing.T) {
-	basepath := "./case_coordinator"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_coordinator.yaml")
 
 	testc := NewCoordinatorTest(basepath)
@@ -424,7 +435,7 @@ func TestCoordinator(t *testing.T) {
 }
 
 func TestEthapi(t *testing.T) {
-	basepath := "./case_eth_api"
+	basepath := newTestRuntimeDir(t)
 	app, broker, _ := InitCfg(basepath, "../global.yaml", "../jet.yaml", "./cfg_eth_api.yaml")
 
 	testc := NewEthApiTest(basepath)

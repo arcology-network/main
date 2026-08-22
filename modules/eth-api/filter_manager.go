@@ -40,19 +40,23 @@ func NewFilterManager() actor.Business {
 	fm := FilterManager{}
 	return &fm
 }
+
 func (fm *FilterManager) SetSender(sender actor.OutboundSender) {
 	fm.sender = sender
 
 }
+
 func (fm *FilterManager) Inputs() ([]string, bool) {
 	return []string{
 		scommon.MsgSelectedReceipts,
 		scommon.MsgPendingBlock,
 	}, true
 }
+
 func (fm *FilterManager) PrimaryMsg() string {
 	return scommon.MsgSelectedReceipts
 }
+
 func (fm *FilterManager) Outputs() map[string]int {
 	return map[string]int{}
 }
@@ -74,6 +78,7 @@ func (fm *FilterManager) Config(params map[string]interface{}) {
 	startJsonRpc(fm.sender)
 	startAuthJsonRpc()
 }
+
 func (fm *FilterManager) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgSelectedReceipts, fm.SetData)
 	reg.Register(scommon.MsgPendingBlock, fm.SetData)
@@ -81,14 +86,14 @@ func (fm *FilterManager) RegisterActions(reg actor.ActionRegistrar) {
 
 func (fm *FilterManager) SetData(ctx *actor.ActionContext) error {
 	var receipts []*ethTypes.Receipt
-	var block *mtypes.MonacoBlock
+	var block *mtypes.ArcologyBlock
 
 	for _, v := range ctx.Messages {
 		switch v.Name {
 		case scommon.MsgSelectedReceipts:
 			receipts = v.Data.([]*ethTypes.Receipt)
 		case scommon.MsgPendingBlock:
-			block = v.Data.(*mtypes.MonacoBlock)
+			block = v.Data.(*mtypes.ArcologyBlock)
 		}
 	}
 

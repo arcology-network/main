@@ -37,9 +37,11 @@ func init() {
 func getBalancePath(addr string) string {
 	return connector.BalancePath(evmcommon.HexToAddress(addr))
 }
+
 func getNoncePath(addr string) string {
 	return connector.NoncePath(evmcommon.HexToAddress(addr))
 }
+
 func getCodePath(addr string) string {
 	return connector.CodePath(evmcommon.HexToAddress(addr))
 }

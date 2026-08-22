@@ -51,6 +51,7 @@ func (f *Filter) getHashes() []ethcmn.Hash {
 	f.Hashes = nil
 	return hashes
 }
+
 func (f *Filter) getLogs() []*ethtyp.Log {
 	f.lock.Lock()
 	defer f.lock.Unlock()
@@ -58,6 +59,7 @@ func (f *Filter) getLogs() []*ethtyp.Log {
 	f.Logs = nil
 	return logs
 }
+
 func (f *Filter) append(height uint64, logs []*ethtyp.Log, blockhash ethcmn.Hash) {
 	f.lock.Lock()
 	defer f.lock.Unlock()
@@ -193,6 +195,7 @@ func (fs *Filters) NewFilter(crit eth.FilterQuery) ID {
 	}
 	return id
 }
+
 func (fs *Filters) GetFilterChanges(id ID) (interface{}, error) {
 	fs.filtersMu.Lock()
 	defer fs.filtersMu.Unlock()
@@ -240,6 +243,7 @@ func returnLogs(logs []*ethtyp.Log) []*ethtyp.Log {
 	}
 	return logs
 }
+
 func returnHashes(hashes []ethcmn.Hash) []ethcmn.Hash {
 	if hashes == nil {
 		return []ethcmn.Hash{}

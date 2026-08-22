@@ -37,6 +37,7 @@ func (si StatisticalInformation) EncodeToBytes() []byte {
 	}
 	return codec.Byteset(data).Encode()
 }
+
 func (si *StatisticalInformation) Decode(data []byte) error {
 	fields := codec.Byteset{}.Decode(data).(codec.Byteset)
 	si.Key = string(fields[0])

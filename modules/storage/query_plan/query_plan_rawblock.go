@@ -17,6 +17,7 @@ func (p *GetRawBlockQueryPlan) Start(
 	root := p.buildSteps()
 	query.StartStep(ctx, root, cont)
 }
+
 func (p *GetRawBlockQueryPlan) buildSteps() query.Step {
 	callGetBlockParam := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
@@ -28,13 +29,13 @@ func (p *GetRawBlockQueryPlan) buildSteps() query.Step {
 	getBlock := &query.CallStep{
 		Plan: BuildGetBlockByHeightSubPlan(),
 		Bind: func(ctx *query.QueryContext, v any) {
-			ctx.Vars[QueryKey_MonacoBlock] = v
+			ctx.Vars[QueryKey_ArcologyBlock] = v
 		},
 	}
 
 	finalReturn := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
-			v := ctx.Vars[QueryKey_MonacoBlock]
+			v := ctx.Vars[QueryKey_ArcologyBlock]
 			if v == nil {
 				cont(nil, fmt.Errorf("block not found"))
 				return

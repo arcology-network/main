@@ -15,6 +15,7 @@ func (p *TestReceiptByPositionQueryPlan) Start(
 	root := p.buildSteps()
 	query.StartStep(ctx, root, cont)
 }
+
 func (p *TestReceiptByPositionQueryPlan) buildSteps() query.Step {
 	params := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {

@@ -35,6 +35,7 @@ func NewBlockCaches(path string, cache int) *BlockCaches {
 		db:     NewRawFiles(path),
 	}
 }
+
 func (rc *BlockCaches) QueryTx(height uint64, idx int) *evmTypes.Transaction {
 	block := rc.Query(height)
 	if block == nil || idx >= len(block.Txs) {
@@ -48,11 +49,12 @@ func (rc *BlockCaches) QueryTx(height uint64, idx int) *evmTypes.Transaction {
 	}
 	return otx
 }
-func (rc *BlockCaches) Query(height uint64) *mtypes.MonacoBlock {
+
+func (rc *BlockCaches) Query(height uint64) *mtypes.ArcologyBlock {
 	heightstr := fmt.Sprintf("%v", height)
 	block := rc.caches.Query(heightstr)
 	if block != nil {
-		return block.(*mtypes.MonacoBlock)
+		return block.(*mtypes.ArcologyBlock)
 	}
 
 	data, err := rc.db.Read(rc.db.GetFilename(height))
@@ -60,7 +62,7 @@ func (rc *BlockCaches) Query(height uint64) *mtypes.MonacoBlock {
 		return nil
 	}
 
-	blockobj := mtypes.MonacoBlock{}
+	blockobj := mtypes.ArcologyBlock{}
 	err = blockobj.GobDecode(data)
 	//err = common.GobDecode(data, &blockobj)
 	if err != nil {
@@ -70,7 +72,7 @@ func (rc *BlockCaches) Query(height uint64) *mtypes.MonacoBlock {
 	return &blockobj
 }
 
-func (rc *BlockCaches) Save(height uint64, block *mtypes.MonacoBlock) {
+func (rc *BlockCaches) Save(height uint64, block *mtypes.ArcologyBlock) {
 	data, err := block.GobEncode()
 	if err != nil {
 		return
@@ -80,7 +82,7 @@ func (rc *BlockCaches) Save(height uint64, block *mtypes.MonacoBlock) {
 	rc.db.Write(rc.db.GetFilename(height), data)
 }
 
-func (rc *BlockCaches) CacheOnly(height uint64, block *mtypes.MonacoBlock) {
+func (rc *BlockCaches) CacheOnly(height uint64, block *mtypes.ArcologyBlock) {
 	key := fmt.Sprintf("%v", height)
 	rc.caches.Add(height, []string{key}, []interface{}{block})
 }

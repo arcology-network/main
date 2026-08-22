@@ -52,6 +52,7 @@ func AttachChainId(tx *mtypes.RPCTransaction, chainid uint64) *mtypes.RPCTransac
 func ToTransactionResponse(tx *mtypes.RPCTransaction, chainid uint64) interface{} { //} map[string]string {
 	return AttachChainId(tx, chainid)
 }
+
 func ToBlockIndex(v interface{}) (int, error) {
 	if str, ok := v.(string); !ok {
 		return 0, errors.New("unexpected data type given")
@@ -294,6 +295,7 @@ func ToSendTxArgs(v interface{}) (SendTxArgs, error) {
 
 	return sendTxArgs, nil
 }
+
 func ToID(v interface{}) (internal.ID, error) {
 	if id, ok := v.(string); !ok {
 		return "", errors.New("unexpected data type given")
@@ -301,6 +303,7 @@ func ToID(v interface{}) (internal.ID, error) {
 		return internal.ID(id), nil
 	}
 }
+
 func ToFilter(v interface{}) (eth.FilterQuery, error) {
 	if m, ok := v.(map[string]interface{}); !ok {
 		return eth.FilterQuery{}, errors.New("unexpected data type given")

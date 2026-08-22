@@ -37,6 +37,7 @@ func containAddress(addrs []ethcmn.Address, addr ethcmn.Address) bool {
 	}
 	return false
 }
+
 func FiltereTopic(tpoicsFilter [][]ethcmn.Hash, tpoics []ethcmn.Hash) bool {
 	if len(tpoicsFilter) > len(tpoics) {
 		return false
@@ -58,6 +59,7 @@ func FiltereTopic(tpoicsFilter [][]ethcmn.Hash, tpoics []ethcmn.Hash) bool {
 	}
 	return true
 }
+
 func FilteLogs(logs []*ethtyp.Log, filter eth.FilterQuery) []*ethtyp.Log {
 	fielteredLogs := make([]*ethtyp.Log, 0, len(logs))
 	if filter.Addresses == nil || len(filter.Addresses) == 0 {
@@ -81,6 +83,7 @@ func FilteLogs(logs []*ethtyp.Log, filter eth.FilterQuery) []*ethtyp.Log {
 	}
 	return topicFielteredLogs
 }
+
 func ToLogs(receipts []*ethtyp.Receipt) []*ethtyp.Log {
 	logsSize := 0
 	for i := range receipts {

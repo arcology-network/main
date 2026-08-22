@@ -117,7 +117,7 @@ func (pt *PoolTest) startTestAsL1(ss *broker.StatefulStreamer) []string {
 	time.Sleep(1 * time.Second)
 
 	//-------------------------
-	mblock, txhashes := MakeMonacoBlock()
+	mblock, txhashes := MakeArcologyBlock()
 	_, stdTxs := Transfer(mblock.Txs, txhashes)
 
 	pack := &types.StdTransactionPack{
@@ -176,7 +176,7 @@ func (pt *PoolTest) startTestAsL2(ss *broker.StatefulStreamer) []string {
 	time.Sleep(1 * time.Second)
 
 	//-------------------------
-	mblock, txhashes := MakeMonacoBlock()
+	mblock, txhashes := MakeArcologyBlock()
 	_, stdTxs := Transfer(mblock.Txs, txhashes)
 
 	pack := &types.StdTransactionPack{

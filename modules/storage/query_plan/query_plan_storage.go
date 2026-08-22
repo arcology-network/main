@@ -16,6 +16,7 @@ func (p *StorageQueryPlan) Start(
 	root := p.buildSteps()
 	query.StartStep(ctx, root, cont)
 }
+
 func (p *StorageQueryPlan) buildSteps() query.Step {
 
 	params := &query.FuncStep{

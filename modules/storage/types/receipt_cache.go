@@ -38,6 +38,7 @@ func NewReceiptCaches(path string, cache int, concurrency int) *ReceiptCaches {
 		concurrency: concurrency,
 	}
 }
+
 func (rc *ReceiptCaches) QueryReceipt(height uint64, idx int) *evmTypes.Receipt {
 	data := rc.updateCache(height)
 	if data == nil {

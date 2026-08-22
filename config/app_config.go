@@ -254,11 +254,13 @@ func (config *AppConfig) createMsgOps(worker actor.Business, broker *brokerpk.St
 		}
 	}
 }
+
 func (config *AppConfig) SetSender(worker actor.Business, sender actor.OutboundSender) {
 	if _, ok := worker.(actor.Sendable); ok {
 		worker.(actor.Sendable).SetSender(sender)
 	}
 }
+
 func (config *AppConfig) createWorker(name string, params map[string]interface{}, globalConfig *GlobalConfig, sender actor.OutboundSender) actor.Business {
 	worker := actor.Factory.Create(
 		name,
@@ -356,8 +358,9 @@ func LoadConf(globalConfigFile, jetConfigFile, appConfigFile string) {
 		}
 	}
 
-	for _, msg := range appConfig.StartMsgs {
-		broker.Send(msg.Name, &msg)
+	for i := range appConfig.StartMsgs {
+		msg := &appConfig.StartMsgs[i]
+		broker.Send(msg.Name, msg)
 	}
 
 }

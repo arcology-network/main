@@ -97,7 +97,7 @@ func (et *EthApiTest) startTest(ss *broker.StatefulStreamer) []string {
 	et.msgs = append(et.msgs, "eth_newFilter")
 	fmt.Printf("******eth_newFilter Id:%v\n", id)
 
-	mb, tashes := MakeMonacoBlock()
+	mb, tashes := MakeArcologyBlock()
 	mblock := BlockWithHeader(mb, genesis)
 	receipts := MakeReceipts(tashes)
 	m = scommon.NewMessageForStream(scommon.MsgSelectedReceipts, receipts)
@@ -133,7 +133,7 @@ func (et *EthApiTest) startTest(ss *broker.StatefulStreamer) []string {
 	time.Sleep(1 * time.Second)
 
 	//------------------------
-	mmb, tashes := MakeMonacoBlockFromGenesis(genesis)
+	mmb, tashes := MakeArcologyBlockFromGenesis(genesis)
 	blockHash := evmCommon.BytesToHash(mmb.Blockhash)
 	_, err = et.sender.SendSync("blockstore", "Save", mmb, 10, et.from)
 	if err != nil {

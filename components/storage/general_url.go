@@ -170,6 +170,7 @@ func (url *GeneralUrl) Commit(ctx *actor.ActionContext, height uint64) {
 func (url *GeneralUrl) PreCommitAsync(ctx *actor.ExecutionContext) {
 	url.BasicDBOperation.PreCommitAsync(ctx)
 }
+
 func (url *GeneralUrl) CommitAsync(ctx *actor.ExecutionContext, height uint64) {
 	url.BasicDBOperation.CommitAsync(ctx, height)
 }

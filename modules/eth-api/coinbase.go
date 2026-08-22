@@ -48,6 +48,7 @@ func (sq *Coinbase) Outputs() map[string]int {
 func (sq *Coinbase) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgInitialization, sq.SetCoin)
 }
+
 func (sq *Coinbase) SetCoin(ctx *actor.ActionContext) error {
 	coinbase := ctx.Messages[0].Data.(*mtypes.Initialization).BlockStart
 	options.Coinbase = fmt.Sprintf("0x%x", coinbase.Coinbase.Bytes())

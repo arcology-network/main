@@ -41,7 +41,7 @@ func init() {
 
 	gob.Register(&BlockResult{})
 	gob.Register(&MetaBlock{})
-	gob.Register(&MonacoBlock{})
+	gob.Register(&ArcologyBlock{})
 
 	gob.Register(&ParentInfo{})
 	gob.Register(&SyncStatus{})

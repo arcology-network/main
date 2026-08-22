@@ -26,7 +26,7 @@ const (
 	AppType_Coin = 1
 )
 
-type MonacoBlock struct {
+type ArcologyBlock struct {
 	Height    uint64
 	Blockhash []byte
 	Headers   [][]byte
@@ -34,14 +34,14 @@ type MonacoBlock struct {
 	Signer    uint8
 }
 
-func (mb MonacoBlock) Hash() []byte {
+func (mb ArcologyBlock) Hash() []byte {
 	// bys := [][]byte{codec.Byteset(mb.Headers).Flatten(), codec.Byteset(mb.Txs).Flatten(), common.Uint64ToBytes(mb.Height)}
 	// sum := sha256.Sum256(codec.Byteset(bys).Flatten())
 	// return sum[:]
 	return mb.Blockhash
 }
 
-func (mb MonacoBlock) GobEncode() ([]byte, error) {
+func (mb ArcologyBlock) GobEncode() ([]byte, error) {
 	data := [][]byte{
 		codec.Uint64(mb.Height).Encode(),
 		codec.Byteset(mb.Headers).Encode(),
@@ -51,7 +51,8 @@ func (mb MonacoBlock) GobEncode() ([]byte, error) {
 	}
 	return codec.Byteset(data).Encode(), nil
 }
-func (mb *MonacoBlock) GobDecode(data []byte) error {
+
+func (mb *ArcologyBlock) GobDecode(data []byte) error {
 	fields := codec.Byteset{}.Decode(data).(codec.Byteset)
 	mb.Height = uint64(codec.Uint64(0).Decode(fields[0]).(codec.Uint64))
 	mb.Headers = codec.Byteset{}.Decode(fields[1]).(codec.Byteset)

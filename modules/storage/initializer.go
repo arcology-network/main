@@ -34,6 +34,7 @@ import (
 	"github.com/arcology-network/streamer/logger"
 	"github.com/ethereum/go-ethereum/cmd/utils"
 	evmCommon "github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
 	"github.com/holiman/uint256"
 
@@ -211,9 +212,11 @@ func (i *Initializer) InitMsgs() []*scommon.Message {
 		},
 	}
 }
+
 func (i *Initializer) RegisterActions(reg actor.ActionRegistrar) {
 
 }
+
 func InitGenesisAccounts(dbpath string, genesis *evmcore.Genesis, height uint64) (*statecache.ExecutionStateStore, evmCommon.Hash, []*statecell.StateCell) {
 	db := proxy.NewPebbleDBProxy(dbpath, dbpath, math.MaxUint64, &hashdb.Config{CleanCacheSize: 1024 * 1024 * 100})
 	stateStore := statecache.NewDefaultExecutionStateStore(db)
@@ -285,7 +288,7 @@ func getTransition(addresses []evmCommon.Address, genesisAlloc evmcore.GenesisAl
 			bl = uint256.NewInt(0)
 		}
 		stateDB.SetBalance(addr, bl)
-		stateDB.SetNonce(addr, uint64(1))
+		stateDB.SetNonce(addr, uint64(1), tracing.NonceChangeGenesis)
 		code := acct.Code
 		if len(code) > 0 {
 			stateDB.SetCode(addr, code)

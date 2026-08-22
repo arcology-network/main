@@ -80,6 +80,7 @@ func (m *Metrics) receivedList(ctx *actor.ActionContext) error {
 	m.collectStart = time.Now()
 	return nil
 }
+
 func (m *Metrics) receivedExecuted(ctx *actor.ActionContext) error {
 	m.calcStart = time.Now()
 	CollectTime.Observe(m.calcStart.Sub(m.collectStart).Seconds())

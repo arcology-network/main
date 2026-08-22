@@ -67,12 +67,15 @@ func (mock *EthereumAPIMock) GetProof(rq *mtypes.RequestProof) (*ethstg.AccountR
 func (mock *EthereumAPIMock) ForkchoiceUpdatedV2(update engine.ForkchoiceStateV1, payloadAttributes *engine.PayloadAttributes, chainid uint64) (engine.ForkChoiceResponse, error) {
 	return engine.ForkChoiceResponse{}, nil
 }
+
 func (mock *EthereumAPIMock) GetPayloadV2(payloadID engine.PayloadID) (*engine.ExecutionPayloadEnvelope, error) {
 	return nil, nil
 }
+
 func (mock *EthereumAPIMock) NewPayloadV2(params engine.ExecutableData) (engine.PayloadStatusV1, error) {
 	return engine.PayloadStatusV1{}, nil
 }
+
 func (mock *EthereumAPIMock) SignalSuperchainV1(signal *catalyst.SuperchainSignal) (params.ProtocolVersion, error) {
 	return params.ProtocolVersion{}, nil
 }
@@ -111,6 +114,7 @@ func (mock *EthereumAPIMock) GetHeaderByHash(hash ethcmn.Hash) (*mtypes.RPCBlock
 	// TODO
 	return nil, nil
 }
+
 func (mock *EthereumAPIMock) GetHeaderByNumber(number int64) (*mtypes.RPCBlock, error) {
 	// TODO
 	return nil, nil
@@ -219,6 +223,7 @@ func (mock *EthereumAPIMock) GetTransactionByBlockHashAndIndex(hash ethcmn.Hash,
 		Value:            (*hexutil.Big)(big.NewInt(0)),
 	}, nil
 }
+
 func (mock *EthereumAPIMock) GetTransactionByBlockNumberAndIndex(number int64, index int) (*mtypes.RPCTransaction, error) {
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
@@ -240,36 +245,46 @@ func (mock *EthereumAPIMock) GetBlockTransactionCountByHash(hash ethcmn.Hash) (i
 
 	return 0, nil
 }
+
 func (mock *EthereumAPIMock) GetBlockTransactionCountByNumber(number int64) (int, error) {
 	mock.blockGuard.RLock()
 	defer mock.blockGuard.RUnlock()
 
 	return 0, nil
 }
+
 func (mock *EthereumAPIMock) GetUncleCountByBlockHash(hash ethcmn.Hash) (int, error) {
 	return 0x0, nil
 }
+
 func (mock *EthereumAPIMock) GetUncleCountByBlockNumber(number int64) (int, error) {
 	return 0x0, nil
 }
+
 func (mock *EthereumAPIMock) SubmitWork() (bool, error) {
 	return true, nil
 }
+
 func (mock *EthereumAPIMock) SubmitHashrate() (bool, error) {
 	return true, nil
 }
+
 func (mock *EthereumAPIMock) Hashrate() (int, error) {
 	return 0x3e6, nil
 }
+
 func (mock *EthereumAPIMock) GetWork() ([]string, error) {
 	return []string{}, nil
 }
+
 func (mock *EthereumAPIMock) ProtocolVersion() (int, error) {
 	return 10000 + 2, nil
 }
+
 func (mock *EthereumAPIMock) Syncing() (bool, error) {
 	return false, nil
 }
+
 func (mock *EthereumAPIMock) Proposer() (bool, error) {
 	return false, nil
 }
@@ -277,24 +292,31 @@ func (mock *EthereumAPIMock) Proposer() (bool, error) {
 func (mock *EthereumAPIMock) NewFilter(filter eth.FilterQuery) (ID, error) {
 	return NewID(), nil
 }
+
 func (mock *EthereumAPIMock) NewBlockFilter() (ID, error) {
 	return NewID(), nil
 }
+
 func (mock *EthereumAPIMock) NewPendingTransactionFilter() (ID, error) {
 	return NewID(), nil
 }
+
 func (mock *EthereumAPIMock) UninstallFilter(id ID) (bool, error) {
 	return true, nil
 }
+
 func (mock *EthereumAPIMock) GetFilterChanges(id ID) (interface{}, error) {
 	return nil, nil
 }
+
 func (mock *EthereumAPIMock) GetFilterLogs(id ID) ([]*ethtyp.Log, error) {
 	return []*ethtyp.Log{}, nil
 }
+
 func (mock *EthereumAPIMock) SendRawTransactions(rawTxs [][]byte) (uint64, error) {
 	return 0, nil
 }
+
 func (mock *EthereumAPIMock) TraceTransaction(hash ethcmn.Hash, config *tracers.TraceConfig) (json.RawMessage, error) {
 	return json.RawMessage{}, nil
 }

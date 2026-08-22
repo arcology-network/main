@@ -122,7 +122,7 @@ func (et *ExecutorTest) receivedMsgs(ctx *actor.ActionContext) error {
 
 func (et *ExecutorTest) rpcTestStart(ctx *actor.ActionContext) error {
 	//--------------------------------------
-	mblock, txhashes := MakeMonacoBlock()
+	mblock, txhashes := MakeArcologyBlock()
 	stdMsgs, _ := Transfer(mblock.Txs, txhashes)
 	js := &workload.JobSequence{}
 	for i := range stdMsgs {

@@ -39,8 +39,9 @@ func TestOp(t *testing.T) {
 		fmt.Printf("=====dir=%v\n", dir)
 	}
 }
+
 func TestRawFile(t *testing.T) {
-	filehandle := NewRawFiles("testdata")
+	filehandle := NewRawFiles(t.TempDir())
 
 	data := make([][]byte, 50000)
 	for i := range data {

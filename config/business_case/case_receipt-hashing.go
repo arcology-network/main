@@ -61,7 +61,7 @@ func (rht *ReceiptHashingTest) receivedMsgs(ctx *actor.ActionContext) error {
 }
 
 func (rht *ReceiptHashingTest) startTest(ss *broker.StatefulStreamer) []string {
-	_, txhashes := MakeMonacoBlock()
+	_, txhashes := MakeArcologyBlock()
 	receipts := MakeReceipts(txhashes)
 
 	m := scommon.NewMessageForStream(scommon.MsgReceipts, receipts)

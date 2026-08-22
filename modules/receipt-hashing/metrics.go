@@ -54,6 +54,7 @@ func (cr *Metrics) Outputs() map[string]int {
 func (cr *Metrics) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register(scommon.MsgReceiptInfo, cr.startGenerateLog)
 }
+
 func (cr *Metrics) startGenerateLog(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	if cr.isOutput {

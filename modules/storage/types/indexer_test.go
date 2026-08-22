@@ -20,7 +20,7 @@ func TestSave(t *testing.T) {
 	}
 	blockHash := evmCommon.BytesToHash([]byte{101, 102, 103, 104, 105, 106, 107, 108})
 
-	filedb, err := filedb.NewFileDB("./indexer", uint32(128), uint8(2))
+	filedb, err := filedb.NewFileDB(t.TempDir(), uint32(128), uint8(2))
 	if err != nil {
 		panic("create filedb err!:" + err.Error())
 	}
@@ -37,6 +37,7 @@ func TestSave(t *testing.T) {
 	}
 
 }
+
 func TestByte(t *testing.T) {
 	txs := [][]byte{
 		evmCommon.Hex2Bytes("0002f8667601010382c24294b1e0e9e68297aae01347f6ce0ff21d5f72d3fa0f8084a523b88ac080a025665926933f352bcac4d9665cf78b930a9fa6089939b64385ab463b9a8b84d8a01999d62d473e0baf86c48c92f9b1f9462ea0882d870dff879089ca177fc681bc"),

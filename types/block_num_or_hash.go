@@ -110,6 +110,7 @@ func (bnh *BlockNumberOrHash) Number() (*big.Int, bool) {
 	}
 	return big.NewInt(0), false
 }
+
 func (bnh *BlockNumberOrHash) Hash() (common.Hash, bool) {
 	if bnh.BlockHash != nil {
 		return *bnh.BlockHash, true

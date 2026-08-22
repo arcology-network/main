@@ -73,6 +73,7 @@ func NewMockExecutor(basePath string) *MockExecutor {
 	}
 	return schd
 }
+
 func (me *MockExecutor) Inputs() ([]string, bool) {
 	return []string{
 		// scommon.MsgExecGeneration,
@@ -82,12 +83,15 @@ func (me *MockExecutor) Inputs() ([]string, bool) {
 func (me *MockExecutor) Outputs() map[string]int {
 	return map[string]int{}
 }
+
 func (me *MockExecutor) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register("startExecute", me.startExecute)
 }
+
 func (me *MockExecutor) RpcConfig() (string, int) {
 	return "executor", 20
 }
+
 func (me *MockExecutor) startExecute(ctx *actor.ActionContext) error {
 	ctx.ExecCtx.LogDebug("startExecute", logger.F("data", ctx.Messages[0].Data), logger.F("reqID", ctx.Messages[0].ReqID))
 
@@ -192,7 +196,7 @@ func (st *SchedulerTest) startTest(ss *broker.StatefulStreamer) []string {
 	st.store = store
 	st.unis = univals
 	blockStart := GetBlockStart(genesis)
-	mblock, txhashes := MakeMonacoBlock()
+	mblock, txhashes := MakeArcologyBlock()
 	msgs, _ := Transfer(mblock.Txs, txhashes)
 
 	//------------------------

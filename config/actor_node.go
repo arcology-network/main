@@ -52,6 +52,7 @@ func normalizeMap(i interface{}) interface{} {
 		return i
 	}
 }
+
 func asStringMap(v interface{}) (map[string]interface{}, bool) {
 	switch m := v.(type) {
 	case map[string]interface{}:

@@ -95,6 +95,7 @@ func (ts *TransactionalStore) AddData(ctx *actor.ActionContext) error {
 	}
 	return nil
 }
+
 func (ts *TransactionalStore) EndTransaction(ctx *actor.ActionContext) error {
 	if ts.current == nil {
 		panic("EndTransaction called before BeginTransaction.")

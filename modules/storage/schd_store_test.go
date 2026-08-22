@@ -18,6 +18,7 @@
 package storage
 
 import (
+	"os"
 	"testing"
 
 	mtypes "github.com/arcology-network/main/types"
@@ -25,9 +26,17 @@ import (
 )
 
 func TestWriteRead(t *testing.T) {
+	root, err := os.MkdirTemp("", "arcology-main-schdstore-*")
+	if err != nil {
+		t.Fatal(err)
+	}
 	store := NewSchdStore().(*SchdStore)
+	t.Cleanup(func() {
+		_ = store.f.Close()
+		_ = os.RemoveAll(root)
+	})
 	store.Config(map[string]interface{}{
-		"root": "./schdstore/",
+		"root": root,
 	})
 
 	store.writeToFile(&mtypes.SchdState{

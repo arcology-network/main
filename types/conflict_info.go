@@ -77,6 +77,7 @@ func (cs *ConflictInfos) Add(ci *ConflictInfo) {
 		cs.Conflicts = append(cs.Conflicts, ci)
 	}
 }
+
 func (cs *ConflictInfos) GobEncode() ([]byte, error) {
 	buffer := make([]byte, ConflictInfoSize*len(cs.Conflicts))
 	idx := 0
@@ -86,6 +87,7 @@ func (cs *ConflictInfos) GobEncode() ([]byte, error) {
 	}
 	return buffer, nil
 }
+
 func (cs *ConflictInfos) GobDecode(data []byte) error {
 	bitmap := make(map[[48]byte]interface{}, len(data)/ConflictInfoSize)
 	for i := 0; i < len(bitmap); i++ {

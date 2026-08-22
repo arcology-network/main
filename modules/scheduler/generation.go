@@ -155,6 +155,7 @@ func (g *generation) setMsgProperty() {
 		g.gen.JobSeqs[seqIdx].ID = uint64(seqIdx)
 	}
 }
+
 func (g *generation) onArbitrateResult(ctx *actor.ExecutionContext, resp *conflictor.CollisionSummary) {
 	gc := g.CurrentContext()
 	gc.onArbitrateResult(resp)

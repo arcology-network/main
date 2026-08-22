@@ -70,7 +70,7 @@ func (st *StorageTest) receivedMsgs(ctx *actor.ActionContext) error {
 }
 
 func (st *StorageTest) startTest(ss *broker.StatefulStreamer) []string {
-	block, txhashes := MakeMonacoBlock()
+	block, txhashes := MakeArcologyBlock()
 	m := scommon.NewMessageForStream(scommon.MsgPendingBlock, block)
 	m.Height = 10
 	ss.Send(scommon.MsgPendingBlock, m)
@@ -111,7 +111,7 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 
 	accthash = store.CommittedStore().(*proxy.StorageProxy).EthStore().Root()
 
-	mb, txhashes := MakeMonacoBlock()
+	mb, txhashes := MakeArcologyBlock()
 	block := BlockWithHeader(mb, genesis)
 	blockHash := evmCommon.BytesToHash(block.Blockhash)
 
@@ -250,7 +250,7 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 		fmt.Printf("******storage.Query err:%v\n", err)
 		return st.msgs
 	}
-	fmt.Printf("-------storage.Query storage:%v\n", bal.(*mtypes.QueryResult).Data.(*mtypes.MonacoBlock))
+	fmt.Printf("-------storage.Query storage:%v\n", bal.(*mtypes.QueryResult).Data.(*mtypes.ArcologyBlock))
 	st.msgs = append(st.msgs, "QueryType_TestBlockByHeight")
 
 	//--------------------------------------------
@@ -447,7 +447,7 @@ func (st *StorageTest) startTestQueryRpcBase(ss *broker.StatefulStreamer) []stri
 		fmt.Printf("******storage.Query err:%v\n", err)
 		return st.msgs
 	}
-	fmt.Printf("-------****storage.Query RawBlock:%v\n", h.(*mtypes.QueryResult).Data.(*mtypes.MonacoBlock))
+	fmt.Printf("-------****storage.Query RawBlock:%v\n", h.(*mtypes.QueryResult).Data.(*mtypes.ArcologyBlock))
 	st.msgs = append(st.msgs, "QueryType_RawBlock")
 
 	//--------------------------------------------------------

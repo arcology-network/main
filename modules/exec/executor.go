@@ -176,12 +176,14 @@ func (exec *Executor) waitBlockStart(ctx *actor.ActionContext) error {
 	exec.ChangeState(ctx, execStateWaitGenerationReady, "execStateWaitGenerationReady")
 	return nil
 }
+
 func (exec *Executor) waitGenerationReady(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	exec.store = msg.Data.(*statecache.ExecutionStateStore)
 	exec.ChangeState(ctx, execStateReady, "execStateReady")
 	return nil
 }
+
 func (exec *Executor) StateInit(ctx *actor.ActionContext) error {
 	msg := ctx.Messages[0]
 	initialization := msg.Data.(*mtypes.Initialization)
@@ -205,6 +207,7 @@ func (exec *Executor) nextHeight(ctx *actor.ActionContext) error {
 	exec.ChangeState(ctx, execStateWaitBlockStart, "execStateWaitBlockStart")
 	return nil
 }
+
 func (exec *Executor) ChangeState(ctx *actor.ActionContext, state int, stateName string) error {
 	ctx.ExecCtx.LogDebug("****** " + ctx.ExecCtx.WorkCtx.BusinassName + " state change into " + stateName)
 	exec.state = state
@@ -276,6 +279,7 @@ func (exec *Executor) sendNewTask(
 func GetThreadID(hash evmCommon.Hash) uint64 {
 	return uint64(codec.Uint64(0).Decode(hash.Bytes()[:8]).(codec.Uint64))
 }
+
 func (exec *Executor) startExec() {
 	for i := 0; i < int(exec.euCount); i++ {
 		index := i
@@ -317,6 +321,7 @@ func (exec *Executor) startExec() {
 		}(index)
 	}
 }
+
 func (exec *Executor) parseResults(alltransitions []*statecell.StateCell) map[uint64][]*statecell.StateCell {
 	mTransitions := make(map[uint64][]*statecell.StateCell, len(alltransitions))
 	for i := range alltransitions {
@@ -326,6 +331,7 @@ func (exec *Executor) parseResults(alltransitions []*statecell.StateCell) map[ui
 
 	return mTransitions
 }
+
 func addGroupIds(groupid uint64, accessRecords statecell.StateCells) statecell.StateCells {
 	for i := range accessRecords {
 		accessRecords[i].Property.JobSequenceID = groupid

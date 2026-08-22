@@ -44,7 +44,7 @@ type OpAdaptor struct {
 	ReapSize    int
 
 	//result process
-	MBlock   *mtypes.MonacoBlock
+	MBlock   *mtypes.ArcologyBlock
 	Receipts *[]*evmTypes.Receipt
 }
 
@@ -77,6 +77,7 @@ func (oa *OpAdaptor) Reset() {
 	oa.MBlock = nil
 	oa.Receipts = nil
 }
+
 func (oa *OpAdaptor) Check() bool {
 	if !oa.ReapCommand || oa.Opcaches == nil {
 		return false
@@ -88,6 +89,7 @@ func (oa *OpAdaptor) AddReapCommand() bool {
 	oa.ReapCommand = true
 	return oa.Check()
 }
+
 func (oa *OpAdaptor) AddOpCommand(txs []*types.StandardTransaction, withdrawals []*evmTypes.Withdrawal) bool {
 	msgs := make([]*types.StandardTransaction, 0, len(txs))
 	list := make([]evmCommon.Hash, 0, len(txs))
@@ -139,7 +141,7 @@ func (oa *OpAdaptor) ReapEnd(reaped []*types.StandardTransaction) ([]*types.Stan
 }
 
 // *****************************************************************************
-func (oa *OpAdaptor) AddBlock(block *mtypes.MonacoBlock) (bool, *mtypes.BlockResult) {
+func (oa *OpAdaptor) AddBlock(block *mtypes.ArcologyBlock) (bool, *mtypes.BlockResult) {
 	oa.MBlock = block
 
 	//change signer from next block
@@ -147,6 +149,7 @@ func (oa *OpAdaptor) AddBlock(block *mtypes.MonacoBlock) (bool, *mtypes.BlockRes
 
 	return oa.Calculate()
 }
+
 func (oa *OpAdaptor) AddReceipts(receipts []*evmTypes.Receipt) (bool, *mtypes.BlockResult) {
 	oa.Receipts = &receipts
 	return oa.Calculate()
@@ -169,7 +172,11 @@ func (oa *OpAdaptor) Calculate() (bool, *mtypes.BlockResult) {
 	}
 
 	block := evmTypes.NewBlockWithHeader(&header)
-	block.AttachBody(txs, []*evmTypes.Header{}, oa.Withdrawals)
+	block = block.WithBody(evmTypes.Body{
+		Transactions: txs,
+		Uncles:       []*evmTypes.Header{},
+		Withdrawals:  oa.Withdrawals,
+	})
 	return true, &mtypes.BlockResult{
 		Block: block,
 		Fees:  totalFees(block, *oa.Receipts),

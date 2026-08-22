@@ -55,6 +55,7 @@ func (er *ExecutorResponses) GobEncode() ([]byte, error) {
 	}
 	return codec.Byteset(data).Encode(), nil
 }
+
 func (er *ExecutorResponses) GobDecode(data []byte) error {
 	fields := codec.Byteset{}.Decode(data).(codec.Byteset)
 	er.HashList = types.Hashes(er.HashList).Decode(fields[0])

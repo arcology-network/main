@@ -32,13 +32,13 @@ func BuildGetRpcBlockSubPlan() query.Step {
 	getBlock := &query.CallStep{
 		Plan: BuildGetBlockByHeightSubPlan(),
 		Bind: func(ctx *query.QueryContext, v any) {
-			ctx.Vars[QueryKey_MonacoBlock] = v
+			ctx.Vars[QueryKey_ArcologyBlock] = v
 		},
 	}
 
 	ensureBlock := &query.ReturnFromSubPlanStep{
 		Cond: func(ctx *query.QueryContext) bool {
-			return ctx.Vars[QueryKey_MonacoBlock].(*mtypes.MonacoBlock) == nil
+			return ctx.Vars[QueryKey_ArcologyBlock].(*mtypes.ArcologyBlock) == nil
 		},
 		Value: func(ctx *query.QueryContext) any {
 			return &RpcBlockResult{
@@ -50,7 +50,7 @@ func BuildGetRpcBlockSubPlan() query.Step {
 
 	buildHeader := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
-			block := ctx.Vars[QueryKey_MonacoBlock].(*mtypes.MonacoBlock)
+			block := ctx.Vars[QueryKey_ArcologyBlock].(*mtypes.ArcologyBlock)
 			ctx.Vars[QueryKey_BlockHash] = evmCommon.BytesToHash(block.Blockhash)
 			var header evmTypes.Header
 			for i := range block.Headers {
@@ -131,7 +131,7 @@ func BuildGetRpcBlockSubPlan() query.Step {
 func BuildFillFullTxStepSubPlan() query.Step {
 	params := &query.FuncStep{
 		Do: func(ctx *query.QueryContext, cont query.Continuation) {
-			mblock := ctx.Vars[QueryKey_MonacoBlock].(*mtypes.MonacoBlock)
+			mblock := ctx.Vars[QueryKey_ArcologyBlock].(*mtypes.ArcologyBlock)
 			txs := make([]interface{}, 0, len(mblock.Txs))
 			ctx.Vars[QueryKey_Transactions] = txs
 			cont(nil, nil)
@@ -140,7 +140,7 @@ func BuildFillFullTxStepSubPlan() query.Step {
 
 	buildTransactions := &query.ForEachStep{
 		Items: func(ctx *query.QueryContext) []interface{} {
-			mblock := ctx.Vars[QueryKey_MonacoBlock].(*mtypes.MonacoBlock)
+			mblock := ctx.Vars[QueryKey_ArcologyBlock].(*mtypes.ArcologyBlock)
 			items := make([]interface{}, len(mblock.Txs))
 			for i := range mblock.Txs {
 				items[i] = i
@@ -198,6 +198,7 @@ func BuildFillFullTxStepSubPlan() query.Step {
 		},
 	}
 }
+
 func BuildFillHashesSubPlan() query.Step {
 	getHashess := &query.CallStep{
 		Plan: BuildGetBlockHashesByHeightSubPlan(),

@@ -22,6 +22,8 @@ import (
 	"math"
 	"math/big"
 	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/arcology-network/common-lib/crdt/statecell"
 	"github.com/arcology-network/common-lib/types"
@@ -41,6 +43,7 @@ import (
 	eushared "github.com/arcology-network/eu/shared"
 	statecache "github.com/arcology-network/state-engine/state/cache"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
+	"github.com/ethereum/go-ethereum/params"
 )
 
 func MakeStateStore(basePath string) (*evmcore.Genesis, *statecache.ExecutionStateStore, []*statecell.StateCell) {
@@ -100,7 +103,7 @@ func Transfer(txs [][]byte, txhashes []evmCommon.Hash) ([]*types.StandardMessage
 	return stdmsgs, stdtxs
 }
 
-func CreateBlock(header *evmTypes.Header, number *big.Int, txSelected [][]byte, SignerType uint8) (*mtypes.MonacoBlock, error) {
+func CreateBlock(header *evmTypes.Header, number *big.Int, txSelected [][]byte, SignerType uint8) (*mtypes.ArcologyBlock, error) {
 	ethHeader, err := header.MarshalJSON()
 	if err != nil {
 		return nil, err
@@ -114,7 +117,7 @@ func CreateBlock(header *evmTypes.Header, number *big.Int, txSelected [][]byte, 
 
 	headers = append(headers, ethHeaders)
 
-	block := &mtypes.MonacoBlock{
+	block := &mtypes.ArcologyBlock{
 		Blockhash: header.Hash().Bytes(),
 		Height:    header.Number.Uint64(),
 		Headers:   headers,
@@ -123,7 +126,8 @@ func CreateBlock(header *evmTypes.Header, number *big.Int, txSelected [][]byte, 
 	}
 	return block, nil
 }
-func MakeMonacoBlockFromGenesis(genesis *evmcore.Genesis) (*mtypes.MonacoBlock, []evmCommon.Hash) {
+
+func MakeArcologyBlockFromGenesis(genesis *evmcore.Genesis) (*mtypes.ArcologyBlock, []evmCommon.Hash) {
 	evmblock := genesis.ToBlock()
 	txs, txhashes := GetTxsAndHashes()
 	blocknumber := big.NewInt(10)
@@ -146,10 +150,10 @@ func GetTxsAndHashes() ([][]byte, []evmCommon.Hash) {
 	return txs, txhashes
 }
 
-func MakeMonacoBlock() (*mtypes.MonacoBlock, []evmCommon.Hash) {
+func MakeArcologyBlock() (*mtypes.ArcologyBlock, []evmCommon.Hash) {
 	blockHash := evmCommon.BytesToHash([]byte{101, 102, 103, 104, 105, 106, 107, 108})
 	txs, txhashes := GetTxsAndHashes()
-	return &mtypes.MonacoBlock{
+	return &mtypes.ArcologyBlock{
 		Height:    10,
 		Blockhash: blockHash.Bytes(),
 		Headers:   [][]byte{},
@@ -158,7 +162,7 @@ func MakeMonacoBlock() (*mtypes.MonacoBlock, []evmCommon.Hash) {
 	}, txhashes
 }
 
-func BlockWithHeader(mb *mtypes.MonacoBlock, genesis *evmcore.Genesis) *mtypes.MonacoBlock {
+func BlockWithHeader(mb *mtypes.ArcologyBlock, genesis *evmcore.Genesis) *mtypes.ArcologyBlock {
 	headerBys := EncodeHeader(CreateHerder(GetParentInfo(), BlockHeight, GetBlockStart(genesis), accthash, uint64(200000), txhash, rcpthash, GetBlockParams(), evmTypes.BytesToBloom([]byte{1, 2, 3, 4}), &withdrawhash))
 	mb.Headers = headerBys
 	return mb
@@ -185,9 +189,10 @@ func GetBlockStart(genesis *evmcore.Genesis) *actor.BlockStart {
 func GetBlockParams() *mtypes.BlockParams {
 	BeaconRoot := evmCommon.BytesToHash([]byte{27, 27, 28, 24, 25, 26})
 	return &mtypes.BlockParams{
-		Random:     evmCommon.BytesToHash([]byte{22, 21, 23, 24, 25, 26}),
-		BeaconRoot: &BeaconRoot,
-		Times:      uint64(250),
+		Random:      evmCommon.BytesToHash([]byte{22, 21, 23, 24, 25, 26}),
+		BeaconRoot:  &BeaconRoot,
+		Times:       uint64(250),
+		ChainConfig: params.MainnetChainConfig,
 	}
 }
 
@@ -217,9 +222,12 @@ func EncodeHeader(header *evmTypes.Header) [][]byte {
 }
 
 func CreateHerder(parentinfo *mtypes.ParentInfo, height uint64, blockstart *actor.BlockStart, accthash evmCommon.Hash, gasused uint64, txhash evmCommon.Hash, rcpthash evmCommon.Hash, blockParams *mtypes.BlockParams, bloom evmTypes.Bloom, withdrawhash *evmCommon.Hash) *evmTypes.Header {
-	excessBlobGas := eip4844.CalcExcessBlobGas(parentinfo.ExcessBlobGas, parentinfo.BlobGasUsed)
-
 	headtime := blockstart.Timestamp.Uint64()
+	parentHeader := &evmTypes.Header{
+		ExcessBlobGas: &parentinfo.ExcessBlobGas,
+		BlobGasUsed:   &parentinfo.BlobGasUsed,
+	}
+	excessBlobGas := eip4844.CalcExcessBlobGas(blockParams.ChainConfig, parentHeader, headtime)
 
 	header := evmTypes.Header{
 		ParentHash: parentinfo.ParentHash,
@@ -351,6 +359,7 @@ func InitCfg(basepath, globalConfigFile, jetConfigFile, appConfigFile string) (*
 	globalConfig, _ := mconfig.LoadGlobalConfig(globalConfigFile)
 	jetConfig, _ := jetlib.LoadConfig(jetConfigFile)
 	appConfig, _ := mconfig.LoadAppConfig(appConfigFile)
+	rebaseTestRuntimePaths(appConfig, basepath)
 
 	logger.InitLog("./log.toml", basepath+"/log/app.log")
 	jetConfig.Nats.Servers[0] = ss.ClientURL()
@@ -362,6 +371,60 @@ func InitCfg(basepath, globalConfigFile, jetConfigFile, appConfigFile string) (*
 	dic := appConfig.InitApp(broker, globalConfig, jetConfig)
 
 	return appConfig, broker, dic
+}
+
+var testRuntimePathKeys = map[string]struct{}{
+	"dbpath":               {},
+	"jwt_file":             {},
+	"logfile":              {},
+	"root":                 {},
+	"storage_block_path":   {},
+	"storage_index_path":   {},
+	"storage_receipt_path": {},
+	"storage_state_path":   {},
+	"storage_tmblock_dir":  {},
+	"tm_state_store_dir":   {},
+}
+
+func rebaseTestRuntimePaths(config *mconfig.AppConfig, root string) {
+	redirectTestRuntimePaths(config.Settings.Envs, root)
+	for _, params := range config.Actors {
+		redirectTestRuntimePaths(params, root)
+	}
+}
+
+func redirectTestRuntimePaths(value interface{}, root string) {
+	switch typed := value.(type) {
+	case map[string]interface{}:
+		for key, child := range typed {
+			if _, ok := testRuntimePathKeys[key]; ok {
+				if configured, ok := child.(string); ok && configured != "__env__" && configured != "__global__" {
+					typed[key] = runtimeTestPath(root, key, configured)
+					continue
+				}
+			}
+			redirectTestRuntimePaths(child, root)
+		}
+	case []interface{}:
+		for _, child := range typed {
+			redirectTestRuntimePaths(child, root)
+		}
+	}
+}
+
+func runtimeTestPath(root, key, configured string) string {
+	configured = strings.ReplaceAll(configured, "\\", "/")
+	parts := strings.FieldsFunc(configured, func(r rune) bool { return r == '/' })
+	clean := make([]string, 0, len(parts))
+	for _, part := range parts {
+		if part != "." && part != ".." && part != "" {
+			clean = append(clean, part)
+		}
+	}
+	if len(clean) == 0 {
+		clean = append(clean, key)
+	}
+	return filepath.Join(append([]string{root}, clean...)...)
 }
 
 func StartSys(appcfg *mconfig.AppConfig, broker *brokerpk.StatefulStreamer) {
@@ -376,7 +439,8 @@ func StartSys(appcfg *mconfig.AppConfig, broker *brokerpk.StatefulStreamer) {
 		}
 	}
 
-	for _, msg := range appcfg.StartMsgs {
-		broker.Send(msg.Name, &msg)
+	for i := range appcfg.StartMsgs {
+		msg := &appcfg.StartMsgs[i]
+		broker.Send(msg.Name, msg)
 	}
 }

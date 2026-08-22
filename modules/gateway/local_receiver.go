@@ -90,6 +90,7 @@ func (lr *LocalReceiver) SendRawTransaction(ctx *actor.ActionContext) error {
 
 	return nil
 }
+
 func (lr *LocalReceiver) ReturnRpcHash(ctx *actor.ActionContext) error {
 	hash := ctx.Messages[0].Data.(evmCommon.Hash)
 

@@ -22,7 +22,7 @@ import (
 	"math"
 	"math/big"
 	"os"
-	"path"
+	"path/filepath"
 	"time"
 
 	"github.com/arcology-network/common-lib/types"
@@ -30,7 +30,7 @@ import (
 	"github.com/arcology-network/consensus-engine/config"
 	tmlog "github.com/arcology-network/consensus-engine/libs/log"
 	tmos "github.com/arcology-network/consensus-engine/libs/os"
-	"github.com/arcology-network/consensus-engine/monaco"
+	arcology "github.com/arcology-network/consensus-engine/monaco"
 	"github.com/arcology-network/consensus-engine/node"
 	"github.com/arcology-network/consensus-engine/p2p"
 	"github.com/arcology-network/consensus-engine/privval"
@@ -129,9 +129,11 @@ func (c *Consensus) Config(params map[string]interface{}) {
 func (c *Consensus) RpcConfig() (string, int) {
 	return "consensus", 20
 }
+
 func (c *Consensus) SetSender(sender actor.OutboundSender) {
 	c.sender = sender
 }
+
 func (c *Consensus) RegisterActions(reg actor.ActionRegistrar) {
 	reg.Register("Query", c.Query)
 	reg.Register(scommon.MsgMetaBlock, c.receivedMetaBlock)
@@ -144,14 +146,17 @@ func (c *Consensus) receivedMetaBlock(ctx *actor.ActionContext) error {
 	c.pendingMsgs[scommon.MsgMetaBlock] <- ctx.Messages[0]
 	return nil
 }
+
 func (c *Consensus) receivedExtAppHash(ctx *actor.ActionContext) error {
 	c.pendingMsgs[scommon.MsgExtAppHash] <- ctx.Messages[0]
 	return nil
 }
+
 func (c *Consensus) receivedTxLocals(ctx *actor.ActionContext) error {
 	c.chanTxs <- ctx.Messages[0].Data.([][]byte)
 	return nil
 }
+
 func (c *Consensus) receivedInitialization(ctx *actor.ActionContext) error {
 	c.height = ctx.Messages[0].Data.(*mtypes.Initialization).BlockStart.Height
 	err := c.startConsensus(c, c.engineCfg)
@@ -175,9 +180,11 @@ func (c *Consensus) Query(ctx *actor.ActionContext) error {
 func (c *Consensus) Proposer(isporposer bool) {
 	c.isproposer = isporposer
 }
+
 func (c *Consensus) Syncing(syncing bool) {
 	c.syncing = syncing
 }
+
 func (c *Consensus) Reap(maxBytes int64, maxGas int64, height int64) (txs [][]byte, hashes [][]byte) {
 	c.height = uint64(height)
 	logger.Log.Debug(context.Background(), c.from, "enter Reap", logger.F("height", height))
@@ -209,6 +216,7 @@ func (c *Consensus) Reap(maxBytes int64, maxGas int64, height int64) (txs [][]by
 
 	return
 }
+
 func (c *Consensus) AddToMempool(txs [][]byte, src string) {
 	logger.Log.Info(context.Background(), c.from, "AddToMempool", logger.F("txs", len(txs)))
 	groups := c.parseGroups(txs)
@@ -246,6 +254,7 @@ func (c *Consensus) parseGroups(txs [][]byte) [][][]byte {
 	}
 	return groups
 }
+
 func (c *Consensus) ApplyTxsSync(height int64, coinbase []byte, timestamp time.Time, hashes [][]byte) []byte {
 	c.height = uint64(height)
 
@@ -315,10 +324,10 @@ func (c *Consensus) GetTxsOnBlock(height uint64) ([][]byte, error) {
 		return nil, err
 	}
 
-	return response.(*mtypes.QueryResult).Data.(*mtypes.MonacoBlock).Txs, nil
+	return response.(*mtypes.QueryResult).Data.(*mtypes.ArcologyBlock).Txs, nil
 }
 
-func (c *Consensus) CreateBlockStore() monaco.BlockStore {
+func (c *Consensus) CreateBlockStore() arcology.BlockStore {
 	return newBlockStore("tmblockstore", c.sender)
 }
 
@@ -334,15 +343,15 @@ func (c *Consensus) SwitchToConsensus() {
 	c.sender.Send(scommon.MsgConsensusUp, "", c.height, c.from)
 }
 
-func (c *Consensus) startConsensus(backend monaco.BackendProxy, config *config.Config) error {
+func (c *Consensus) startConsensus(backend arcology.BackendProxy, config *config.Config) error {
 	logname := "consensus.log"
 	rootDir := viper.GetString(cli.HomeFlag)
 	//create logger
-	if err := tmos.EnsureDir(path.Join(rootDir, "log"), 0777); err != nil {
+	if err := tmos.EnsureDir(filepath.Join(rootDir, "log"), 0777); err != nil {
 		panic(err.Error())
 		// tmos.PanicSanity(err.Error())
 	}
-	logfile, err := os.OpenFile(path.Join(rootDir, "log", logname), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
+	logfile, err := os.OpenFile(filepath.Join(rootDir, "log", logname), os.O_RDWR|os.O_CREATE|os.O_APPEND, 0777)
 	if err != nil {
 		panic(err.Error())
 	}

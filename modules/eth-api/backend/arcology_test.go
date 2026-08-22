@@ -27,20 +27,20 @@ import (
 )
 
 func TestMsgHash(t *testing.T) {
-	msg := core.NewMessage(
-		evmCommon.BytesToAddress([]byte{1}),
-		nil,
-		1,
-		new(big.Int).SetUint64(1000),
-		2000,
-		new(big.Int).SetUint64(3000),
-		[]byte{4},
-		nil,
-		false,
-	)
+	msg := core.Message{
+		From:             evmCommon.BytesToAddress([]byte{1}),
+		Nonce:            1,
+		Value:            new(big.Int).SetUint64(1000),
+		GasLimit:         2000,
+		GasPrice:         new(big.Int).SetUint64(3000),
+		Data:             []byte{4},
+		SkipNonceChecks:  true,
+		SkipFromEOACheck: true,
+	}
 	hash, _ := msgHash(&msg)
 	t.Log(hash)
 }
+
 func TestID(t *testing.T) {
 	fmt.Printf("%v", NewID())
 }

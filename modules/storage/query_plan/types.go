@@ -16,7 +16,7 @@ const (
 	QueryKey_Receipts       = "_receipts"
 	QueryKey_Height         = "_height"
 	QueryKey_Block          = "_block"
-	QueryKey_MonacoBlock    = "_monacoblock"
+	QueryKey_ArcologyBlock  = "_arcologyblock"
 	QueryKey_Position       = "_position"
 	QueryKey_AccountAddress = "_accountAddress"
 	QueryKey_Address        = "_address"
